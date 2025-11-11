@@ -1,0 +1,36 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id        String    @id @default(uuid())
+  userId    String?   // null for anonymous users
+  title     String
+  status    String    @default("active") // 'active' | 'completed'
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model Message {
+  id                       String   @id @default(uuid())
+  sessionId                String
+  role                     String   // 'user' | 'assistant' | 'system'
+  content                  String   @db.Text
+  scriptureReferences      Json     @default("[]")
+  constitutionalReferences Json     @default("[]")
+  timestamp                DateTime @default(now())
+
+  session                  Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([timestamp])
+}
