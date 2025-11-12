@@ -1,19 +1,34 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  body {
-    @apply bg-gray-50 text-gray-900;
-  }
+body {
+  background-color: rgb(249 250 251);
+  color: rgb(17 24 39);
 }
 
-@layer components {
-  .btn-primary {
-    @apply bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors;
-  }
+.btn-primary {
+  background-color: rgb(2 132 199);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
 
-  .btn-secondary {
-    @apply bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors;
-  }
+.btn-primary:hover {
+  background-color: rgb(3 105 161);
+}
+
+.btn-secondary {
+  background-color: rgb(229 231 235);
+  color: rgb(31 41 55);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.btn-secondary:hover {
+  background-color: rgb(209 213 219);
 }

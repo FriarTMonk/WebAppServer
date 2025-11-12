@@ -8,7 +8,11 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
@@ -19,20 +23,23 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     },
     "outDir": "dist",
     "rootDir": "src",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
   "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
+    "../../dist/packages/web/.next/types/**/*.ts",
+    "../../packages/web/.next/types/**/*.ts",
+    "next-env.d.ts",
     "src/**/*.js",
     "src/**/*.jsx",
-    "../../packages/web/.next/types/**/*.ts",
-    "../../dist/packages/web/.next/types/**/*.ts",
-    "next-env.d.ts"
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "out-tsc",
@@ -43,5 +50,10 @@
     "src/**/*.spec.ts",
     "src/**/*.test.ts",
     ".next"
+  ],
+  "references": [
+    {
+      "path": "../shared"
+    }
   ]
 }
