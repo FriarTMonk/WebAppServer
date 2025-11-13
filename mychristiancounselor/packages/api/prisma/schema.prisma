@@ -8,13 +8,14 @@ datasource db {
 }
 
 model Session {
-  id        String    @id @default(uuid())
-  userId    String?   // null for anonymous users
-  title     String
-  status    String    @default("active") // 'active' | 'completed'
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  messages  Message[]
+  id                    String    @id @default(uuid())
+  userId                String?   // null for anonymous users
+  title                 String
+  status                String    @default("active") // 'active' | 'completed'
+  preferredTranslation  String    @default("NIV") // Bible translation preference
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  messages              Message[]
 
   @@index([createdAt])
   @@index([userId])
@@ -33,4 +34,37 @@ model Message {
 
   @@index([sessionId])
   @@index([timestamp])
+}
+
+// Bible Translation metadata
+model BibleTranslation {
+  code        String        @id @unique // 'NIV', 'NASB', 'NKJV', 'ESV'
+  name        String        // Short name
+  fullName    String        // Full name
+  description String?       @db.Text
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+
+  verses      BibleVerse[]
+
+  @@index([isActive])
+}
+
+// Individual Bible verses across all translations
+model BibleVerse {
+  id               String            @id @default(uuid())
+  translationCode  String            // Foreign key to BibleTranslation
+  book             String            // e.g., 'John', 'Genesis'
+  chapter          Int
+  verse            Int
+  text             String            @db.Text
+
+  translation      BibleTranslation  @relation(fields: [translationCode], references: [code], onDelete: Cascade)
+
+  // Ensure no duplicate verses per translation
+  @@unique([translationCode, book, chapter, verse])
+
+  // Optimize verse lookups
+  @@index([translationCode, book, chapter, verse])
+  @@index([book])
 }

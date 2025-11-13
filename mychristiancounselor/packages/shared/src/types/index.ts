@@ -17,18 +17,32 @@ export interface Message {
   timestamp: Date;
 }
 
+// Bible translation type - supports 4 major English translations
+export type BibleTranslation = 'NIV' | 'NASB' | 'NKJV' | 'ESV';
+
+// Translation metadata interface
+export interface TranslationInfo {
+  code: BibleTranslation;
+  name: string;
+  fullName: string;
+  description: string;
+  yearPublished?: number;
+  characteristics?: string[];
+}
+
 export interface ScriptureReference {
   book: string;
   chapter: number;
   verseStart: number;
   verseEnd?: number;
-  translation: 'NIV';
+  translation: BibleTranslation;
   text: string;
 }
 
 export interface CounselRequest {
   sessionId: string;
   message: string;
+  preferredTranslation?: BibleTranslation; // Optional, defaults to NIV
 }
 
 export interface CounselResponse {

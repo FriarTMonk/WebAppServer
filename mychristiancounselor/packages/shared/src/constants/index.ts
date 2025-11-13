@@ -1,3 +1,63 @@
+import { BibleTranslation, TranslationInfo } from '../types';
+
+// Bible Translation Metadata
+export const TRANSLATIONS: Record<BibleTranslation, TranslationInfo> = {
+  NIV: {
+    code: 'NIV',
+    name: 'NIV',
+    fullName: 'New International Version',
+    description: 'Modern, readable translation balancing accuracy and clarity',
+    yearPublished: 1978,
+    characteristics: ['Easy to read', 'Contemporary language', 'Widely used'],
+  },
+  NASB: {
+    code: 'NASB',
+    name: 'NASB',
+    fullName: 'New American Standard Bible',
+    description: 'Literal, word-for-word translation emphasizing accuracy',
+    yearPublished: 1971,
+    characteristics: ['Highly literal', 'Scholarly', 'Precise'],
+  },
+  NKJV: {
+    code: 'NKJV',
+    name: 'NKJV',
+    fullName: 'New King James Version',
+    description: 'Traditional language updated for modern readers',
+    yearPublished: 1982,
+    characteristics: ['Majestic language', 'Faithful to original', 'Traditional'],
+  },
+  ESV: {
+    code: 'ESV',
+    name: 'ESV',
+    fullName: 'English Standard Version',
+    description: 'Balanced translation combining accuracy with readability',
+    yearPublished: 2001,
+    characteristics: ['Literary', 'Accurate', 'Modern yet formal'],
+  },
+};
+
+export const DEFAULT_TRANSLATION: BibleTranslation = 'NIV';
+
+// Bible book names for validation
+export const BIBLE_BOOKS = [
+  // Old Testament
+  'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy',
+  'Joshua', 'Judges', 'Ruth', '1 Samuel', '2 Samuel',
+  '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles',
+  'Ezra', 'Nehemiah', 'Esther', 'Job', 'Psalms', 'Proverbs',
+  'Ecclesiastes', 'Song of Solomon', 'Isaiah', 'Jeremiah', 'Lamentations',
+  'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos', 'Obadiah',
+  'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai',
+  'Zechariah', 'Malachi',
+  // New Testament
+  'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans',
+  '1 Corinthians', '2 Corinthians', 'Galatians', 'Ephesians',
+  'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians',
+  '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews',
+  'James', '1 Peter', '2 Peter', '1 John', '2 John', '3 John',
+  'Jude', 'Revelation'
+] as const;
+
 // Crisis detection patterns - organized by category for comprehensive coverage
 export const CRISIS_KEYWORDS = [
   // Suicidal ideation
