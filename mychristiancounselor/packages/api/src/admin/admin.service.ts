@@ -84,4 +84,80 @@ export class AdminService {
       take: filters.limit || 100,
     });
   }
+
+  async getPlatformMetrics(): Promise<any> {
+    const [
+      totalUsers,
+      activeUsers,
+      individualUsers,
+      orgUsers,
+      totalOrgs,
+      trialOrgs,
+      activeOrgs,
+      expiredOrgs,
+    ] = await Promise.all([
+      // Total users
+      this.prisma.user.count({ where: { isActive: true } }),
+
+      // Active users (logged in within last 7 days)
+      this.prisma.user.count({
+        where: {
+          isActive: true,
+          refreshTokens: {
+            some: {
+              createdAt: {
+                gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+              },
+            },
+          },
+        },
+      }),
+
+      // Individual account users
+      this.prisma.user.count({
+        where: { isActive: true, accountType: 'individual' },
+      }),
+
+      // Organization account users
+      this.prisma.user.count({
+        where: { isActive: true, accountType: 'organization' },
+      }),
+
+      // Total organizations
+      this.prisma.organization.count({
+        where: { isSystemOrganization: false },
+      }),
+
+      // Trial organizations
+      this.prisma.organization.count({
+        where: { isSystemOrganization: false, licenseStatus: 'trial' },
+      }),
+
+      // Active organizations
+      this.prisma.organization.count({
+        where: { isSystemOrganization: false, licenseStatus: 'active' },
+      }),
+
+      // Expired organizations
+      this.prisma.organization.count({
+        where: { isSystemOrganization: false, licenseStatus: 'expired' },
+      }),
+    ]);
+
+    return {
+      activeUsers: {
+        total: activeUsers,
+        individual: individualUsers,
+        organization: orgUsers,
+      },
+      totalUsers,
+      organizations: {
+        total: totalOrgs,
+        trial: trialOrgs,
+        active: activeOrgs,
+        expired: expiredOrgs,
+      },
+      timestamp: new Date(),
+    };
+  }
 }

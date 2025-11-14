@@ -40,4 +40,15 @@ export class AdminController {
       message: 'Admin access verified',
     };
   }
+
+  @Get('metrics')
+  async getMetrics(@CurrentUser() user: User) {
+    await this.adminService.logAdminAction(
+      user.id,
+      'view_metrics',
+      { timestamp: new Date() },
+    );
+
+    return this.adminService.getPlatformMetrics();
+  }
 }
