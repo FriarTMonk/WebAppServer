@@ -24,7 +24,7 @@ export function ConversationView() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [preferredTranslation, setPreferredTranslation] = useState<BibleTranslation>(DEFAULT_TRANSLATION);
   const [comparisonMode, setComparisonMode] = useState(false);
-  const [comparisonTranslations, setComparisonTranslations] = useState<BibleTranslation[]>([
+  const [comparisonTranslations] = useState<BibleTranslation[]>([
     'KJV',
     'ASV',
   ]);
