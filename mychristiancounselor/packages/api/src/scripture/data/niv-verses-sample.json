@@ -1,0 +1,72 @@
+[
+  {
+    "book": "John",
+    "chapter": 3,
+    "verse": 16,
+    "text": "For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.",
+    "translation": "NIV"
+  },
+  {
+    "book": "Philippians",
+    "chapter": 4,
+    "verse": 6,
+    "text": "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God.",
+    "translation": "NIV"
+  },
+  {
+    "book": "Proverbs",
+    "chapter": 3,
+    "verse": 5,
+    "text": "Trust in the LORD with all your heart and lean not on your own understanding.",
+    "translation": "NIV"
+  },
+  {
+    "book": "Romans",
+    "chapter": 8,
+    "verse": 28,
+    "text": "And we know that in all things God works for the good of those who love him, who have been called according to his purpose.",
+    "translation": "NIV"
+  },
+  {
+    "book": "Psalm",
+    "chapter": 23,
+    "verse": 1,
+    "text": "The LORD is my shepherd, I lack nothing.",
+    "translation": "NIV"
+  },
+  {
+    "book": "Matthew",
+    "chapter": 6,
+    "verse": 33,
+    "text": "But seek first his kingdom and his righteousness, and all these things will be given to you as well.",
+    "translation": "NIV"
+  },
+  {
+    "book": "Jeremiah",
+    "chapter": 29,
+    "verse": 11,
+    "text": "For I know the plans I have for you, declares the LORD, plans to prosper you and not to harm you, plans to give you hope and a future.",
+    "translation": "NIV"
+  },
+  {
+    "book": "1 Corinthians",
+    "chapter": 13,
+    "verse": 4,
+    "text": "Love is patient, love is kind. It does not envy, it does not boast, it is not proud.",
+    "translation": "NIV"
+  },
+  {
+    "book": "Isaiah",
+    "chapter": 41,
+    "verse": 10,
+    "text": "So do not fear, for I am with you; do not be dismayed, for I am your God. I will strengthen you and help you; I will uphold you with my righteous right hand.",
+    "translation": "NIV"
+  },
+  {
+    "book": "James",
+    "chapter": 1,
+    "verse": 5,
+    "text": "If any of you lacks wisdom, you should ask God, who gives generously to all without finding fault, and it will be given to you.",
+    "translation": "NIV"
+  }
+]

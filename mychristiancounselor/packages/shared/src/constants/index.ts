@@ -1,6 +1,6 @@
 import { BibleTranslation, TranslationInfo } from '../types';
 
-// Bible Translation Metadata - Public domain translations with Strong's numbers
+// Bible Translation Metadata - Multiple translations available
 export const TRANSLATIONS: Record<BibleTranslation, TranslationInfo> = {
   KJV: {
     code: 'KJV',
@@ -17,6 +17,54 @@ export const TRANSLATIONS: Record<BibleTranslation, TranslationInfo> = {
     description: 'Literal translation emphasizing accuracy, updated from KJV with modern scholarship',
     yearPublished: 1901,
     characteristics: ['Highly literal', 'Scholarly', 'Public domain', 'Strong\'s numbers available'],
+  },
+  NIV: {
+    code: 'NIV',
+    name: 'NIV',
+    fullName: 'New International Version',
+    description: 'Popular modern translation balancing accuracy and readability',
+    yearPublished: 1978,
+    characteristics: ['Contemporary', 'Balanced', 'Widely used', 'Thought-for-thought'],
+  },
+  ESV: {
+    code: 'ESV',
+    name: 'ESV',
+    fullName: 'English Standard Version',
+    description: 'Literal translation with modern English, emphasizing word-for-word accuracy',
+    yearPublished: 2001,
+    characteristics: ['Literal', 'Modern', 'Scholarly', 'Word-for-word'],
+  },
+  NASB: {
+    code: 'NASB',
+    name: 'NASB',
+    fullName: 'New American Standard Bible',
+    description: 'Highly literal translation prioritizing accuracy to original texts',
+    yearPublished: 1971,
+    characteristics: ['Very literal', 'Scholarly', 'Precise', 'Word-for-word'],
+  },
+  NKJV: {
+    code: 'NKJV',
+    name: 'NKJV',
+    fullName: 'New King James Version',
+    description: 'Modern update of KJV preserving traditional style with contemporary language',
+    yearPublished: 1982,
+    characteristics: ['Traditional style', 'Modern language', 'Poetic', 'Accessible'],
+  },
+  NLT: {
+    code: 'NLT',
+    name: 'NLT',
+    fullName: 'New Living Translation',
+    description: 'Highly readable translation emphasizing clear, natural English',
+    yearPublished: 1996,
+    characteristics: ['Very readable', 'Contemporary', 'Thought-for-thought', 'Accessible'],
+  },
+  YLT: {
+    code: 'YLT',
+    name: 'YLT',
+    fullName: "Young's Literal Translation",
+    description: 'Extremely literal translation preserving original word order and tense',
+    yearPublished: 1862,
+    characteristics: ['Extremely literal', 'Public domain', 'Preserves Greek/Hebrew structure', 'Study Bible'],
   },
 };
 
