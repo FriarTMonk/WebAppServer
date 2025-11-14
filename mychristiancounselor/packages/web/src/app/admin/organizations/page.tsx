@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { AdminLayout } from '../../../components/AdminLayout';
 
 interface Organization {
@@ -18,24 +19,31 @@ interface Organization {
 }
 
 export default function OrganizationsListPage() {
+  const router = useRouter();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
+  // Debounce search input
   useEffect(() => {
-    fetchOrganizations();
-  }, [search, statusFilter]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
 
-  const fetchOrganizations = async () => {
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const fetchOrganizations = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
       const params = new URLSearchParams();
-      if (search) params.append('search', search);
+      if (debouncedSearch) params.append('search', debouncedSearch);
       if (statusFilter) params.append('licenseStatus', statusFilter);
 
       const response = await fetch(`${apiUrl}/admin/organizations?${params}`, {
@@ -45,6 +53,11 @@ export default function OrganizationsListPage() {
       });
 
       if (!response.ok) {
+        // Redirect to login on auth errors
+        if (response.status === 401 || response.status === 403) {
+          router.push('/login?redirect=/admin/organizations');
+          return;
+        }
         throw new Error('Failed to fetch organizations');
       }
 
@@ -55,7 +68,11 @@ export default function OrganizationsListPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, statusFilter, router]);
+
+  useEffect(() => {
+    fetchOrganizations();
+  }, [fetchOrganizations]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

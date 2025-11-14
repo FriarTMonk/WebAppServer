@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { AdminLayout } from '../../components/AdminLayout';
 
 interface PlatformMetrics {
@@ -20,15 +21,12 @@ interface PlatformMetrics {
 }
 
 export default function AdminOverviewPage() {
+  const router = useRouter();
   const [metrics, setMetrics] = useState<PlatformMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchMetrics();
-  }, []);
-
-  const fetchMetrics = async () => {
+  const fetchMetrics = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -41,6 +39,11 @@ export default function AdminOverviewPage() {
       });
 
       if (!response.ok) {
+        // Redirect to login on auth errors
+        if (response.status === 401 || response.status === 403) {
+          router.push('/login?redirect=/admin');
+          return;
+        }
         throw new Error('Failed to fetch metrics');
       }
 
@@ -51,7 +54,11 @@ export default function AdminOverviewPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    fetchMetrics();
+  }, [fetchMetrics]);
 
   return (
     <AdminLayout>

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { AdminLayout } from '../../../components/AdminLayout';
 
 interface User {
@@ -21,25 +22,32 @@ interface User {
 }
 
 export default function UsersListPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [accountTypeFilter, setAccountTypeFilter] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
 
+  // Debounce search input
   useEffect(() => {
-    fetchUsers();
-  }, [search, accountTypeFilter, activeFilter]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
 
-  const fetchUsers = async () => {
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
       const params = new URLSearchParams();
-      if (search) params.append('search', search);
+      if (debouncedSearch) params.append('search', debouncedSearch);
       if (accountTypeFilter) params.append('accountType', accountTypeFilter);
       if (activeFilter) params.append('isActive', activeFilter);
 
@@ -50,6 +58,11 @@ export default function UsersListPage() {
       });
 
       if (!response.ok) {
+        // Redirect to login on auth errors
+        if (response.status === 401 || response.status === 403) {
+          router.push('/login?redirect=/admin/users');
+          return;
+        }
         throw new Error('Failed to fetch users');
       }
 
@@ -60,7 +73,11 @@ export default function UsersListPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, accountTypeFilter, activeFilter, router]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const getFullName = (user: User) => {
     if (user.firstName || user.lastName) {

@@ -2,22 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  // Check if route is admin route
-  if (request.nextUrl.pathname.startsWith('/admin')) {
-    // Check for access token
-    const accessToken = request.cookies.get('accessToken')?.value;
-
-    if (!accessToken) {
-      // Redirect to login if no token
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect', request.nextUrl.pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    // TODO: Validate platform admin permission
-    // For now, just check for valid token
-  }
-
+  // For admin routes, let the API handle authentication
+  // Middleware can't access localStorage where tokens are stored
+  // The admin pages will handle 401/403 responses and redirect to login
   return NextResponse.next();
 }
 
