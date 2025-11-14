@@ -48,3 +48,6 @@ Thumbs.db
 out
 
 test-output
+
+# Git worktrees
+.worktrees/
