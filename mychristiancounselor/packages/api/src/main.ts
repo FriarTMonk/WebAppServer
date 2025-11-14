@@ -5,9 +5,9 @@ import { AppModule } from './app/app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS
+  // Enable CORS - only allow web app on port 3699
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3699',
     credentials: true,
   });
 
@@ -20,7 +20,7 @@ async function bootstrap() {
     })
   );
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 3697;
   await app.listen(port);
 
   console.log(`🚀 API server running on http://localhost:${port}`);

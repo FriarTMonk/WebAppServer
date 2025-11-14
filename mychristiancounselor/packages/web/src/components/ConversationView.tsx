@@ -10,7 +10,7 @@ import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { Message, CrisisResource, GriefResource, BibleTranslation, DEFAULT_TRANSLATION } from '@mychristiancounselor/shared';
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
 // Extended message type to include grief resources for display
 interface ExtendedMessage extends Message {
