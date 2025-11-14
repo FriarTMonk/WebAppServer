@@ -7,15 +7,142 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// User account
+model User {
+  id                String              @id @default(uuid())
+  email             String              @unique
+  passwordHash      String
+  firstName         String?
+  lastName          String?
+  emailVerified     Boolean             @default(false)
+  verificationToken String?             @unique
+  resetToken        String?             @unique
+  resetTokenExpiry  DateTime?
+  isActive          Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  // Relations
+  refreshTokens     RefreshToken[]
+  sessions          Session[]
+  organizationMemberships OrganizationMember[]
+  invitationsCreated OrganizationInvitation[] @relation("CreatedByUser")
+  invitationsReceived OrganizationInvitation[] @relation("InvitedUser")
+
+  @@index([email])
+  @@index([verificationToken])
+  @@index([resetToken])
+}
+
+// JWT refresh tokens (server-side storage)
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// Organization (church, ministry, counseling center)
+model Organization {
+  id                String    @id @default(uuid())
+  name              String
+  description       String?   @db.Text
+  licenseType       String?   // 'Family', 'Small', 'Medium', 'Large'
+  licenseStatus     String    @default("trial") // 'trial', 'active', 'expired', 'cancelled'
+  licenseExpiresAt  DateTime?
+  maxMembers        Int       @default(10)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  members           OrganizationMember[]
+  invitations       OrganizationInvitation[]
+  roles             OrganizationRole[]
+
+  @@index([licenseStatus])
+  @@index([licenseExpiresAt])
+}
+
+// User membership in organization
+model OrganizationMember {
+  id             String       @id @default(uuid())
+  organizationId String
+  userId         String
+  roleId         String
+  joinedAt       DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           OrganizationRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+// Flexible role system
+model OrganizationRole {
+  id             String       @id @default(uuid())
+  organizationId String
+  name           String       // 'Owner', 'Counselor', 'Member', or custom
+  description    String?
+  isSystemRole   Boolean      @default(false) // true for Owner, Counselor, Member
+  permissions    Json         @default("[]") // Array of permission strings
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        OrganizationMember[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+// Organization invitations
+model OrganizationInvitation {
+  id             String       @id @default(uuid())
+  organizationId String
+  email          String
+  roleId         String
+  invitedById    String
+  token          String       @unique
+  status         String       @default("pending") // 'pending', 'accepted', 'expired', 'cancelled'
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy      User         @relation("CreatedByUser", fields: [invitedById], references: [id], onDelete: Cascade)
+  acceptedBy     User?        @relation("InvitedUser", fields: [acceptedById], references: [id], onDelete: SetNull)
+  acceptedById   String?
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@index([expiresAt])
+}
+
 model Session {
   id                    String    @id @default(uuid())
   userId                String?   // null for anonymous users
   title                 String
   status                String    @default("active") // 'active' | 'completed'
-  preferredTranslation  String    @default("NIV") // Bible translation preference
+  preferredTranslation  String    @default("ASV") // Bible translation preference (KJV or ASV)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   messages              Message[]
+
+  user                  User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([userId])
@@ -38,7 +165,7 @@ model Message {
 
 // Bible Translation metadata
 model BibleTranslation {
-  code        String        @id @unique // 'NIV', 'NASB', 'NKJV', 'ESV'
+  code        String        @id @unique // 'KJV', 'ASV'
   name        String        // Short name
   fullName    String        // Full name
   description String?       @db.Text
@@ -58,6 +185,7 @@ model BibleVerse {
   chapter          Int
   verse            Int
   text             String            @db.Text
+  strongs          Json?             @default("[]") // Array of Strong's number annotations
 
   translation      BibleTranslation  @relation(fields: [translationCode], references: [code], onDelete: Cascade)
 
