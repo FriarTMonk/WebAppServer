@@ -17,8 +17,8 @@ export interface Message {
   timestamp: Date;
 }
 
-// Bible translation type - Public domain translations with Strong's numbers support
-export type BibleTranslation = 'KJV' | 'ASV';
+// Bible translation type - Multiple translations available
+export type BibleTranslation = 'KJV' | 'ASV' | 'NIV' | 'ESV' | 'NASB' | 'NKJV' | 'NLT' | 'YLT';
 
 // Translation metadata interface
 export interface TranslationInfo {
@@ -258,3 +258,5 @@ export interface UpdateRoleDto {
 export interface AcceptInvitationDto {
   token: string;
 }
+
+export * from './admin.types';
