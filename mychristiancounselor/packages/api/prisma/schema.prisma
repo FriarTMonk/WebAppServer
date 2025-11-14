@@ -9,28 +9,28 @@ datasource db {
 
 // User account
 model User {
-  id                String              @id @default(uuid())
-  email             String              @unique
+  id                String    @id @default(uuid())
+  email             String    @unique
   passwordHash      String
   firstName         String?
   lastName          String?
-  emailVerified     Boolean             @default(false)
-  verificationToken String?             @unique
-  resetToken        String?             @unique
+  emailVerified     Boolean   @default(false)
+  verificationToken String?   @unique
+  resetToken        String?   @unique
   resetTokenExpiry  DateTime?
-  isActive          Boolean             @default(true)
-  accountType       String              @default("individual") // 'individual' or 'organization'
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  isActive          Boolean   @default(true)
+  accountType       String    @default("individual") // 'individual' or 'organization'
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   // Relations
-  refreshTokens     RefreshToken[]
-  sessions          Session[]
+  refreshTokens           RefreshToken[]
+  sessions                Session[]
   organizationMemberships OrganizationMember[]
-  invitationsCreated OrganizationInvitation[] @relation("CreatedByUser")
-  invitationsReceived OrganizationInvitation[] @relation("InvitedUser")
-  adminActionsGiven AdminAuditLog[]     @relation("AdminActions")
-  adminActionsReceived AdminAuditLog[]  @relation("ActionsReceived")
+  invitationsCreated      OrganizationInvitation[] @relation("CreatedByUser")
+  invitationsReceived     OrganizationInvitation[] @relation("InvitedUser")
+  adminActionsGiven       AdminAuditLog[]          @relation("AdminActions")
+  adminActionsReceived    AdminAuditLog[]          @relation("ActionsReceived")
 
   @@index([email])
   @@index([verificationToken])
@@ -57,23 +57,23 @@ model RefreshToken {
 
 // Organization (church, ministry, counseling center)
 model Organization {
-  id                String    @id @default(uuid())
-  name              String
-  description       String?   @db.Text
-  licenseType       String?   // 'Family', 'Small', 'Medium', 'Large'
-  licenseStatus     String    @default("trial") // 'trial', 'active', 'expired', 'cancelled'
-  licenseExpiresAt  DateTime?
-  maxMembers        Int       @default(10)
-  isSystemOrganization Boolean @default(false) // true for Platform Admin org
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                   String    @id @default(uuid())
+  name                 String
+  description          String?   @db.Text
+  licenseType          String? // 'Family', 'Small', 'Medium', 'Large'
+  licenseStatus        String    @default("trial") // 'trial', 'active', 'expired', 'cancelled'
+  licenseExpiresAt     DateTime?
+  maxMembers           Int       @default(10)
+  isSystemOrganization Boolean   @default(false) // true for Platform Admin org
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   // Relations
-  members           OrganizationMember[]
-  invitations       OrganizationInvitation[]
-  roles             OrganizationRole[]
-  auditLogs         AdminAuditLog[]
-  metricSnapshots   MetricSnapshot[]
+  members         OrganizationMember[]
+  invitations     OrganizationInvitation[]
+  roles           OrganizationRole[]
+  auditLogs       AdminAuditLog[]
+  metricSnapshots MetricSnapshot[]
 
   @@index([licenseStatus])
   @@index([licenseExpiresAt])
@@ -82,15 +82,15 @@ model Organization {
 
 // User membership in organization
 model OrganizationMember {
-  id             String       @id @default(uuid())
+  id             String   @id @default(uuid())
   organizationId String
   userId         String
   roleId         String
-  joinedAt       DateTime     @default(now())
+  joinedAt       DateTime @default(now())
 
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role           OrganizationRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         OrganizationRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
 
   @@unique([organizationId, userId])
   @@index([organizationId])
@@ -99,17 +99,17 @@ model OrganizationMember {
 
 // Flexible role system
 model OrganizationRole {
-  id             String       @id @default(uuid())
+  id             String   @id @default(uuid())
   organizationId String
-  name           String       // 'Owner', 'Counselor', 'Member', or custom
+  name           String // 'Owner', 'Counselor', 'Member', or custom
   description    String?
-  isSystemRole   Boolean      @default(false) // true for Owner, Counselor, Member
-  permissions    Json         @default("[]") // Array of permission strings
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  isSystemRole   Boolean  @default(false) // true for Owner, Counselor, Member
+  permissions    Json     @default("[]") // Array of permission strings
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  members        OrganizationMember[]
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      OrganizationMember[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -117,21 +117,21 @@ model OrganizationRole {
 
 // Organization invitations
 model OrganizationInvitation {
-  id             String       @id @default(uuid())
+  id             String   @id @default(uuid())
   organizationId String
   email          String
   roleId         String
   invitedById    String
-  token          String       @unique
-  status         String       @default("pending") // 'pending', 'accepted', 'expired', 'cancelled'
+  token          String   @unique
+  status         String   @default("pending") // 'pending', 'accepted', 'expired', 'cancelled'
   expiresAt      DateTime
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  invitedBy      User         @relation("CreatedByUser", fields: [invitedById], references: [id], onDelete: Cascade)
-  acceptedBy     User?        @relation("InvitedUser", fields: [acceptedById], references: [id], onDelete: SetNull)
-  acceptedById   String?
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation("CreatedByUser", fields: [invitedById], references: [id], onDelete: Cascade)
+  acceptedBy   User?        @relation("InvitedUser", fields: [acceptedById], references: [id], onDelete: SetNull)
+  acceptedById String?
 
   @@index([organizationId])
   @@index([email])
@@ -142,18 +142,18 @@ model OrganizationInvitation {
 
 // Admin audit log for morphing and sensitive operations
 model AdminAuditLog {
-  id                String   @id @default(uuid())
-  adminUserId       String   // The platform admin performing action
-  action            String   // 'morph_start', 'morph_end', 'update_license', 'delete_user', etc.
-  targetUserId      String?  // User being acted upon (if applicable)
-  targetOrgId       String?  // Organization being acted upon (if applicable)
-  morphSessionId    String?  // Links all actions during a morph session
-  metadata          Json     @default("{}") // Additional context (IP, changes made, etc.)
-  createdAt         DateTime @default(now())
+  id             String   @id @default(uuid())
+  adminUserId    String // The platform admin performing action
+  action         String // 'morph_start', 'morph_end', 'update_license', 'delete_user', etc.
+  targetUserId   String? // User being acted upon (if applicable)
+  targetOrgId    String? // Organization being acted upon (if applicable)
+  morphSessionId String? // Links all actions during a morph session
+  metadata       Json     @default("{}") // Additional context (IP, changes made, etc.)
+  createdAt      DateTime @default(now())
 
-  adminUser         User     @relation("AdminActions", fields: [adminUserId], references: [id])
-  targetUser        User?    @relation("ActionsReceived", fields: [targetUserId], references: [id])
-  targetOrg         Organization? @relation(fields: [targetOrgId], references: [id])
+  adminUser  User          @relation("AdminActions", fields: [adminUserId], references: [id])
+  targetUser User?         @relation("ActionsReceived", fields: [targetUserId], references: [id])
+  targetOrg  Organization? @relation(fields: [targetOrgId], references: [id])
 
   @@index([adminUserId])
   @@index([morphSessionId])
@@ -163,14 +163,14 @@ model AdminAuditLog {
 
 // Pre-aggregated metrics (computed by background job)
 model MetricSnapshot {
-  id              String   @id @default(uuid())
-  snapshotType    String   // 'daily', 'weekly', 'monthly'
-  snapshotDate    DateTime // Date this snapshot represents
-  organizationId  String?  // null for platform-wide metrics
-  metrics         Json     // Flexible JSON containing all computed metrics
-  createdAt       DateTime @default(now())
+  id             String   @id @default(uuid())
+  snapshotType   String // 'daily', 'weekly', 'monthly'
+  snapshotDate   DateTime // Date this snapshot represents
+  organizationId String? // null for platform-wide metrics
+  metrics        Json // Flexible JSON containing all computed metrics
+  createdAt      DateTime @default(now())
 
-  organization    Organization? @relation(fields: [organizationId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
 
   @@unique([snapshotType, snapshotDate, organizationId])
   @@index([snapshotDate])
@@ -178,16 +178,16 @@ model MetricSnapshot {
 }
 
 model Session {
-  id                    String    @id @default(uuid())
-  userId                String?   // null for anonymous users
-  title                 String
-  status                String    @default("active") // 'active' | 'completed'
-  preferredTranslation  String    @default("ASV") // Bible translation preference (KJV or ASV)
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  messages              Message[]
+  id                   String    @id @default(uuid())
+  userId               String? // null for anonymous users
+  title                String
+  status               String    @default("active") // 'active' | 'completed'
+  preferredTranslation String    @default("ASV") // Bible translation preference (KJV or ASV)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  messages             Message[]
 
-  user                  User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([userId])
@@ -196,13 +196,13 @@ model Session {
 model Message {
   id                       String   @id @default(uuid())
   sessionId                String
-  role                     String   // 'user' | 'assistant' | 'system'
+  role                     String // 'user' | 'assistant' | 'system'
   content                  String   @db.Text
   scriptureReferences      Json     @default("[]")
   constitutionalReferences Json     @default("[]")
   timestamp                DateTime @default(now())
 
-  session                  Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
   @@index([timestamp])
@@ -210,33 +210,32 @@ model Message {
 
 // Bible Translation metadata
 model BibleTranslation {
-  code        String        @id @unique // 'KJV', 'ASV'
-  name        String        // Short name
-  fullName    String        // Full name
-  description String?       @db.Text
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
+  code        String   @id @unique // 'KJV', 'ASV'
+  name        String // Short name
+  fullName    String // Full name
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
 
-  verses      BibleVerse[]
+  verses BibleVerse[]
 
   @@index([isActive])
 }
 
 // Individual Bible verses across all translations
 model BibleVerse {
-  id               String            @id @default(uuid())
-  translationCode  String            // Foreign key to BibleTranslation
-  book             String            // e.g., 'John', 'Genesis'
-  chapter          Int
-  verse            Int
-  text             String            @db.Text
-  strongs          Json?             @default("[]") // Array of Strong's number annotations
+  id              String @id @default(uuid())
+  translationCode String // Foreign key to BibleTranslation
+  book            String // e.g., 'John', 'Genesis'
+  chapter         Int
+  verse           Int
+  text            String @db.Text
+  strongs         Json?  @default("[]") // Array of Strong's number annotations
 
-  translation      BibleTranslation  @relation(fields: [translationCode], references: [code], onDelete: Cascade)
+  translation BibleTranslation @relation(fields: [translationCode], references: [code], onDelete: Cascade)
 
   // Ensure no duplicate verses per translation
   @@unique([translationCode, book, chapter, verse])
-
   // Optimize verse lookups
   @@index([translationCode, book, chapter, verse])
   @@index([book])
