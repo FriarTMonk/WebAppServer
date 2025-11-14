@@ -5,7 +5,6 @@ import { MessageBubble } from './MessageBubble';
 import { CrisisModal } from './CrisisModal';
 import { GriefAlert } from './GriefAlert';
 import { TranslationSelector } from './TranslationSelector';
-import { ScriptureComparison } from './ScriptureComparison';
 import { UserMenu } from './UserMenu';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { Message, CrisisResource, GriefResource, BibleTranslation, DEFAULT_TRANSLATION, TRANSLATIONS } from '@mychristiancounselor/shared';
