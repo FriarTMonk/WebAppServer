@@ -77,12 +77,56 @@ async function seedVerses() {
   console.log('3. Run: npm run seed');
 }
 
+async function seedPlatformAdmin() {
+  console.log('\nSeeding Platform Admin organization...');
+
+  // Create Platform Admin system organization
+  const platformAdminOrg = await prisma.organization.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000001' }, // Fixed UUID for system org
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000001',
+      name: 'Platform Administration',
+      description: 'System organization for platform administrators',
+      isSystemOrganization: true,
+      licenseStatus: 'active',
+      maxMembers: 100, // High limit for platform admins
+    },
+  });
+
+  console.log('Created Platform Admin organization:', platformAdminOrg.id);
+
+  // Create Platform Admin role with all permissions
+  const platformAdminRole = await prisma.organizationRole.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000002' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000002',
+      organizationId: platformAdminOrg.id,
+      name: 'Platform Administrator',
+      description: 'Full platform administration access with morphing capabilities',
+      isSystemRole: true,
+      permissions: JSON.stringify([
+        'platform_admin',
+        'morph_users',
+        'manage_all_organizations',
+        'manage_all_users',
+        'view_audit_logs',
+        'manage_licenses',
+      ]),
+    },
+  });
+
+  console.log('Created Platform Admin role:', platformAdminRole.id);
+}
+
 async function main() {
   console.log('Starting database seed...\n');
 
   try {
     await seedTranslations();
     await seedVerses();
+    await seedPlatformAdmin();
 
     console.log('\n✅ Database seeding completed!');
   } catch (error) {
