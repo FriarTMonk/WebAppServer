@@ -58,4 +58,26 @@ export class AdminController {
       throw error;
     }
   }
+
+  @Get('organizations')
+  async getOrganizations(
+    @CurrentUser() user: User,
+    @Query('search') search?: string,
+    @Query('licenseStatus') licenseStatus?: string,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
+    await this.adminService.logAdminAction(
+      user.id,
+      'view_organizations',
+      { filters: { search, licenseStatus, skip, take } },
+    );
+
+    return this.adminService.getAllOrganizations({
+      search,
+      licenseStatus,
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+    });
+  }
 }

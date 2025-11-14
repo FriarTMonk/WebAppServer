@@ -184,4 +184,56 @@ export class AdminService {
       throw new InternalServerErrorException('Failed to retrieve platform metrics');
     }
   }
+
+  async getAllOrganizations(filters?: {
+    search?: string;
+    licenseStatus?: string;
+    skip?: number;
+    take?: number;
+  }) {
+    const where: any = {
+      isSystemOrganization: false,
+    };
+
+    if (filters?.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { description: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (filters?.licenseStatus) {
+      where.licenseStatus = filters.licenseStatus;
+    }
+
+    const [organizations, total] = await Promise.all([
+      this.prisma.organization.findMany({
+        where,
+        include: {
+          members: {
+            select: {
+              id: true,
+              userId: true,
+            },
+          },
+          _count: {
+            select: {
+              members: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: filters?.skip || 0,
+        take: filters?.take || 50,
+      }),
+      this.prisma.organization.count({ where }),
+    ]);
+
+    return {
+      organizations,
+      total,
+      skip: filters?.skip || 0,
+      take: filters?.take || 50,
+    };
+  }
 }
