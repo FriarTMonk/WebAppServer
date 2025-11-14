@@ -53,6 +53,7 @@ model RefreshToken {
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
+  @@index([createdAt])
 }
 
 // Organization (church, ministry, counseling center)

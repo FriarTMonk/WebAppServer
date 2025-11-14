@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Logger, Query, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { IsPlatformAdminGuard } from './guards/is-platform-admin.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -8,6 +8,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @Controller('admin')
 @UseGuards(JwtAuthGuard, IsPlatformAdminGuard)
 export class AdminController {
+  private readonly logger = new Logger(AdminController.name);
+
   constructor(private adminService: AdminService) {}
 
   @Get('audit-log')
@@ -43,12 +45,17 @@ export class AdminController {
 
   @Get('metrics')
   async getMetrics(@CurrentUser() user: User) {
-    await this.adminService.logAdminAction(
-      user.id,
-      'view_metrics',
-      { timestamp: new Date() },
-    );
+    try {
+      await this.adminService.logAdminAction(
+        user.id,
+        'view_metrics',
+        { timestamp: new Date() },
+      );
 
-    return this.adminService.getPlatformMetrics();
+      return this.adminService.getPlatformMetrics();
+    } catch (error) {
+      this.logger.error(`Failed to retrieve metrics for user ${user.id}`, error);
+      throw error;
+    }
   }
 }
