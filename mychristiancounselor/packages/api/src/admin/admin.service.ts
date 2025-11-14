@@ -185,55 +185,68 @@ export class AdminService {
     }
   }
 
+  /**
+   * Retrieves all non-system organizations with optional filtering.
+   *
+   * Returns paginated organization data including member counts.
+   * Organizations can be filtered by search term (name/description) and license status.
+   *
+   * @param filters Optional filters for searching and pagination
+   * @param filters.search Search term to filter by organization name or description
+   * @param filters.licenseStatus Filter by license status (trial, active, expired)
+   * @param filters.skip Number of records to skip for pagination (default: 0)
+   * @param filters.take Number of records to return (default: 50)
+   * @returns Promise with paginated organizations, total count, and pagination info
+   * @throws InternalServerErrorException if retrieval fails
+   */
   async getAllOrganizations(filters?: {
     search?: string;
     licenseStatus?: string;
     skip?: number;
     take?: number;
   }) {
-    const where: any = {
-      isSystemOrganization: false,
-    };
+    try {
+      const where: any = {
+        isSystemOrganization: false,
+      };
 
-    if (filters?.search) {
-      where.OR = [
-        { name: { contains: filters.search, mode: 'insensitive' } },
-        { description: { contains: filters.search, mode: 'insensitive' } },
-      ];
-    }
+      if (filters?.search) {
+        where.OR = [
+          { name: { contains: filters.search, mode: 'insensitive' } },
+          { description: { contains: filters.search, mode: 'insensitive' } },
+        ];
+      }
 
-    if (filters?.licenseStatus) {
-      where.licenseStatus = filters.licenseStatus;
-    }
+      if (filters?.licenseStatus) {
+        where.licenseStatus = filters.licenseStatus;
+      }
 
-    const [organizations, total] = await Promise.all([
-      this.prisma.organization.findMany({
-        where,
-        include: {
-          members: {
-            select: {
-              id: true,
-              userId: true,
+      const [organizations, total] = await Promise.all([
+        this.prisma.organization.findMany({
+          where,
+          include: {
+            _count: {
+              select: {
+                members: true,
+              },
             },
           },
-          _count: {
-            select: {
-              members: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: 'desc' },
+          skip: filters?.skip || 0,
+          take: filters?.take || 50,
+        }),
+        this.prisma.organization.count({ where }),
+      ]);
+
+      return {
+        organizations,
+        total,
         skip: filters?.skip || 0,
         take: filters?.take || 50,
-      }),
-      this.prisma.organization.count({ where }),
-    ]);
-
-    return {
-      organizations,
-      total,
-      skip: filters?.skip || 0,
-      take: filters?.take || 50,
-    };
+      };
+    } catch (error) {
+      this.logger.error('Failed to retrieve organizations', error);
+      throw new InternalServerErrorException('Failed to retrieve organizations');
+    }
   }
 }
