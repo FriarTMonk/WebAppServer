@@ -1,9 +1,7 @@
 import { Controller, Post, Body, Get, Req, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { RegisterDto, LoginDto, RefreshTokenDto } from './dto';
 import {
-  RegisterDto,
-  LoginDto,
-  RefreshTokenDto,
   AuthResponse,
   AuthTokens,
   User
