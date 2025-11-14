@@ -249,4 +249,87 @@ export class AdminService {
       throw new InternalServerErrorException('Failed to retrieve organizations');
     }
   }
+
+  /**
+   * Retrieves all users with optional filtering and pagination.
+   *
+   * Returns paginated user data including organization memberships.
+   * Users can be filtered by search term (email/name), account type, and active status.
+   *
+   * @param filters Optional filters for searching and pagination
+   * @param filters.search Search term to filter by email, first name, or last name
+   * @param filters.accountType Filter by account type (individual or organization)
+   * @param filters.isActive Filter by active status (true/false)
+   * @param filters.skip Number of records to skip for pagination (default: 0)
+   * @param filters.take Number of records to return (default: 50)
+   * @returns Promise with paginated users, total count, and pagination info
+   * @throws InternalServerErrorException if retrieval fails
+   */
+  async getAllUsers(filters?: {
+    search?: string;
+    accountType?: string;
+    isActive?: boolean;
+    skip?: number;
+    take?: number;
+  }) {
+    try {
+      const where: any = {};
+
+      if (filters?.search) {
+        where.OR = [
+          { email: { contains: filters.search, mode: 'insensitive' } },
+          { firstName: { contains: filters.search, mode: 'insensitive' } },
+          { lastName: { contains: filters.search, mode: 'insensitive' } },
+        ];
+      }
+
+      if (filters?.accountType) {
+        where.accountType = filters.accountType;
+      }
+
+      if (filters?.isActive !== undefined) {
+        where.isActive = filters.isActive;
+      }
+
+      const [users, total] = await Promise.all([
+        this.prisma.user.findMany({
+          where,
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            accountType: true,
+            emailVerified: true,
+            isActive: true,
+            createdAt: true,
+            organizationMemberships: {
+              select: {
+                organization: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          skip: filters?.skip || 0,
+          take: filters?.take || 50,
+        }),
+        this.prisma.user.count({ where }),
+      ]);
+
+      return {
+        users,
+        total,
+        skip: filters?.skip || 0,
+        take: filters?.take || 50,
+      };
+    } catch (error) {
+      this.logger.error('Failed to retrieve users', error);
+      throw new InternalServerErrorException('Failed to retrieve users');
+    }
+  }
 }

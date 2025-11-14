@@ -80,4 +80,28 @@ export class AdminController {
       take: take ? parseInt(take, 10) : undefined,
     });
   }
+
+  @Get('users')
+  async getUsers(
+    @CurrentUser() user: User,
+    @Query('search') search?: string,
+    @Query('accountType') accountType?: string,
+    @Query('isActive') isActive?: string,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
+    await this.adminService.logAdminAction(
+      user.id,
+      'view_users',
+      { filters: { search, accountType, isActive, skip, take } },
+    );
+
+    return this.adminService.getAllUsers({
+      search,
+      accountType,
+      isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined,
+      skip: skip ? parseInt(skip, 10) : undefined,
+      take: take ? parseInt(take, 10) : undefined,
+    });
+  }
 }
