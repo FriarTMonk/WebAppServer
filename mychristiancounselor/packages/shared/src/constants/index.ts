@@ -1,42 +1,26 @@
 import { BibleTranslation, TranslationInfo } from '../types';
 
-// Bible Translation Metadata
+// Bible Translation Metadata - Public domain translations with Strong's numbers
 export const TRANSLATIONS: Record<BibleTranslation, TranslationInfo> = {
-  NIV: {
-    code: 'NIV',
-    name: 'NIV',
-    fullName: 'New International Version',
-    description: 'Modern, readable translation balancing accuracy and clarity',
-    yearPublished: 1978,
-    characteristics: ['Easy to read', 'Contemporary language', 'Widely used'],
+  KJV: {
+    code: 'KJV',
+    name: 'KJV',
+    fullName: 'King James Version',
+    description: 'Classic English translation with majestic literary style and Strong\'s concordance support',
+    yearPublished: 1611,
+    characteristics: ['Traditional', 'Poetic', 'Widely memorized', 'Strong\'s numbers available'],
   },
-  NASB: {
-    code: 'NASB',
-    name: 'NASB',
-    fullName: 'New American Standard Bible',
-    description: 'Literal, word-for-word translation emphasizing accuracy',
-    yearPublished: 1971,
-    characteristics: ['Highly literal', 'Scholarly', 'Precise'],
-  },
-  NKJV: {
-    code: 'NKJV',
-    name: 'NKJV',
-    fullName: 'New King James Version',
-    description: 'Traditional language updated for modern readers',
-    yearPublished: 1982,
-    characteristics: ['Majestic language', 'Faithful to original', 'Traditional'],
-  },
-  ESV: {
-    code: 'ESV',
-    name: 'ESV',
-    fullName: 'English Standard Version',
-    description: 'Balanced translation combining accuracy with readability',
-    yearPublished: 2001,
-    characteristics: ['Literary', 'Accurate', 'Modern yet formal'],
+  ASV: {
+    code: 'ASV',
+    name: 'ASV',
+    fullName: 'American Standard Version',
+    description: 'Literal translation emphasizing accuracy, updated from KJV with modern scholarship',
+    yearPublished: 1901,
+    characteristics: ['Highly literal', 'Scholarly', 'Public domain', 'Strong\'s numbers available'],
   },
 };
 
-export const DEFAULT_TRANSLATION: BibleTranslation = 'NIV';
+export const DEFAULT_TRANSLATION: BibleTranslation = 'ASV';
 
 // Bible book names for validation
 export const BIBLE_BOOKS = [

@@ -30,29 +30,18 @@ async function seedTranslations() {
 
 async function seedVerses() {
   console.log('\nSeeding Bible verses...');
-  console.log('Note: This is a placeholder. Bible verse data needs to be acquired separately.');
-  console.log('Expected data format for each translation:');
-  console.log(`
-  Example structure:
-  {
-    "book": "John",
-    "chapter": 3,
-    "verse": 16,
-    "text": "For God so loved the world...",
-    "translation": "NIV"
-  }
-  `);
+  console.log('Note: Place Bible verse JSON files in packages/api/src/scripture/data/');
+  console.log('Expected format documented in packages/api/src/scripture/data/README.md\n');
 
-  // TODO: Load Bible verse data from JSON files
-  // Example implementation:
-  /*
-  const translations = ['NIV', 'NASB', 'NKJV', 'ESV'];
+  // Load Bible verse data from JSON files
+  const translations = ['KJV', 'ASV'];
 
   for (const translation of translations) {
-    const versesFile = `./data/${translation.toLowerCase()}-verses.json`;
+    const versesFile = `../src/scripture/data/${translation.toLowerCase()}-verses.json`;
 
     try {
       const verses = require(versesFile);
+      console.log(`Found ${verses.length} verses for ${translation}`);
 
       // Batch insert for performance
       const batchSize = 1000;
@@ -66,6 +55,7 @@ async function seedVerses() {
             chapter: v.chapter,
             verse: v.verse,
             text: v.text,
+            strongs: v.strongs || [], // Include Strong's numbers if present
           })),
           skipDuplicates: true,
         });
@@ -75,17 +65,16 @@ async function seedVerses() {
 
       console.log(`✓ Seeded all verses for ${translation}`);
     } catch (error) {
-      console.log(`✗ Verse data not found for ${translation}: ${versesFile}`);
+      console.log(`⚠️  Verse data not found for ${translation}: ${versesFile}`);
+      console.log(`   Place ${translation.toLowerCase()}-verses.json in packages/api/src/scripture/data/`);
     }
   }
-  */
 
-  console.log('\n⚠️  To complete verse seeding:');
-  console.log('1. Acquire Bible text data for NIV, NASB, NKJV, ESV');
-  console.log('2. Convert to JSON format matching structure above');
-  console.log('3. Place files in: packages/api/src/scripture/data/');
-  console.log('4. Uncomment and adapt the verse loading code above');
-  console.log('5. Run: npm run seed');
+  console.log('\n📖 Verse seeding complete!');
+  console.log('To add verse data:');
+  console.log('1. Place kjv-verses.json and asv-verses.json in packages/api/src/scripture/data/');
+  console.log('2. Follow format in packages/api/src/scripture/data/README.md');
+  console.log('3. Run: npm run seed');
 }
 
 async function main() {

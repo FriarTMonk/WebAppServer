@@ -1,11 +1,14 @@
 import React from 'react';
 import { Message } from '@mychristiancounselor/shared';
+import { ScriptureCard } from './ScriptureCard';
+import { ScriptureComparison } from './ScriptureComparison';
 
 interface MessageBubbleProps {
   message: Message;
+  comparisonMode?: boolean;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, comparisonMode = false }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
 
@@ -25,16 +28,16 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         <div className="whitespace-pre-wrap">{message.content}</div>
 
         {message.scriptureReferences.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-gray-300">
-            <p className="text-sm font-semibold mb-2">Referenced Scriptures:</p>
-            {message.scriptureReferences.map((ref, idx) => (
-              <div key={idx} className="text-sm mb-2">
-                <span className="font-medium">
-                  {ref.book} {ref.chapter}:{ref.verseStart}
-                </span>
-                <p className="italic mt-1">"{ref.text}"</p>
+          <div className="mt-3">
+            {comparisonMode ? (
+              <ScriptureComparison scriptures={message.scriptureReferences} />
+            ) : (
+              <div className="space-y-2">
+                {message.scriptureReferences.map((ref, idx) => (
+                  <ScriptureCard key={idx} scripture={ref} />
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>

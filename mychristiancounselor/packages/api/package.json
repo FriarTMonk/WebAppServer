@@ -89,5 +89,8 @@
   "devDependencies": {
     "@nestjs/testing": "^11.0.0",
     "ts-node": "^10.9.2"
+  },
+  "scripts": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }

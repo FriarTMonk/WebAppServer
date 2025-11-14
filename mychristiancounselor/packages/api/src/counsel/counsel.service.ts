@@ -3,7 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
 import { ScriptureService } from '../scripture/scripture.service';
 import { SafetyService } from '../safety/safety.service';
-import { CounselResponse } from '@mychristiancounselor/shared';
+import { TranslationService } from '../scripture/translation.service';
+import { CounselResponse, BibleTranslation } from '@mychristiancounselor/shared';
 import { randomUUID } from 'crypto';
 
 @Injectable()
@@ -12,12 +13,16 @@ export class CounselService {
     private prisma: PrismaService,
     private aiService: AiService,
     private scriptureService: ScriptureService,
-    private safetyService: SafetyService
+    private safetyService: SafetyService,
+    private translationService: TranslationService
   ) {}
 
   async processQuestion(
     message: string,
-    sessionId?: string
+    sessionId?: string,
+    preferredTranslation?: BibleTranslation,
+    comparisonMode?: boolean,
+    comparisonTranslations?: BibleTranslation[]
   ): Promise<CounselResponse> {
     // 1. Check for crisis
     const isCrisis = this.safetyService.detectCrisis(message);
@@ -54,13 +59,24 @@ export class CounselService {
     if (!session) {
       // Create new session with title from first message
       const title = message.substring(0, 50) + (message.length > 50 ? '...' : '');
+      const validTranslation = await this.translationService.validateTranslation(preferredTranslation);
+
       session = await this.prisma.session.create({
         data: {
           id: randomUUID(),
           userId: null, // Anonymous for MVP
           title,
           status: 'active',
+          preferredTranslation: validTranslation,
         },
+        include: { messages: true },
+      });
+    } else if (preferredTranslation && preferredTranslation !== session.preferredTranslation) {
+      // Update session translation preference if it changed
+      const validTranslation = await this.translationService.validateTranslation(preferredTranslation);
+      session = await this.prisma.session.update({
+        where: { id: session.id },
+        data: { preferredTranslation: validTranslation },
         include: { messages: true },
       });
     }
@@ -82,11 +98,23 @@ export class CounselService {
       (m) => m.role === 'assistant' && m.content.includes('?')
     ).length;
 
-    // 6. Retrieve relevant scriptures
-    const scriptures = await this.scriptureService.retrieveRelevantScriptures(
-      message,
-      3
-    );
+    // 6. Retrieve relevant scriptures (single translation or multiple for comparison)
+    let scriptures;
+    if (comparisonMode && comparisonTranslations && comparisonTranslations.length > 0) {
+      // Fetch same verses in multiple translations for proper comparison
+      scriptures = await this.scriptureService.retrieveSameVersesInMultipleTranslations(
+        message,
+        comparisonTranslations,
+        3
+      );
+    } else {
+      // Single translation mode
+      scriptures = await this.scriptureService.retrieveRelevantScriptures(
+        message,
+        session.preferredTranslation,
+        3
+      );
+    }
 
     // 7. Build conversation history
     const conversationHistory = session.messages.map((m) => ({

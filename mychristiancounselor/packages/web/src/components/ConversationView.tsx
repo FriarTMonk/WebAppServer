@@ -4,7 +4,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageBubble } from './MessageBubble';
 import { CrisisModal } from './CrisisModal';
 import { GriefAlert } from './GriefAlert';
-import { Message, CrisisResource, GriefResource } from '@mychristiancounselor/shared';
+import { TranslationSelector } from './TranslationSelector';
+import { ScriptureComparison } from './ScriptureComparison';
+import { UserMenu } from './UserMenu';
+import { OrganizationSwitcher } from './OrganizationSwitcher';
+import { Message, CrisisResource, GriefResource, BibleTranslation, DEFAULT_TRANSLATION, TRANSLATIONS } from '@mychristiancounselor/shared';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -19,6 +23,12 @@ export function ConversationView() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [preferredTranslation, setPreferredTranslation] = useState<BibleTranslation>(DEFAULT_TRANSLATION);
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [comparisonTranslations, setComparisonTranslations] = useState<BibleTranslation[]>([
+    'KJV',
+    'ASV',
+  ]);
   const [crisisModal, setCrisisModal] = useState<{
     isOpen: boolean;
     resources: CrisisResource[];
@@ -54,6 +64,9 @@ export function ConversationView() {
       const response = await axios.post(`${API_URL}/counsel/ask`, {
         message: inputValue,
         sessionId,
+        preferredTranslation,
+        comparisonMode,
+        comparisonTranslations: comparisonMode ? comparisonTranslations : undefined,
       });
 
       const {
@@ -111,7 +124,30 @@ export function ConversationView() {
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-4">
-        <h1 className="text-2xl font-bold text-gray-900">MyChristianCounselor</h1>
+        <div className="flex justify-between items-center mb-2">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold text-gray-900">MyChristianCounselor</h1>
+            <OrganizationSwitcher />
+          </div>
+          <div className="flex items-center gap-4">
+            {!comparisonMode && (
+              <TranslationSelector
+                selectedTranslation={preferredTranslation}
+                onTranslationChange={setPreferredTranslation}
+              />
+            )}
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={comparisonMode}
+                onChange={(e) => setComparisonMode(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <span className="text-gray-700">Compare Translations</span>
+            </label>
+            <UserMenu />
+          </div>
+        </div>
         <p className="text-sm text-gray-600">Biblical guidance for life's questions</p>
       </div>
 
@@ -138,7 +174,7 @@ export function ConversationView() {
 
         {messages.map((message) => (
           <React.Fragment key={message.id}>
-            <MessageBubble message={message} />
+            <MessageBubble message={message} comparisonMode={comparisonMode} />
             {message.griefResources && message.griefResources.length > 0 && (
               <GriefAlert resources={message.griefResources} />
             )}
