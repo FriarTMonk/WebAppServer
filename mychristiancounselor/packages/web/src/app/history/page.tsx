@@ -38,6 +38,40 @@ export default function HistoryPage() {
   const [selectedConversation, setSelectedConversation] = useState<FullConversation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
+
+  const fetchHistory = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const token = getAccessToken();
+      const params = new URLSearchParams();
+      if (searchQuery) params.append('search', searchQuery);
+      if (dateFrom) params.append('dateFrom', dateFrom);
+      if (dateTo) params.append('dateTo', dateTo);
+      params.append('status', activeTab);
+
+      const response = await fetch(
+        `${API_URL}/profile/history?${params.toString()}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setConversations(data);
+      } else {
+        setError('Failed to load conversation history');
+      }
+    } catch (err) {
+      console.error('Error fetching history:', err);
+      setError('An error occurred while loading history');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -45,29 +79,14 @@ export default function HistoryPage() {
       return;
     }
 
-    const fetchHistory = async () => {
-      try {
-        const token = getAccessToken();
-        const response = await fetch(`${API_URL}/profile/history`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setConversations(data);
-        } else {
-          setError('Failed to load conversation history');
-        }
-      } catch (err) {
-        console.error('Error fetching history:', err);
-        setError('An error occurred while loading history');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchHistory();
   }, [isAuthenticated, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchHistory();
+    }
+  }, [activeTab]);
 
   const loadConversation = async (conversationId: string) => {
     try {
@@ -231,6 +250,73 @@ export default function HistoryPage() {
             {error}
           </div>
         )}
+
+        <div className="mb-6 bg-white rounded-lg shadow p-4">
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="Search conversations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md"
+            />
+
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  From Date
+                </label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  To Date
+                </label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={fetchHistory}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Apply Filters
+            </button>
+          </div>
+
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`flex-1 px-4 py-2 rounded-md ${
+                activeTab === 'active'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Active
+            </button>
+            <button
+              onClick={() => setActiveTab('archived')}
+              className={`flex-1 px-4 py-2 rounded-md ${
+                activeTab === 'archived'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Archived
+            </button>
+          </div>
+        </div>
 
         {conversations.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-8 text-center">
