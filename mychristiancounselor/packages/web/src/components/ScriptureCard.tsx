@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScriptureReference, StrongsNumber } from '@mychristiancounselor/shared';
+import { ScriptureReference } from '@mychristiancounselor/shared';
 
 interface ScriptureCardProps {
   scripture: ScriptureReference;
