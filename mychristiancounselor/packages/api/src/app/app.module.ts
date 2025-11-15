@@ -8,6 +8,7 @@ import { OrganizationModule } from '../organization/organization.module';
 import { AdminModule } from '../admin/admin.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { ProfileModule } from '../profile/profile.module';
+import { JobsModule } from '../jobs/jobs.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Module({
@@ -22,6 +23,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
     AdminModule,
     SubscriptionModule,
     ProfileModule,
+    JobsModule,
   ],
   providers: [
     {
