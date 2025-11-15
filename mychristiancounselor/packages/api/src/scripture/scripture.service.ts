@@ -23,6 +23,47 @@ export class ScriptureService {
   ) {}
 
   /**
+   * Retrieve relevant scriptures with theological themes
+   * Each scripture will be tagged with its matching theme
+   */
+  async retrieveRelevantScripturesWithThemes(
+    themes: string[],
+    translation: BibleTranslation = DEFAULT_TRANSLATION,
+    limit: number = 3
+  ): Promise<ScriptureReference[]> {
+    // Validate translation
+    const validTranslation = await this.translationService.validateTranslation(translation);
+
+    // Check if translation has verse data in database
+    const hasData = await this.translationService.hasVerseData(validTranslation);
+
+    const scriptures: ScriptureReference[] = [];
+
+    // Get verses for each theme (limit per theme to ensure variety)
+    const versesPerTheme = Math.ceil(limit / themes.length);
+
+    for (const theme of themes) {
+      let themeVerses: ScriptureReference[];
+
+      if (hasData) {
+        themeVerses = await this.searchDatabaseVerses(theme, validTranslation, versesPerTheme);
+      } else {
+        themeVerses = await this.searchFallbackVerses(theme, versesPerTheme);
+      }
+
+      // Attach theme to each scripture
+      themeVerses.forEach((verse) => {
+        verse.theme = theme;
+      });
+
+      scriptures.push(...themeVerses);
+    }
+
+    // Return up to limit verses
+    return scriptures.slice(0, limit);
+  }
+
+  /**
    * Simple keyword-based scripture retrieval for MVP
    * Phase 2 will use proper vector embeddings
    */
@@ -262,6 +303,48 @@ export class ScriptureService {
     }
 
     return result;
+  }
+
+  /**
+   * Retrieve the same verses in multiple translations for comparison (with themes)
+   * Finds relevant verses using themes, then fetches same verses in other translations
+   */
+  async retrieveSameVersesInMultipleTranslationsWithThemes(
+    themes: string[],
+    translations: BibleTranslation[],
+    limit: number = 3
+  ): Promise<ScriptureReference[]> {
+    if (translations.length === 0) {
+      return [];
+    }
+
+    // Step 1: Find relevant verses using the first translation and themes
+    const primaryTranslation = translations[0];
+    const primaryVerses = await this.retrieveRelevantScripturesWithThemes(themes, primaryTranslation, limit);
+
+    // Step 2: For each verse found, fetch it in all other translations (preserving theme)
+    const allVerses: ScriptureReference[] = [...primaryVerses];
+
+    for (let i = 1; i < translations.length; i++) {
+      const translation = translations[i];
+
+      for (const verse of primaryVerses) {
+        const sameVerseInOtherTranslation = await this.getScriptureByReference(
+          verse.book,
+          verse.chapter,
+          verse.verseStart,
+          translation
+        );
+
+        if (sameVerseInOtherTranslation) {
+          // Preserve the theme from the primary verse
+          sameVerseInOtherTranslation.theme = verse.theme;
+          allVerses.push(sameVerseInOtherTranslation);
+        }
+      }
+    }
+
+    return allVerses;
   }
 
   /**

@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { getAccessToken } from '../lib/auth';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+
 export function UserMenu() {
   const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -15,7 +17,7 @@ export function UserMenu() {
     if (isAuthenticated) {
       const token = getAccessToken();
       if (token) {
-        fetch('http://localhost:3000/organizations', {
+        fetch(`${API_URL}/organizations`, {
           headers: { Authorization: `Bearer ${token}` },
         })
           .then(res => res.ok ? res.json() : [])
@@ -61,6 +63,24 @@ export function UserMenu() {
           <div className="px-4 py-2 text-sm text-gray-700 border-b">
             {user?.email}
           </div>
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              router.push('/profile');
+            }}
+            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            Profile
+          </button>
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              router.push('/history');
+            }}
+            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            History
+          </button>
           {hasOrganizations && (
             <button
               onClick={() => {

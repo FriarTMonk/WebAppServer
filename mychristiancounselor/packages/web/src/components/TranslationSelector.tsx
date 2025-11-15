@@ -9,7 +9,13 @@ interface TranslationSelectorProps {
 }
 
 export function TranslationSelector({ selectedTranslation, onTranslationChange }: TranslationSelectorProps) {
-  const translations = Object.values(TRANSLATIONS);
+  // Sort translations alphabetically by code
+  const translations = Object.values(TRANSLATIONS).sort((a, b) => a.code.localeCompare(b.code));
+
+  // Check if translation has Strong's numbers
+  const hasStrongs = (translation: typeof TRANSLATIONS[keyof typeof TRANSLATIONS]) => {
+    return translation.characteristics?.some(c => c.toLowerCase().includes("strong's"));
+  };
 
   return (
     <div className="flex items-center gap-2 text-sm">
@@ -24,7 +30,7 @@ export function TranslationSelector({ selectedTranslation, onTranslationChange }
       >
         {translations.map((translation) => (
           <option key={translation.code} value={translation.code}>
-            {translation.name} - {translation.fullName}
+            {translation.name} - {translation.fullName}{hasStrongs(translation) ? ' *' : ''}
           </option>
         ))}
       </select>

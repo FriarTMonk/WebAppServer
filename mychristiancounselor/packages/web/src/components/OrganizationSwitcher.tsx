@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Organization } from '@mychristiancounselor/shared';
 import { getAccessToken } from '../lib/auth';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+
 export function OrganizationSwitcher() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
@@ -18,7 +20,7 @@ export function OrganizationSwitcher() {
     if (!token) return;
 
     try {
-      const response = await fetch('http://localhost:3000/organizations', {
+      const response = await fetch(`${API_URL}/organizations`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

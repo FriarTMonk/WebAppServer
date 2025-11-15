@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { login, saveTokens } from '../../lib/auth';
 import { useAuth } from '../../contexts/AuthContext';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,7 +24,10 @@ export default function LoginPage() {
       const response = await login({ email, password });
       saveTokens(response.tokens.accessToken, response.tokens.refreshToken);
       setUser(response.user);
-      router.push('/');
+
+      // Redirect to the specified redirect URL or home page
+      const redirect = searchParams.get('redirect') || '/';
+      router.push(redirect);
     } catch (err: any) {
       setError(err.message || 'Login failed');
     } finally {
@@ -98,5 +102,13 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

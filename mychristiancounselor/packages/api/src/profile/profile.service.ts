@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto, ChangePasswordDto } from './dto/update-profile.dto';
 import * as bcrypt from 'bcrypt';
@@ -165,5 +165,89 @@ export class ProfileService {
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
     }));
+  }
+
+  /**
+   * Helper method to check subscription status
+   * TODO: Replace with proper SubscriptionService when implemented
+   */
+  private async getSubscriptionStatus(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { accountType: true },
+    });
+
+    // Simplified check - assumes organization accounts have subscription access
+    // This should be replaced with proper subscription logic
+    return {
+      hasArchiveAccess: user?.accountType === 'organization',
+    };
+  }
+
+  async archiveConversation(userId: string, sessionId: string) {
+    const subStatus = await this.getSubscriptionStatus(userId);
+    if (!subStatus.hasArchiveAccess) {
+      throw new ForbiddenException('Archive access requires an active subscription');
+    }
+
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session || session.userId !== userId) {
+      throw new ForbiddenException('You can only archive your own conversations');
+    }
+
+    const deletedAt = new Date();
+    deletedAt.setDate(deletedAt.getDate() + 30); // 30 days from now
+
+    return this.prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        status: 'archived',
+        archivedAt: new Date(),
+        deletedAt,
+      },
+    });
+  }
+
+  async restoreConversation(userId: string, sessionId: string) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session || session.userId !== userId) {
+      throw new ForbiddenException('You can only restore your own conversations');
+    }
+
+    return this.prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        status: 'active',
+        archivedAt: null,
+        deletedAt: null,
+      },
+    });
+  }
+
+  async hardDeleteConversation(userId: string, sessionId: string) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session || session.userId !== userId) {
+      throw new ForbiddenException('You can only delete your own conversations');
+    }
+
+    // Only allow hard delete if past deletedAt date or admin
+    if (session.deletedAt && session.deletedAt > new Date()) {
+      throw new ForbiddenException(
+        `Conversation can be hard deleted after ${session.deletedAt.toLocaleDateString()}`
+      );
+    }
+
+    await this.prisma.session.delete({
+      where: { id: sessionId },
+    });
   }
 }

@@ -1,6 +1,6 @@
 import { AuthResponse, LoginDto, RegisterDto } from '@mychristiancounselor/shared';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
 export async function login(credentials: LoginDto): Promise<AuthResponse> {
   const response = await fetch(`${API_URL}/auth/login`, {

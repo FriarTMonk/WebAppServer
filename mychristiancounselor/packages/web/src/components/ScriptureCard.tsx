@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScriptureReference, StrongsNumber } from '@mychristiancounselor/shared';
+import { ScriptureReference } from '@mychristiancounselor/shared';
 
 interface ScriptureCardProps {
   scripture: ScriptureReference;
@@ -38,7 +38,9 @@ export function ScriptureCard({ scripture }: ScriptureCardProps) {
     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
       <div className="flex justify-between items-center mb-2">
         <div className="font-semibold text-blue-900">
-          {scripture.book} {scripture.chapter}:{scripture.verseStart} ({scripture.translation})
+          {scripture.book} {scripture.chapter}:{scripture.verseStart}{' '}
+          {scripture.theme && <span className="italic font-normal">({scripture.theme})</span>}{' '}
+          ({scripture.translation})
         </div>
         {hasStrongs && (
           <button

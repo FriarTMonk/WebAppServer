@@ -13,6 +13,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
@@ -20,7 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Load user from API on mount if token exists
     const token = getAccessToken();
     if (token) {
-      fetch('http://localhost:3000/auth/me', {
+      fetch(`${API_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then(res => {

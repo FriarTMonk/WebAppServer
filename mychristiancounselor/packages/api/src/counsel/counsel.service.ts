@@ -22,8 +22,19 @@ export class CounselService {
     sessionId?: string,
     preferredTranslation?: BibleTranslation,
     comparisonMode?: boolean,
-    comparisonTranslations?: BibleTranslation[]
+    comparisonTranslations?: BibleTranslation[],
+    userId?: string
   ): Promise<CounselResponse> {
+    // 0. Get user information if userId is provided
+    let userName: string | undefined;
+    if (userId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { firstName: true },
+      });
+      userName = user?.firstName || undefined;
+    }
+
     // 1. Check for crisis
     const isCrisis = this.safetyService.detectCrisis(message);
 
@@ -56,6 +67,9 @@ export class CounselService {
       });
     }
 
+    // 6. Extract theological themes from the question
+    const themes = await this.aiService.extractTheologicalThemes(message);
+
     if (!session) {
       // Create new session with title from first message
       const title = message.substring(0, 50) + (message.length > 50 ? '...' : '');
@@ -64,8 +78,9 @@ export class CounselService {
       session = await this.prisma.session.create({
         data: {
           id: randomUUID(),
-          userId: null, // Anonymous for MVP
+          userId: userId || null, // Store userId if authenticated, otherwise anonymous
           title,
+          topics: JSON.stringify(themes), // Store theological topics
           status: 'active',
           preferredTranslation: validTranslation,
         },
@@ -98,45 +113,46 @@ export class CounselService {
       (m) => m.role === 'assistant' && m.content.includes('?')
     ).length;
 
-    // 6. Retrieve relevant scriptures (single translation or multiple for comparison)
+    // 6. Retrieve relevant scriptures with themes (single translation or multiple for comparison)
     let scriptures;
     if (comparisonMode && comparisonTranslations && comparisonTranslations.length > 0) {
-      // Fetch same verses in multiple translations for proper comparison
-      scriptures = await this.scriptureService.retrieveSameVersesInMultipleTranslations(
-        message,
+      // Fetch same verses in multiple translations for proper comparison (with themes)
+      scriptures = await this.scriptureService.retrieveSameVersesInMultipleTranslationsWithThemes(
+        themes,
         comparisonTranslations,
         3
       );
     } else {
-      // Single translation mode
-      scriptures = await this.scriptureService.retrieveRelevantScriptures(
-        message,
+      // Single translation mode (with themes)
+      scriptures = await this.scriptureService.retrieveRelevantScripturesWithThemes(
+        themes,
         session.preferredTranslation,
         3
       );
     }
 
-    // 7. Build conversation history
+    // 8. Build conversation history
     const conversationHistory = session.messages.map((m) => ({
       role: m.role,
       content: m.content,
     }));
 
-    // 8. Generate AI response
+    // 9. Generate AI response
     const aiResponse = await this.aiService.generateResponse(
       message,
       scriptures,
       conversationHistory,
-      clarificationCount
+      clarificationCount,
+      userName
     );
 
-    // 9. Extract scripture references from response
+    // 10. Extract scripture references from response
     // (Currently unused, but available for future enhancement)
     // const extractedRefs = this.aiService.extractScriptureReferences(
     //   aiResponse.content
     // );
 
-    // 10. Store assistant message
+    // 11. Store assistant message
     const assistantMessage = await this.prisma.message.create({
       data: {
         id: randomUUID(),
@@ -148,7 +164,7 @@ export class CounselService {
       },
     });
 
-    // 11. Return response with grief detection flag if applicable
+    // 12. Return response with grief detection flag if applicable
     return {
       sessionId: session.id,
       message: {

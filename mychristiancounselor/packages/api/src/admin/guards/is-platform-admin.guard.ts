@@ -13,30 +13,15 @@ export class IsPlatformAdminGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
-    // Check if user is member of Platform Admin organization
-    const platformAdminMembership = await this.prisma.organizationMember.findFirst({
-      where: {
-        userId: user.id,
-        organization: {
-          isSystemOrganization: true,
-        },
-      },
-      include: {
-        organization: true,
-        role: true,
-      },
+    // Check if user has isPlatformAdmin flag
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { isPlatformAdmin: true },
     });
 
-    if (!platformAdminMembership) {
+    if (!dbUser || !dbUser.isPlatformAdmin) {
       throw new ForbiddenException('Platform admin access required');
     }
-
-    // Attach platform admin info to request
-    request.platformAdmin = {
-      organizationId: platformAdminMembership.organizationId,
-      roleId: platformAdminMembership.roleId,
-      permissions: platformAdminMembership.role.permissions,
-    };
 
     return true;
   }

@@ -55,6 +55,7 @@ export interface ScriptureReference {
   translation: BibleTranslation;
   text: string;
   strongs?: StrongsNumber[]; // Strong's concordance numbers
+  theme?: string; // Theological theme or concept (e.g., "faith", "forgiveness", "grace")
 }
 
 export interface CounselRequest {

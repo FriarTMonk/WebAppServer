@@ -9,19 +9,22 @@ datasource db {
 
 // User account
 model User {
-  id                String    @id @default(uuid())
-  email             String    @unique
-  passwordHash      String
-  firstName         String?
-  lastName          String?
-  emailVerified     Boolean   @default(false)
-  verificationToken String?   @unique
-  resetToken        String?   @unique
-  resetTokenExpiry  DateTime?
-  isActive          Boolean   @default(true)
-  accountType       String    @default("individual") // 'individual' or 'organization'
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                     String    @id @default(uuid())
+  email                  String    @unique
+  passwordHash           String
+  firstName              String?
+  lastName               String?
+  emailVerified          Boolean   @default(false)
+  verificationToken      String?   @unique
+  resetToken             String?   @unique
+  resetTokenExpiry       DateTime?
+  isActive               Boolean   @default(true)
+  isPlatformAdmin        Boolean   @default(false) // Global platform admin access
+  accountType            String    @default("individual") // 'individual' or 'organization'
+  preferredTranslation   String?   @default("KJV") // User's preferred Bible translation
+  comparisonTranslations String[]  @default(["ESV", "NASB", "NIV", "NKJV"]) // For comparison mode
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   // Relations
   refreshTokens           RefreshToken[]
@@ -36,6 +39,7 @@ model User {
   @@index([verificationToken])
   @@index([resetToken])
   @@index([accountType])
+  @@index([isPlatformAdmin])
 }
 
 // JWT refresh tokens (server-side storage)
@@ -182,6 +186,7 @@ model Session {
   id                   String    @id @default(uuid())
   userId               String? // null for anonymous users
   title                String
+  topics               Json      @default("[]") // Theological topics/themes discussed (array of strings)
   status               String    @default("active") // 'active' | 'completed'
   preferredTranslation String    @default("ASV") // Bible translation preference (KJV or ASV)
   createdAt            DateTime  @default(now())
