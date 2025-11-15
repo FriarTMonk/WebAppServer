@@ -6,6 +6,7 @@ import { CounselModule } from '../counsel/counsel.module';
 import { AuthModule } from '../auth/auth.module';
 import { OrganizationModule } from '../organization/organization.module';
 import { AdminModule } from '../admin/admin.module';
+import { SubscriptionModule } from '../subscription/subscription.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Module({
@@ -18,6 +19,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
     OrganizationModule,
     CounselModule,
     AdminModule,
+    SubscriptionModule,
   ],
   providers: [
     {
