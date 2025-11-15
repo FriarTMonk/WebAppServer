@@ -17,9 +17,20 @@ model User {
   emailVerified     Boolean   @default(false)
   verificationToken String?   @unique
   resetToken        String?   @unique
-  resetTokenExpiry  DateTime?
-  isActive          Boolean   @default(true)
-  accountType       String    @default("individual") // 'individual' or 'organization'
+  resetTokenExpiry       DateTime?
+  isActive               Boolean   @default(true)
+  isPlatformAdmin        Boolean   @default(false) // Global platform admin access
+  accountType            String    @default("individual") // 'individual' or 'organization'
+  preferredTranslation   String?   @default("KJV") // User's preferred Bible translation
+  comparisonTranslations String[]  @default(["ESV", "NASB", "NIV", "NKJV"]) // For comparison mode
+
+  // Subscription fields
+  subscriptionStatus String   @default("none") // 'none' | 'active' | 'canceled' | 'past_due'
+  subscriptionTier   String?  // 'basic' | 'premium'
+  subscriptionStart  DateTime?
+  subscriptionEnd    DateTime?
+  stripeCustomerId   String?  @unique
+
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -31,11 +42,32 @@ model User {
   invitationsReceived     OrganizationInvitation[] @relation("InvitedUser")
   adminActionsGiven       AdminAuditLog[]          @relation("AdminActions")
   adminActionsReceived    AdminAuditLog[]          @relation("ActionsReceived")
+  subscriptions           Subscription[]
 
   @@index([email])
   @@index([verificationToken])
   @@index([resetToken])
   @@index([accountType])
+  @@index([isPlatformAdmin])
+  @@index([subscriptionStatus])
+}
+
+// Subscription management
+model Subscription {
+  id                   String   @id @default(uuid())
+  userId               String
+  status               String   // 'active' | 'canceled' | 'past_due' | 'expired'
+  tier                 String   @default("basic")
+  startDate            DateTime @default(now())
+  endDate              DateTime?
+  stripeSubscriptionId String?  @unique
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
 }
 
 // JWT refresh tokens (server-side storage)
@@ -182,16 +214,40 @@ model Session {
   id                   String    @id @default(uuid())
   userId               String? // null for anonymous users
   title                String
-  status               String    @default("active") // 'active' | 'completed'
-  preferredTranslation String    @default("ASV") // Bible translation preference (KJV or ASV)
+  topics               Json      @default("[]") // Theological topics/themes discussed (array of strings)
+  status               String    @default("active") // 'active' | 'archived' | 'deleted'
+  questionCount        Int       @default(0) // Count of counselor's clarifying questions
+  preferredTranslation String    @default("ASV")
+  archivedAt           DateTime?
+  deletedAt            DateTime? // archivedAt + 30 days
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
-  messages             Message[]
+
+  messages Message[]
+  shares   SessionShare[]
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([userId])
+  @@index([status])
+}
+
+// Session sharing (for subscribed users only)
+model SessionShare {
+  id             String   @id @default(uuid())
+  sessionId      String
+  shareToken     String   @unique // UUID for shareable link
+  sharedBy       String   // userId who created the share
+  sharedWith     String?  // email address (null = org-wide)
+  organizationId String?  // If shared org-wide
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime?
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([shareToken])
+  @@index([sessionId])
 }
 
 model Message {
