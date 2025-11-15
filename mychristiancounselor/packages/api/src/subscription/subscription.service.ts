@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SubscriptionStatusDto } from './dto/subscription-status.dto';
 
@@ -31,15 +31,15 @@ export class SubscriptionService {
     });
 
     if (!user) {
-      throw new Error('User not found');
+      throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
     // Determine limits based on subscription status
     const isSubscribed = user.subscriptionStatus === 'active';
 
     return {
-      subscriptionStatus: user.subscriptionStatus as any,
-      subscriptionTier: user.subscriptionTier as any,
+      subscriptionStatus: user.subscriptionStatus as 'none' | 'active' | 'canceled' | 'past_due',
+      subscriptionTier: user.subscriptionTier as 'basic' | 'premium' | undefined,
       maxClarifyingQuestions: isSubscribed ? 9 : 3,
       hasHistoryAccess: isSubscribed,
       hasSharingAccess: isSubscribed,
@@ -51,24 +51,26 @@ export class SubscriptionService {
    * Create or update subscription for a user (manual for now, Stripe later)
    */
   async createSubscription(userId: string, tier: 'basic' | 'premium' = 'basic') {
-    // Update user subscription status
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        subscriptionStatus: 'active',
-        subscriptionTier: tier,
-        subscriptionStart: new Date(),
-      },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      // Update user subscription status
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          subscriptionStatus: 'active',
+          subscriptionTier: tier,
+          subscriptionStart: new Date(),
+        },
+      });
 
-    // Create subscription record
-    return this.prisma.subscription.create({
-      data: {
-        userId,
-        status: 'active',
-        tier,
-        startDate: new Date(),
-      },
+      // Create subscription record
+      return tx.subscription.create({
+        data: {
+          userId,
+          status: 'active',
+          tier,
+          startDate: new Date(),
+        },
+      });
     });
   }
 
@@ -76,25 +78,27 @@ export class SubscriptionService {
    * Cancel subscription
    */
   async cancelSubscription(userId: string) {
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        subscriptionStatus: 'canceled',
-        subscriptionEnd: new Date(),
-      },
-    });
-
-    // Update most recent active subscription
-    const subscription = await this.prisma.subscription.findFirst({
-      where: { userId, status: 'active' },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (subscription) {
-      await this.prisma.subscription.update({
-        where: { id: subscription.id },
-        data: { status: 'canceled', endDate: new Date() },
+    return this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          subscriptionStatus: 'canceled',
+          subscriptionEnd: new Date(),
+        },
       });
-    }
+
+      // Update most recent active subscription
+      const subscription = await tx.subscription.findFirst({
+        where: { userId, status: 'active' },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (subscription) {
+        await tx.subscription.update({
+          where: { id: subscription.id },
+          data: { status: 'canceled', endDate: new Date() },
+        });
+      }
+    });
   }
 }
