@@ -1,0 +1,94 @@
+
+> @mychristiancounselor/source@0.0.0 start:api
+> nx serve api
+
+
+ NX   Running target serve for project api and 2 tasks it depends on:
+
+
+
+> nx run @mychristiancounselor/shared:build  [local cache]
+
+
+> nx run api:build
+
+> webpack-cli build --node-env=production
+
+chunk (runtime: main) [1m[32mmain.js[39m[22m (main) 9.54 MiB [1m[33m[entry][39m[22m [1m[32m[rendered][39m[22m
+webpack compiled [1m[32msuccessfully[39m[22m (8f6fe2feecec7dd3)
+
+> nx run api:serve:development
+
+[0m[7m[1m[36m NX [39m[22m[27m[0m  [36mRunning target [1mbuild[22m for project api and [1m1[22m task it depends on:[39m
+[2m> [22m[2mnx run[22m @mychristiancounselor/shared:build  [2m[existing outputs match the cache, left as is][22m
+[2m> [22m[2mnx run[22m api:build:development
+[2m> [22mwebpack-cli build --node-env=development
+chunk (runtime: main) [1m[32mmain.js[39m[22m (main) 9.54 MiB [1m[33m[entry][39m[22m [1m[32m[rendered][39m[22m
+webpack compiled [1m[32msuccessfully[39m[22m (25ba6281bce44686)
+[0m[7m[1m[32m NX [39m[22m[27m[0m  [32mSuccessfully ran target [1mbuild[22m for project api and [1m1[22m task it depends on[39m
+[2mNx read the output from the cache instead of running the command for 1 out of 2 tasks.[22m
+[1m[31mDebugger listening on ws://localhost:9229/d1b94234-afcf-4d3c-8148-9a5fdd550c54[39m[22m
+[1m[31mFor help, see: https://nodejs.org/en/docs/inspector[39m[22m
+[1m[31m[39m[22m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPrismaModule dependencies initialized[39m[38;5;3m +10ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mSafetyModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mOrganizationModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAiModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScriptureModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mCounselModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAdminModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuthController {/auth}:[39m[38;5;3m +141ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/auth/register, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/auth/login, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/auth/refresh, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/auth/me, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/auth/logout, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/auth/logout-all, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mOrganizationController {/organizations}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/organizations, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/organizations, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/organizations/:id, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/organizations/:id, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/organizations/:id/roles, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/organizations/:id/roles, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/organizations/:id/roles/:roleId, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/organizations/:id/members, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/organizations/:id/members/:memberId/role, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/organizations/:id/members/:memberId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/organizations/:id/invitations, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/organizations/:id/invitations, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/organizations/invitations/accept, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/organizations/:id/permissions, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mCounselController {/counsel}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/counsel/ask, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/counsel/session/:id, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mStrongsController {/strongs}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/strongs/:number, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/strongs/bulk, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/strongs/stats, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/strongs/search, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAdminController {/admin}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/admin/audit-log, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/admin/health-check, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/admin/metrics, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/admin/organizations, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/admin/users, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 38696  - [39m11/14/2025, 8:33:37 AM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +92ms[39m
+🚀 API server running on http://localhost:3697
+[7m[1m[36m NX [39m[22m[27m [1mProcess exited with code null, waiting for changes to restart...[22m
+[1m[31mWatch error: Daemon closed the connection[39m[22m
+
+
+
+ NX   Successfully ran target serve for project api and 2 tasks it depends on
+
+Nx read the output from the cache instead of running the command for 1 out of 3 tasks.
+

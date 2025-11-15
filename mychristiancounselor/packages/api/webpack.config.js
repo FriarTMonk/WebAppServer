@@ -9,6 +9,9 @@ module.exports = {
       devtoolModuleFilenameTemplate: '[absolute-resource-path]',
     }),
   },
+  externals: {
+    bcrypt: 'commonjs bcrypt',
+  },
   plugins: [
     new NxAppWebpackPlugin({
       target: 'node',
