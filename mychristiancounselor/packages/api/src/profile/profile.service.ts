@@ -79,4 +79,71 @@ export class ProfileService {
       updatedAt: session.updatedAt,
     }));
   }
+
+  async archiveConversation(userId: string, sessionId: string) {
+    const subStatus = await this.subscriptionService.getSubscriptionStatus(userId);
+    if (!subStatus.hasArchiveAccess) {
+      throw new ForbiddenException('Archive access requires an active subscription');
+    }
+
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session || session.userId !== userId) {
+      throw new ForbiddenException('You can only archive your own conversations');
+    }
+
+    const deletedAt = new Date();
+    deletedAt.setDate(deletedAt.getDate() + 30); // 30 days from now
+
+    return this.prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        status: 'archived',
+        archivedAt: new Date(),
+        deletedAt,
+      },
+    });
+  }
+
+  async restoreConversation(userId: string, sessionId: string) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session || session.userId !== userId) {
+      throw new ForbiddenException('You can only restore your own conversations');
+    }
+
+    return this.prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        status: 'active',
+        archivedAt: null,
+        deletedAt: null,
+      },
+    });
+  }
+
+  async hardDeleteConversation(userId: string, sessionId: string) {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session || session.userId !== userId) {
+      throw new ForbiddenException('You can only delete your own conversations');
+    }
+
+    // Only allow hard delete if past deletedAt date or admin
+    if (session.deletedAt && session.deletedAt > new Date()) {
+      throw new ForbiddenException(
+        `Conversation can be hard deleted after ${session.deletedAt.toLocaleDateString()}`
+      );
+    }
+
+    await this.prisma.session.delete({
+      where: { id: sessionId },
+    });
+  }
 }

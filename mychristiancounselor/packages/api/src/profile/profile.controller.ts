@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Request, UseGuards, Patch, Delete, Param } from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -28,5 +28,24 @@ export class ProfileController {
       dateToParsed,
       status || 'active',
     );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('conversations/:sessionId/archive')
+  async archiveConversation(@Request() req, @Param('sessionId') sessionId: string) {
+    return this.profileService.archiveConversation(req.user.id, sessionId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('conversations/:sessionId/restore')
+  async restoreConversation(@Request() req, @Param('sessionId') sessionId: string) {
+    return this.profileService.restoreConversation(req.user.id, sessionId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('conversations/:sessionId')
+  async deleteConversation(@Request() req, @Param('sessionId') sessionId: string) {
+    await this.profileService.hardDeleteConversation(req.user.id, sessionId);
+    return { message: 'Conversation deleted' };
   }
 }
