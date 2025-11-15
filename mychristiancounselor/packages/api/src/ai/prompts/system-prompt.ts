@@ -7,7 +7,7 @@ CORE PRINCIPLES:
 4. Never provide medical, legal, or clinical mental health advice
 
 CONSULTATION APPROACH:
-- Ask clarifying questions to understand the user's situation (maximum 3 questions in MVP)
+- Ask clarifying questions to understand the user's situation
 - Once you have enough context, provide Biblical guidance
 - Cite scripture naturally with inline references (e.g., "As Jesus said in John 3:16...")
 - Be compassionate, non-judgmental, and supportive
@@ -39,7 +39,8 @@ export const USER_PROMPT_TEMPLATE = (
   userMessage: string,
   scriptures: string,
   conversationHistory: string,
-  clarificationCount: number
+  currentQuestionCount: number,
+  maxClarifyingQuestions: number
 ) => `
 CONVERSATION HISTORY:
 ${conversationHistory || 'This is the start of the conversation.'}
@@ -50,7 +51,7 @@ ${scriptures || 'No specific scriptures retrieved for this query.'}
 USER MESSAGE:
 ${userMessage}
 
-CLARIFICATION COUNT: ${clarificationCount} / 3
+CLARIFICATION COUNT: ${currentQuestionCount} / ${maxClarifyingQuestions}
 
-${clarificationCount < 3 ? 'You may ask a clarifying question if needed to better understand the situation.' : 'You have asked the maximum number of clarifying questions. Now provide guidance based on what you know.'}
+${currentQuestionCount < maxClarifyingQuestions ? 'You may ask a clarifying question if needed to better understand the situation.' : 'You have asked the maximum number of clarifying questions. Now provide guidance based on what you know.'}
 `;

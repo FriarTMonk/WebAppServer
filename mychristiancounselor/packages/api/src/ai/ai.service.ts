@@ -20,10 +20,8 @@ export class AiService {
     userMessage: string,
     scriptures: ScriptureReference[],
     conversationHistory: { role: string; content: string }[],
-    clarificationCount: number,
-    userName?: string,
-    currentQuestionCount: number = 0,
-    maxClarifyingQuestions: number = 3
+    currentQuestionCount: number,
+    maxClarifyingQuestions: number,
   ): Promise<{
     requiresClarification: boolean;
     content: string;
@@ -43,8 +41,8 @@ export class AiService {
       userMessage,
       scripturesText,
       historyText,
-      clarificationCount,
-      userName
+      currentQuestionCount,
+      maxClarifyingQuestions
     );
 
     // Construct enhanced system prompt with question limits
@@ -92,56 +90,6 @@ ${currentQuestionCount >= maxClarifyingQuestions
       console.error('OpenAI API error:', error);
       throw new Error('Failed to generate AI response');
     }
-  }
-
-  /**
-   * Extract theological themes from user's question
-   * Returns 1-3 key biblical/theological concepts
-   */
-  async extractTheologicalThemes(userMessage: string): Promise<string[]> {
-    try {
-      const prompt = `Analyze this question and identify 1-3 key biblical or theological themes/concepts that are relevant. Return ONLY a JSON array of theme strings (lowercase, single words or short phrases).
-
-Examples:
-- "I'm struggling with forgiving someone" -> ["forgiveness", "mercy", "reconciliation"]
-- "How do I deal with anxiety?" -> ["peace", "trust", "anxiety"]
-- "What does the Bible say about marriage?" -> ["marriage", "covenant", "love"]
-
-Question: ${userMessage}
-
-Return only the JSON array, nothing else:`;
-
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: 'You extract biblical themes from questions. Always return valid JSON array.' },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 100,
-      });
-
-      const responseText = completion.choices[0].message.content || '[]';
-      const themes = JSON.parse(responseText);
-      return Array.isArray(themes) ? themes.slice(0, 3) : [];
-    } catch (error) {
-      console.error('Error extracting theological themes:', error);
-      // Fallback to simple keyword extraction
-      return this.extractSimpleKeywords(userMessage);
-    }
-  }
-
-  /**
-   * Simple fallback keyword extraction if AI fails
-   */
-  private extractSimpleKeywords(text: string): string[] {
-    const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'is', 'am', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'can', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'my', 'your', 'his', 'her', 'its', 'our', 'their', 'how', 'what', 'when', 'where', 'who', 'why']);
-
-    return text
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((word) => word.length > 4 && !stopWords.has(word))
-      .slice(0, 3);
   }
 
   /**
