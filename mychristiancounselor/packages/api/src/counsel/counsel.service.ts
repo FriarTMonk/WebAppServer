@@ -4,6 +4,7 @@ import { AiService } from '../ai/ai.service';
 import { ScriptureService } from '../scripture/scripture.service';
 import { SafetyService } from '../safety/safety.service';
 import { TranslationService } from '../scripture/translation.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 import { CounselResponse, BibleTranslation } from '@mychristiancounselor/shared';
 import { randomUUID } from 'crypto';
 
@@ -14,7 +15,8 @@ export class CounselService {
     private aiService: AiService,
     private scriptureService: ScriptureService,
     private safetyService: SafetyService,
-    private translationService: TranslationService
+    private translationService: TranslationService,
+    private subscriptionService: SubscriptionService,
   ) {}
 
   async processQuestion(
@@ -22,7 +24,8 @@ export class CounselService {
     sessionId?: string,
     preferredTranslation?: BibleTranslation,
     comparisonMode?: boolean,
-    comparisonTranslations?: BibleTranslation[]
+    comparisonTranslations?: BibleTranslation[],
+    userId?: string, // Add userId parameter
   ): Promise<CounselResponse> {
     // 1. Check for crisis
     const isCrisis = this.safetyService.detectCrisis(message);
@@ -47,7 +50,11 @@ export class CounselService {
     // 2. Check for grief - flag but continue with normal flow
     const isGrief = this.safetyService.detectGrief(message);
 
-    // 3. Get or create session
+    // 3. Get user subscription status and limits
+    const subscriptionStatus = await this.subscriptionService.getSubscriptionStatus(userId);
+    const maxClarifyingQuestions = subscriptionStatus.maxClarifyingQuestions;
+
+    // 4. Get or create session
     let session;
     if (sessionId) {
       session = await this.prisma.session.findUnique({
@@ -64,9 +71,10 @@ export class CounselService {
       session = await this.prisma.session.create({
         data: {
           id: randomUUID(),
-          userId: null, // Anonymous for MVP
+          userId: userId || null, // Use provided userId (null for anonymous)
           title,
           status: 'active',
+          questionCount: 0,
           preferredTranslation: validTranslation,
         },
         include: { messages: true },
@@ -81,7 +89,7 @@ export class CounselService {
       });
     }
 
-    // 4. Store user message
+    // 5. Store user message
     await this.prisma.message.create({
       data: {
         id: randomUUID(),
@@ -93,12 +101,10 @@ export class CounselService {
       },
     });
 
-    // 5. Count clarifying questions so far
-    const clarificationCount = session.messages.filter(
-      (m) => m.role === 'assistant' && m.content.includes('?')
-    ).length;
+    // 6. Check current question count from session
+    const currentQuestionCount = session.questionCount;
 
-    // 6. Retrieve relevant scriptures (single translation or multiple for comparison)
+    // 7. Retrieve relevant scriptures (single translation or multiple for comparison)
     let scriptures;
     if (comparisonMode && comparisonTranslations && comparisonTranslations.length > 0) {
       // Fetch same verses in multiple translations for proper comparison
@@ -116,27 +122,28 @@ export class CounselService {
       );
     }
 
-    // 7. Build conversation history
+    // 8. Build conversation history
     const conversationHistory = session.messages.map((m) => ({
       role: m.role,
       content: m.content,
     }));
 
-    // 8. Generate AI response
+    // 9. Generate AI response with question limit
     const aiResponse = await this.aiService.generateResponse(
       message,
       scriptures,
       conversationHistory,
-      clarificationCount
+      currentQuestionCount,
+      maxClarifyingQuestions,
     );
 
-    // 9. Extract scripture references from response
+    // 10. Extract scripture references from response
     // (Currently unused, but available for future enhancement)
     // const extractedRefs = this.aiService.extractScriptureReferences(
     //   aiResponse.content
     // );
 
-    // 10. Store assistant message
+    // 11. Store assistant message
     const assistantMessage = await this.prisma.message.create({
       data: {
         id: randomUUID(),
@@ -148,7 +155,15 @@ export class CounselService {
       },
     });
 
-    // 11. Return response with grief detection flag if applicable
+    // 12. If AI asked clarifying question, increment count
+    if (aiResponse.requiresClarification) {
+      await this.prisma.session.update({
+        where: { id: session.id },
+        data: { questionCount: { increment: 1 } },
+      });
+    }
+
+    // 13. Return response with grief detection flag if applicable
     return {
       sessionId: session.id,
       message: {
