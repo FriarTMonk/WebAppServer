@@ -109,6 +109,43 @@ export default function HistoryPage() {
     }
   };
 
+  const archiveConversation = async (conversationId: string) => {
+    if (!confirm('Archive this conversation? It will be deleted in 30 days.')) {
+      return;
+    }
+
+    try {
+      const token = getAccessToken();
+      await fetch(`${API_URL}/profile/conversations/${conversationId}/archive`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchHistory();
+    } catch (err) {
+      console.error('Error archiving conversation:', err);
+      setError('Failed to archive conversation');
+    }
+  };
+
+  const restoreConversation = async (conversationId: string) => {
+    try {
+      const token = getAccessToken();
+      await fetch(`${API_URL}/profile/conversations/${conversationId}/restore`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchHistory();
+    } catch (err) {
+      console.error('Error restoring conversation:', err);
+      setError('Failed to restore conversation');
+    }
+  };
+
+  const openShareModal = (conversationId: string) => {
+    // TODO: Implement share modal functionality
+    console.log('Share conversation:', conversationId);
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -333,16 +370,56 @@ export default function HistoryPage() {
             {conversations.map((conversation) => (
               <div
                 key={conversation.id}
-                onClick={() => loadConversation(conversation.id)}
-                className="bg-white rounded-lg shadow p-6 hover:shadow-lg cursor-pointer transition-shadow"
+                className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
               >
                 <div className="flex justify-between items-start mb-3">
-                  <h2 className="text-xl font-semibold text-gray-900">{conversation.title}</h2>
-                  <span className="text-sm text-gray-500">{formatDate(conversation.createdAt)}</span>
+                  <h2
+                    onClick={() => loadConversation(conversation.id)}
+                    className="text-xl font-semibold text-gray-900 cursor-pointer hover:text-blue-600 flex-1"
+                  >
+                    {conversation.title}
+                  </h2>
+                  <div className="flex gap-2 ml-4">
+                    {activeTab === 'active' && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openShareModal(conversation.id);
+                          }}
+                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200"
+                        >
+                          Share
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            archiveConversation(conversation.id);
+                          }}
+                          className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded text-sm hover:bg-yellow-200"
+                        >
+                          Archive
+                        </button>
+                      </>
+                    )}
+                    {activeTab === 'archived' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          restoreConversation(conversation.id);
+                        }}
+                        className="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200"
+                      >
+                        Restore
+                      </button>
+                    )}
+                  </div>
                 </div>
 
+                <span className="text-sm text-gray-500">{formatDate(conversation.createdAt)}</span>
+
                 {parseTopics(conversation.topics).length > 0 && (
-                  <div className="mb-3">
+                  <div className="mt-3 mb-3">
                     <div className="flex flex-wrap gap-2">
                       {parseTopics(conversation.topics).map((topic, index) => (
                         <span
