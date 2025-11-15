@@ -6,6 +6,8 @@ import { CounselModule } from '../counsel/counsel.module';
 import { AuthModule } from '../auth/auth.module';
 import { OrganizationModule } from '../organization/organization.module';
 import { AdminModule } from '../admin/admin.module';
+import { ProfileModule } from '../profile/profile.module';
+import { SessionShareModule } from '../session-share/session-share.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Module({
@@ -18,6 +20,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
     OrganizationModule,
     CounselModule,
     AdminModule,
+    ProfileModule,
+    SessionShareModule,
   ],
   providers: [
     {
