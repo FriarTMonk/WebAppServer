@@ -1,21 +1,23 @@
-import { Controller, Post, Get, Body, Param } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { CounselService } from './counsel.service';
 import { CounselRequestDto } from './dto/counsel-request.dto';
 import { Public } from '../auth/decorators/public.decorator';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 
 @Controller('counsel')
 export class CounselController {
   constructor(private counselService: CounselService) {}
 
-  @Public()
+  @UseGuards(OptionalJwtAuthGuard)
   @Post('ask')
-  async ask(@Body() dto: CounselRequestDto) {
+  async ask(@Body() dto: CounselRequestDto, @Request() req) {
     return this.counselService.processQuestion(
       dto.message,
       dto.sessionId,
       dto.preferredTranslation,
       dto.comparisonMode,
-      dto.comparisonTranslations
+      dto.comparisonTranslations,
+      req.user?.id
     );
   }
 
