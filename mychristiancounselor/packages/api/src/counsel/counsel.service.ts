@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
 import { ScriptureService } from '../scripture/scripture.service';
@@ -6,6 +6,8 @@ import { SafetyService } from '../safety/safety.service';
 import { TranslationService } from '../scripture/translation.service';
 import { CounselResponse, BibleTranslation } from '@mychristiancounselor/shared';
 import { randomUUID } from 'crypto';
+import { CreateNoteDto } from './dto/create-note.dto';
+import { UpdateNoteDto } from './dto/update-note.dto';
 
 @Injectable()
 export class CounselService {
@@ -190,6 +192,84 @@ export class CounselService {
           orderBy: { timestamp: 'asc' },
         },
       },
+    });
+  }
+
+  async createNote(
+    sessionId: string,
+    authorId: string,
+    createNoteDto: CreateNoteDto
+  ) {
+    // 1. Verify session exists
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      include: { user: true },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    // 2. Get author info
+    const author = await this.prisma.user.findUnique({
+      where: { id: authorId },
+      select: { firstName: true, lastName: true, accountType: true },
+    });
+
+    if (!author) {
+      throw new NotFoundException('User not found');
+    }
+
+    // 3. Determine role
+    const authorRole = session.userId === authorId ? 'user' : 'counselor';
+
+    // 4. Build author name
+    const authorName = [author.firstName, author.lastName]
+      .filter(Boolean)
+      .join(' ') || 'Anonymous';
+
+    // 5. Create note
+    return this.prisma.sessionNote.create({
+      data: {
+        sessionId,
+        authorId,
+        authorName,
+        authorRole,
+        content: createNoteDto.content,
+        isPrivate: createNoteDto.isPrivate || false,
+      },
+    });
+  }
+
+  async getNotesForSession(
+    sessionId: string,
+    requestingUserId: string
+  ) {
+    // 1. Verify session exists and user has access
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    // 2. Get all notes for session
+    const notes = await this.prisma.sessionNote.findMany({
+      where: { sessionId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // 3. Filter private notes
+    return notes.filter(note => {
+      // Public notes visible to all
+      if (!note.isPrivate) return true;
+
+      // Private notes only visible to author
+      if (note.authorId === requestingUserId) return true;
+
+      // TODO: Future - check if user is org admin
+      return false;
     });
   }
 }
