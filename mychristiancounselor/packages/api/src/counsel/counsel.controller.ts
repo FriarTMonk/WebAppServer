@@ -1,5 +1,6 @@
 import { Controller, Post, Get, Body, Param, Request, UseGuards, Put, Delete, HttpCode } from '@nestjs/common';
 import { CounselService } from './counsel.service';
+import { CounselExportService } from './counsel-export.service';
 import { CounselRequestDto } from './dto/counsel-request.dto';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
@@ -9,7 +10,10 @@ import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('counsel')
 export class CounselController {
-  constructor(private counselService: CounselService) {}
+  constructor(
+    private counselService: CounselService,
+    private counselExportService: CounselExportService
+  ) {}
 
   @Public()
   @UseGuards(OptionalJwtAuthGuard)
@@ -90,5 +94,15 @@ export class CounselController {
   ) {
     const userId = req.user.id;
     await this.counselService.deleteNote(noteId, userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('export/:sessionId')
+  async exportSession(
+    @Param('sessionId') sessionId: string,
+    @Request() req
+  ) {
+    const userId = req.user.id;
+    return this.counselExportService.getSessionForExport(sessionId, userId);
   }
 }
