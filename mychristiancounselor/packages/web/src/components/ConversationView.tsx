@@ -10,6 +10,7 @@ import { UserMenu } from './UserMenu';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
 import QuestionProgressIndicator from './QuestionProgressIndicator';
 import { SessionNotesPanel } from './SessionNotesPanel';
+import { SessionExportView } from './SessionExportView';
 import { Message, CrisisResource, GriefResource, BibleTranslation, DEFAULT_TRANSLATION } from '@mychristiancounselor/shared';
 import axios from 'axios';
 import { getAccessToken } from '../lib/auth';
@@ -43,6 +44,7 @@ export function ConversationView() {
   const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
   const [currentSessionQuestionCount, setCurrentSessionQuestionCount] = useState(0);
   const [showMobileNotes, setShowMobileNotes] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -53,6 +55,17 @@ export function ConversationView() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Close export modal on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showExportModal) {
+        setShowExportModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showExportModal]);
 
   // Load user preferences on mount if authenticated
   useEffect(() => {
@@ -240,6 +253,16 @@ export function ConversationView() {
                 📝 Notes
               </button>
             )}
+            {/* Export Button */}
+            {sessionId && isAuthenticated && (
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                title="Export/Print Session"
+              >
+                🖨️ Export
+              </button>
+            )}
             <UserMenu />
           </div>
         </div>
@@ -372,6 +395,29 @@ export function ConversationView() {
                   userRole="user"
                 />
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && sessionId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="p-4 border-b flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Session Export</h2>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-auto">
+              <SessionExportView sessionId={sessionId} />
             </div>
           </div>
         </div>
