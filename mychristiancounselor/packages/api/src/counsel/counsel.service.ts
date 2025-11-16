@@ -272,4 +272,69 @@ export class CounselService {
       return false;
     });
   }
+
+  async updateNote(
+    noteId: string,
+    requestingUserId: string,
+    updateNoteDto: UpdateNoteDto
+  ) {
+    // 1. Find note
+    const note = await this.prisma.sessionNote.findUnique({
+      where: { id: noteId },
+    });
+
+    if (!note) {
+      throw new NotFoundException('Note not found');
+    }
+
+    // 2. Check authorization - only author can edit
+    if (note.authorId !== requestingUserId) {
+      throw new ForbiddenException('You can only edit your own notes');
+    }
+
+    // 3. Check time limit - 30 minutes
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    if (note.createdAt < thirtyMinutesAgo) {
+      throw new ForbiddenException('Notes can only be edited within 30 minutes of creation');
+    }
+
+    // 4. Update note
+    return this.prisma.sessionNote.update({
+      where: { id: noteId },
+      data: {
+        content: updateNoteDto.content ?? note.content,
+        isPrivate: updateNoteDto.isPrivate ?? note.isPrivate,
+      },
+    });
+  }
+
+  async deleteNote(
+    noteId: string,
+    requestingUserId: string
+  ) {
+    // 1. Find note
+    const note = await this.prisma.sessionNote.findUnique({
+      where: { id: noteId },
+    });
+
+    if (!note) {
+      throw new NotFoundException('Note not found');
+    }
+
+    // 2. Check authorization - only author can delete
+    if (note.authorId !== requestingUserId) {
+      throw new ForbiddenException('You can only delete your own notes');
+    }
+
+    // 3. Check time limit - 30 minutes
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    if (note.createdAt < thirtyMinutesAgo) {
+      throw new ForbiddenException('Notes can only be deleted within 30 minutes of creation');
+    }
+
+    // 4. Delete note
+    await this.prisma.sessionNote.delete({
+      where: { id: noteId },
+    });
+  }
 }
