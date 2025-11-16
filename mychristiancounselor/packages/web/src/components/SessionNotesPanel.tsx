@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { SessionNote, CreateNoteRequest } from '@mychristiancounselor/shared';
 import { getAccessToken } from '../lib/auth';
 import axios from 'axios';
@@ -9,8 +9,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:39996';
 
 interface SessionNotesPanelProps {
   sessionId: string;
+  /** Reserved for future use: filtering notes by user, displaying author badges */
   currentUserId: string;
   userRole: 'user' | 'counselor' | 'viewer';
+  /** Reserved for future use: authenticated note access via share links */
   shareToken?: string;
 }
 
@@ -24,14 +26,10 @@ export function SessionNotesPanel({
   const [newNote, setNewNote] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch notes on mount
-  useEffect(() => {
-    fetchNotes();
-  }, [sessionId]);
-
-  const fetchNotes = async () => {
+  const fetchNotes = useCallback(async () => {
     try {
       const token = getAccessToken();
       if (!token) return;
@@ -45,8 +43,15 @@ export function SessionNotesPanel({
     } catch (err) {
       console.error('Failed to fetch notes:', err);
       setError('Failed to load notes');
+    } finally {
+      setInitialLoading(false);
     }
-  };
+  }, [sessionId]);
+
+  // Fetch notes on mount
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes]);
 
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
@@ -83,7 +88,7 @@ export function SessionNotesPanel({
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && e.ctrlKey) {
       handleAddNote();
     }
@@ -101,11 +106,15 @@ export function SessionNotesPanel({
 
       {/* Note List */}
       <div className="flex-1 overflow-y-auto space-y-3 mb-6">
-        {notes.length === 0 && (
+        {initialLoading ? (
+          <div className="text-center py-8 text-gray-500 text-sm">
+            Loading notes...
+          </div>
+        ) : notes.length === 0 ? (
           <div className="text-center py-8 text-gray-500 text-sm">
             No notes yet. Add the first note below.
           </div>
-        )}
+        ) : null}
 
         {notes.map(note => (
           <div
@@ -140,7 +149,7 @@ export function SessionNotesPanel({
           <textarea
             value={newNote}
             onChange={(e) => setNewNote(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyDown}
             placeholder="Add a note to this session... (Ctrl+Enter to submit)"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             rows={3}
