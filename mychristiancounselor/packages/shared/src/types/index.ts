@@ -260,4 +260,32 @@ export interface AcceptInvitationDto {
   token: string;
 }
 
+// ===== SESSION NOTES (JOURNALING) TYPES =====
+
+export interface SessionNote {
+  id: string;
+  sessionId: string;
+  authorId: string;
+  authorName: string;
+  authorRole: 'user' | 'counselor' | 'viewer';
+  content: string;
+  isPrivate: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface CreateNoteRequest {
+  content: string;
+  isPrivate?: boolean;
+}
+
+export interface UpdateNoteRequest {
+  content?: string;
+  isPrivate?: boolean;
+}
+
+export interface NotesResponse {
+  notes: SessionNote[];
+}
+
 export * from './admin.types';
