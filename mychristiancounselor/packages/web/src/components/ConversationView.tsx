@@ -42,6 +42,7 @@ export function ConversationView() {
   }>({ isOpen: false, resources: [] });
   const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
   const [currentSessionQuestionCount, setCurrentSessionQuestionCount] = useState(0);
+  const [showMobileNotes, setShowMobileNotes] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -230,6 +231,15 @@ export function ConversationView() {
             >
               {comparisonMode ? 'Single Translation' : 'Compare Translations'}
             </button>
+            {/* Mobile Notes Toggle */}
+            {sessionId && isAuthenticated && (
+              <button
+                onClick={() => setShowMobileNotes(!showMobileNotes)}
+                className="lg:hidden px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                📝 Notes
+              </button>
+            )}
             <UserMenu />
           </div>
         </div>
@@ -333,6 +343,39 @@ export function ConversationView() {
         resources={crisisModal.resources}
         onClose={() => setCrisisModal({ isOpen: false, resources: [] })}
       />
+
+      {/* Mobile Notes Overlay */}
+      {showMobileNotes && sessionId && isAuthenticated && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-50"
+          onClick={() => setShowMobileNotes(false)}
+        >
+          <div
+            className="absolute right-0 top-0 bottom-0 w-full sm:w-96 bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="h-full flex flex-col">
+              <div className="p-4 border-b flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-gray-900">Session Notes</h3>
+                <button
+                  onClick={() => setShowMobileNotes(false)}
+                  className="p-2 hover:bg-gray-100 rounded-md text-gray-600"
+                  aria-label="Close notes"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <SessionNotesPanel
+                  sessionId={sessionId}
+                  currentUserId={user?.id || ''}
+                  userRole="user"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
