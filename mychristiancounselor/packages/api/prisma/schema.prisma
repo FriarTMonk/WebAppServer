@@ -34,6 +34,7 @@ model User {
   invitationsReceived     OrganizationInvitation[] @relation("InvitedUser")
   adminActionsGiven       AdminAuditLog[]          @relation("AdminActions")
   adminActionsReceived    AdminAuditLog[]          @relation("ActionsReceived")
+  sessionNotesAuthored    SessionNote[]            @relation("SessionNotesAuthored")
 
   @@index([email])
   @@index([verificationToken])
@@ -183,15 +184,16 @@ model MetricSnapshot {
 }
 
 model Session {
-  id                   String    @id @default(uuid())
+  id                   String        @id @default(uuid())
   userId               String? // null for anonymous users
   title                String
-  topics               Json      @default("[]") // Theological topics/themes discussed (array of strings)
-  status               String    @default("active") // 'active' | 'completed'
-  preferredTranslation String    @default("ASV") // Bible translation preference (KJV or ASV)
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  topics               Json          @default("[]") // Theological topics/themes discussed (array of strings)
+  status               String        @default("active") // 'active' | 'completed'
+  preferredTranslation String        @default("ASV") // Bible translation preference (KJV or ASV)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
   messages             Message[]
+  notes                SessionNote[]
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
@@ -212,6 +214,26 @@ model Message {
 
   @@index([sessionId])
   @@index([timestamp])
+}
+
+// Session notes for collaborative journaling
+model SessionNote {
+  id         String   @id @default(uuid())
+  sessionId  String
+  authorId   String
+  authorName String // Cached for display (denormalized)
+  authorRole String // 'user' | 'counselor' | 'viewer'
+  content    String   @db.Text
+  isPrivate  Boolean  @default(false) // Private notes visible only to counselor
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  author  User    @relation("SessionNotesAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([authorId])
+  @@index([createdAt])
 }
 
 // Bible Translation metadata
