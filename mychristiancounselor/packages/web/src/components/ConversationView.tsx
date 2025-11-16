@@ -9,12 +9,13 @@ import { ComparisonTranslationSelector } from './ComparisonTranslationSelector';
 import { UserMenu } from './UserMenu';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
 import QuestionProgressIndicator from './QuestionProgressIndicator';
+import { SessionNotesPanel } from './SessionNotesPanel';
 import { Message, CrisisResource, GriefResource, BibleTranslation, DEFAULT_TRANSLATION } from '@mychristiancounselor/shared';
 import axios from 'axios';
 import { getAccessToken } from '../lib/auth';
 import { useAuth } from '../contexts/AuthContext';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:39996';
 
 // Extended message type to include grief resources for display
 interface ExtendedMessage extends Message {
@@ -22,7 +23,7 @@ interface ExtendedMessage extends Message {
 }
 
 export function ConversationView() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [messages, setMessages] = useState<ExtendedMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -235,49 +236,65 @@ export function ConversationView() {
         <p className="text-sm text-gray-600">Biblical guidance for life's questions</p>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {messages.length === 0 && (
-          <div className="text-center py-12">
-            <h2 className="text-xl font-semibold text-gray-700 mb-2">
-              Welcome! How can I help you today?
-            </h2>
-            <p className="text-gray-600">
-              I'm here to provide Biblical guidance through a guided conversation.
-              I may ask a few questions to better understand your situation.
-            </p>
-            <div className="mt-6 text-sm text-gray-500 max-w-2xl mx-auto">
-              <p className="font-semibold mb-2">Disclaimer:</p>
-              <p>
-                This is AI-powered spiritual guidance, not professional counseling.
-                For emergencies, contact 911 or crisis services.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {messages.map((message) => (
-          <React.Fragment key={message.id}>
-            <MessageBubble message={message} comparisonMode={comparisonMode} />
-            {message.griefResources && message.griefResources.length > 0 && (
-              <GriefAlert resources={message.griefResources} />
-            )}
-          </React.Fragment>
-        ))}
-
-        {isLoading && (
-          <div className="flex justify-start mb-4">
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+      {/* Messages and Notes Grid */}
+      <div className="flex-1 overflow-hidden p-4">
+        <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Conversation Column (2/3 width on desktop) */}
+          <div className="lg:col-span-2 overflow-y-auto">
+            {messages.length === 0 && (
+              <div className="text-center py-12">
+                <h2 className="text-xl font-semibold text-gray-700 mb-2">
+                  Welcome! How can I help you today?
+                </h2>
+                <p className="text-gray-600">
+                  I'm here to provide Biblical guidance through a guided conversation.
+                  I may ask a few questions to better understand your situation.
+                </p>
+                <div className="mt-6 text-sm text-gray-500 max-w-2xl mx-auto">
+                  <p className="font-semibold mb-2">Disclaimer:</p>
+                  <p>
+                    This is AI-powered spiritual guidance, not professional counseling.
+                    For emergencies, contact 911 or crisis services.
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        <div ref={messagesEndRef} />
+            {messages.map((message) => (
+              <React.Fragment key={message.id}>
+                <MessageBubble message={message} comparisonMode={comparisonMode} />
+                {message.griefResources && message.griefResources.length > 0 && (
+                  <GriefAlert resources={message.griefResources} />
+                )}
+              </React.Fragment>
+            ))}
+
+            {isLoading && (
+              <div className="flex justify-start mb-4">
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex space-x-2">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Notes Panel (1/3 width on desktop) */}
+          {sessionId && isAuthenticated && (
+            <div className="lg:col-span-1 hidden lg:block">
+              <SessionNotesPanel
+                sessionId={sessionId}
+                currentUserId={user?.id || ''}
+                userRole="user"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Input */}
