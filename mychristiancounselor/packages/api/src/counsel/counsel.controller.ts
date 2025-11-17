@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, Request, UseGuards, Put, Delete, HttpCode, Query, ForbiddenException, Patch } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Request, UseGuards, Put, Delete, HttpCode, Query, ForbiddenException, Patch, NotFoundException } from '@nestjs/common';
 import { CounselService } from './counsel.service';
 import { CounselExportService } from './counsel-export.service';
 import { AssignmentService } from './assignment.service';
@@ -216,15 +216,34 @@ export class CounselController {
   ) {
     const counselorId = req.user.id;
 
-    // Verify counselor has assignment to this member
+    // Check direct assignment
     const hasAssignment = await this.assignmentService.verifyCounselorAssignment(
       counselorId,
       memberId,
       organizationId,
     );
 
+    // Also check coverage grants if no direct assignment
+    let hasAccess = hasAssignment;
     if (!hasAssignment) {
-      throw new ForbiddenException('You are not assigned to this member');
+      const coverageGrant = await this.prisma.counselorCoverageGrant.findFirst({
+        where: {
+          backupCounselorId: counselorId,
+          memberId,
+          revokedAt: null,
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gte: new Date() } }
+          ]
+        }
+      });
+      hasAccess = !!coverageGrant;
+    }
+
+    if (!hasAccess) {
+      throw new ForbiddenException(
+        'You do not have access to this member (no assignment or coverage grant)',
+      );
     }
 
     // Run analysis
@@ -234,6 +253,10 @@ export class CounselController {
     const status = await this.prisma.memberWellbeingStatus.findUnique({
       where: { memberId },
     });
+
+    if (!status) {
+      throw new NotFoundException('Wellbeing status not found after analysis');
+    }
 
     return { success: true, status };
   }
@@ -264,7 +287,7 @@ export class CounselController {
 
     if (!assignment) {
       throw new ForbiddenException(
-        'Only the assigned counselor can override status (not coverage counselors)',
+        'You do not have access to this member (no assignment found)',
       );
     }
 
@@ -280,6 +303,10 @@ export class CounselController {
     const status = await this.prisma.memberWellbeingStatus.findUnique({
       where: { memberId },
     });
+
+    if (!status) {
+      throw new NotFoundException('Wellbeing status not found');
+    }
 
     return { success: true, status };
   }
