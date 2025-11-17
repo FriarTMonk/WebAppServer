@@ -11,12 +11,13 @@ import { OrganizationSwitcher } from './OrganizationSwitcher';
 import QuestionProgressIndicator from './QuestionProgressIndicator';
 import { SessionNotesPanel } from './SessionNotesPanel';
 import { SessionExportView } from './SessionExportView';
+import { SharedWithMe } from './SharedWithMe';
 import { Message, CrisisResource, GriefResource, BibleTranslation, DEFAULT_TRANSLATION } from '@mychristiancounselor/shared';
 import axios from 'axios';
 import { getAccessToken } from '../lib/auth';
 import { useAuth } from '../contexts/AuthContext';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:39996';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
 // Extended message type to include grief resources for display
 interface ExtendedMessage extends Message {
@@ -271,9 +272,15 @@ export function ConversationView() {
 
       {/* Messages and Notes Grid */}
       <div className="flex-1 overflow-hidden p-4">
-        <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className={`h-full grid grid-cols-1 gap-4 ${sessionId && isAuthenticated ? 'lg:grid-cols-3' : ''}`}>
           {/* Conversation Column (2/3 width on desktop) */}
-          <div className="lg:col-span-2 overflow-y-auto">
+          <div className={sessionId && isAuthenticated ? 'lg:col-span-2 overflow-y-auto' : 'overflow-y-auto'}>
+            {messages.length === 0 && isAuthenticated && (
+              <div className="mb-6">
+                <SharedWithMe />
+              </div>
+            )}
+
             {messages.length === 0 && (
               <div className="text-center py-12">
                 <h2 className="text-xl font-semibold text-gray-700 mb-2">

@@ -13,9 +13,15 @@ export class IsPlatformAdminGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
-    // Check if user has isPlatformAdmin flag
+    // If user is in a morph session, check the original admin's permissions
+    // This allows morphed admins to end their session and perform admin operations
+    const userIdToCheck = user.isMorphed && user.originalAdminId
+      ? user.originalAdminId
+      : user.id;
+
+    // Check if user (or original admin if morphed) has isPlatformAdmin flag
     const dbUser = await this.prisma.user.findUnique({
-      where: { id: user.id },
+      where: { id: userIdToCheck },
       select: { isPlatformAdmin: true },
     });
 

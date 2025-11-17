@@ -33,7 +33,7 @@ export class OrganizationService {
       },
     });
 
-    // Create system roles: Owner, Counselor, Member
+    // Create system roles: Owner, Admin, Counselor, Member
     const ownerRole = await this.createSystemRole(
       organization.id,
       'Owner',
@@ -50,6 +50,24 @@ export class OrganizationService {
         Permission.VIEW_ANALYTICS,
         Permission.EXPORT_DATA,
         Permission.MANAGE_BILLING,
+        Permission.VIEW_BILLING,
+      ]
+    );
+
+    await this.createSystemRole(
+      organization.id,
+      'Admin',
+      'Can manage members and roles',
+      [
+        Permission.VIEW_ORGANIZATION,
+        Permission.MANAGE_MEMBERS,
+        Permission.INVITE_MEMBERS,
+        Permission.REMOVE_MEMBERS,
+        Permission.VIEW_MEMBERS,
+        Permission.ASSIGN_ROLES,
+        Permission.VIEW_MEMBER_CONVERSATIONS,
+        Permission.VIEW_ANALYTICS,
+        Permission.EXPORT_DATA,
         Permission.VIEW_BILLING,
       ]
     );
@@ -494,8 +512,15 @@ export class OrganizationService {
       return false;
     }
 
-    const permissions = member.role.permissions as Permission[];
-    return permissions.includes(permission);
+    // Ensure permissions is an array (Prisma JSON fields might need parsing)
+    let permissions = member.role.permissions as any;
+    if (typeof permissions === 'string') {
+      permissions = JSON.parse(permissions);
+    }
+    if (!Array.isArray(permissions)) {
+      permissions = [];
+    }
+    return (permissions as Permission[]).includes(permission);
   }
 
   async requirePermission(

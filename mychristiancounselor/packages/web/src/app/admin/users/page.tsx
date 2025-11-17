@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminLayout } from '../../../components/AdminLayout';
+import { UserManagementModal } from '../../../components/UserManagementModal';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface User {
   id: string;
@@ -13,6 +15,8 @@ interface User {
   emailVerified: boolean;
   isActive: boolean;
   createdAt: string;
+  subscriptionStatus?: string;
+  subscriptionTier?: string;
   organizationMemberships: Array<{
     organization: {
       id: string;
@@ -23,6 +27,7 @@ interface User {
 
 export default function UsersListPage() {
   const router = useRouter();
+  const { refreshAuth } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +35,8 @@ export default function UsersListPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [accountTypeFilter, setAccountTypeFilter] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showUserModal, setShowUserModal] = useState(false);
 
   // Debounce search input
   useEffect(() => {
@@ -84,6 +91,84 @@ export default function UsersListPage() {
       return `${user.firstName || ''} ${user.lastName || ''}`.trim();
     }
     return 'N/A';
+  };
+
+  const handleUserClick = (user: User) => {
+    setSelectedUser(user);
+    setShowUserModal(true);
+  };
+
+  const handleResetPassword = async (userId: string, newPassword: string) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const response = await fetch(`${apiUrl}/admin/users/${userId}/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ newPassword }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to reset password');
+    }
+  };
+
+  const handleMorph = async (userId: string) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const response = await fetch(`${apiUrl}/admin/morph/start/${userId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to morph into user');
+    }
+
+    const data = await response.json();
+    localStorage.setItem('accessToken', data.accessToken);
+    // Store current page for return when morph session ends
+    const returnUrl = window.location.pathname;
+    console.log('[MORPH START] Storing return URL:', returnUrl);
+    localStorage.setItem('morphReturnUrl', returnUrl);
+
+    // Refresh auth state to update user and morphSession
+    await refreshAuth();
+
+    router.push('/');
+  };
+
+  const handleUpdateSubscription = async (userId: string, subscriptionData: { subscriptionStatus: string; subscriptionTier?: string | null }) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const response = await fetch(`${apiUrl}/admin/users/${userId}/subscription`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(subscriptionData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update subscription');
+    }
+
+    await fetchUsers();
+  };
+
+  const convertToOrganizationMember = (user: User): any => {
+    return {
+      id: user.id,
+      userId: user.id,
+      email: user.email,
+      firstName: user.firstName || undefined,
+      lastName: user.lastName || undefined,
+      roleName: 'Platform User',
+      roleId: 'platform-user',
+      joinedAt: user.createdAt,
+    };
   };
 
   return (
@@ -179,7 +264,11 @@ export default function UsersListPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
+                  <tr
+                    key={user.id}
+                    onClick={() => handleUserClick(user)}
+                    className="cursor-pointer hover:bg-blue-50"
+                  >
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
                       {user.email}
                     </td>
@@ -240,6 +329,27 @@ export default function UsersListPage() {
           </div>
         )}
       </div>
+
+      {showUserModal && selectedUser && (
+        <UserManagementModal
+          member={convertToOrganizationMember(selectedUser)}
+          organizationId="platform"
+          availableRoles={[]}
+          userSubscription={{
+            subscriptionStatus: selectedUser.subscriptionStatus || 'none',
+            subscriptionTier: selectedUser.subscriptionTier,
+          }}
+          onClose={() => {
+            setShowUserModal(false);
+            setSelectedUser(null);
+          }}
+          onUpdateRole={async () => {}}
+          onResetPassword={handleResetPassword}
+          onMorph={handleMorph}
+          onUpdateSubscription={handleUpdateSubscription}
+          isPlatformAdmin={true}
+        />
+      )}
     </AdminLayout>
   );
 }

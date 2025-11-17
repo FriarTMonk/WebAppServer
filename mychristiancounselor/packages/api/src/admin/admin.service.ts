@@ -1,25 +1,27 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuthService } from '../auth/auth.service';
 import { PlatformMetrics } from './types/platform-metrics.interface';
+import { GetOrganizationMembersResponse, MorphStartResponse, MorphEndResponse, AdminResetPasswordResponse, UpdateMemberRoleResponse, OrganizationMember, OrgMetrics } from '@mychristiancounselor/shared';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
   private readonly ACTIVE_USER_DAYS_THRESHOLD = 7;
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private authService: AuthService,
+  ) {}
 
   async isPlatformAdmin(userId: string): Promise<boolean> {
-    const membership = await this.prisma.organizationMember.findFirst({
-      where: {
-        userId,
-        organization: {
-          isSystemOrganization: true,
-        },
-      },
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isPlatformAdmin: true },
     });
 
-    return !!membership;
+    return user?.isPlatformAdmin ?? false;
   }
 
   async logAdminAction(
@@ -331,5 +333,814 @@ export class AdminService {
       this.logger.error('Failed to retrieve users', error);
       throw new InternalServerErrorException('Failed to retrieve users');
     }
+  }
+
+  /**
+   * Get all members of an organization with their roles
+   */
+  async getOrganizationMembers(organizationId: string): Promise<GetOrganizationMembersResponse> {
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    const memberships = await this.prisma.organizationMember.findMany({
+      where: {
+        organizationId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        role: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { joinedAt: 'asc' },
+    });
+
+    const members: OrganizationMember[] = memberships.map((m) => ({
+      id: m.id,
+      userId: m.user.id,
+      email: m.user.email,
+      firstName: m.user.firstName || undefined,
+      lastName: m.user.lastName || undefined,
+      roleName: m.role.name,
+      roleId: m.role.id,
+      joinedAt: m.joinedAt,
+    }));
+
+    return {
+      members,
+      organizationId,
+      organizationName: organization.name,
+    };
+  }
+
+  /**
+   * Start morphing into another user
+   * Generates a new JWT token with morph metadata
+   */
+  async startMorph(adminUserId: string, targetUserId: string): Promise<MorphStartResponse> {
+    // Prevent morphing into yourself - self-morphing is not allowed
+    if (adminUserId === targetUserId) {
+      throw new BadRequestException('Cannot morph into yourself');
+    }
+
+    // Verify target user exists and is active
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException('Target user not found');
+    }
+
+    if (!targetUser.isActive) {
+      throw new BadRequestException('Cannot morph into inactive user');
+    }
+
+    // Generate morph session ID
+    const morphSessionId = randomBytes(16).toString('hex');
+
+    // Create audit log for morph start
+    await this.logAdminAction(
+      adminUserId,
+      'morph_start',
+      {
+        targetUserEmail: targetUser.email,
+        targetUserName: `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim(),
+      },
+      targetUserId,
+      undefined,
+      morphSessionId,
+    );
+
+    // Generate new JWT with morph metadata
+    const morphPayload = {
+      sub: targetUserId, // The user being morphed into
+      email: targetUser.email,
+      isMorphed: true,
+      originalAdminId: adminUserId,
+      morphSessionId,
+    };
+
+    console.log('[ADMIN] Creating morph payload:', JSON.stringify(morphPayload, null, 2));
+    const accessToken = await this.authService.generateAccessToken(morphPayload);
+    console.log('[ADMIN] Received access token from auth service');
+
+    return {
+      accessToken,
+      morphSessionId,
+      morphedUser: {
+        id: targetUser.id,
+        email: targetUser.email,
+        firstName: targetUser.firstName || undefined,
+        lastName: targetUser.lastName || undefined,
+      },
+      message: `Successfully morphed into ${targetUser.email}`,
+    };
+  }
+
+  /**
+   * End morph session and restore original admin token
+   */
+  async endMorph(originalAdminId: string, morphSessionId: string): Promise<MorphEndResponse> {
+    // Create audit log for morph end
+    await this.logAdminAction(
+      originalAdminId,
+      'morph_end',
+      { morphSessionId },
+      undefined,
+      undefined,
+      morphSessionId,
+    );
+
+    // Get admin user to generate fresh token
+    const adminUser = await this.prisma.user.findUnique({
+      where: { id: originalAdminId },
+    });
+
+    if (!adminUser) {
+      throw new NotFoundException('Admin user not found');
+    }
+
+    // Generate normal JWT for admin (no morph metadata)
+    const normalPayload = {
+      sub: adminUser.id,
+      email: adminUser.email,
+    };
+
+    const accessToken = await this.authService.generateAccessToken(normalPayload);
+
+    return {
+      accessToken,
+      message: 'Morph session ended successfully',
+    };
+  }
+
+  /**
+   * Reset a user's password (admin action)
+   */
+  async resetUserPassword(
+    adminUserId: string,
+    targetUserId: string,
+    newPassword: string,
+  ): Promise<AdminResetPasswordResponse> {
+    // Verify target user exists
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Hash new password
+    const passwordHash = await this.authService.hashPassword(newPassword);
+
+    // Update password
+    await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: { passwordHash },
+    });
+
+    // Log admin action
+    await this.logAdminAction(
+      adminUserId,
+      'password_reset',
+      {
+        targetUserEmail: targetUser.email,
+      },
+      targetUserId,
+    );
+
+    return {
+      message: 'Password reset successfully',
+      userId: targetUserId,
+    };
+  }
+
+  /**
+   * Update a user's role in an organization
+   */
+  async updateMemberRole(
+    adminUserId: string,
+    organizationId: string,
+    userId: string,
+    newRoleId: string,
+  ): Promise<UpdateMemberRoleResponse> {
+    this.logger.log(`[updateMemberRole] Starting role update for userId=${userId} in orgId=${organizationId} to newRoleId=${newRoleId}`);
+
+    // Verify membership exists
+    const membership = await this.prisma.organizationMember.findFirst({
+      where: {
+        organizationId,
+        userId,
+      },
+      include: {
+        user: true,
+        role: true,
+      },
+    });
+
+    if (!membership) {
+      this.logger.error(`[updateMemberRole] Membership not found for userId=${userId} in orgId=${organizationId}`);
+      throw new NotFoundException('User is not a member of this organization');
+    }
+
+    this.logger.log(`[updateMemberRole] Found membership id=${membership.id}, current role=${membership.role.name} (${membership.roleId})`);
+
+    // Verify new role exists and belongs to the organization
+    const newRole = await this.prisma.organizationRole.findUnique({
+      where: { id: newRoleId },
+    });
+
+    if (!newRole) {
+      this.logger.error(`[updateMemberRole] Role not found: ${newRoleId}`);
+      throw new BadRequestException('Invalid role for this organization');
+    }
+
+    if (newRole.organizationId !== organizationId) {
+      this.logger.error(`[updateMemberRole] Role ${newRoleId} (${newRole.name}) belongs to org ${newRole.organizationId}, not ${organizationId}`);
+      throw new BadRequestException('Invalid role for this organization');
+    }
+
+    this.logger.log(`[updateMemberRole] Valid new role found: ${newRole.name} (${newRole.id}) for org ${organizationId}`);
+
+    // Update role
+    this.logger.log(`[updateMemberRole] Updating membership ${membership.id} roleId from ${membership.roleId} to ${newRoleId}`);
+    const updated = await this.prisma.organizationMember.update({
+      where: { id: membership.id },
+      data: { roleId: newRoleId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        role: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`[updateMemberRole] Successfully updated role to ${updated.role.name} (${updated.roleId})`);
+
+    // Log admin action
+    await this.logAdminAction(
+      adminUserId,
+      'update_user_role',
+      {
+        oldRole: membership.role.name,
+        newRole: newRole.name,
+        userEmail: membership.user.email,
+      },
+      userId,
+      organizationId,
+    );
+
+    return {
+      message: 'User role updated successfully',
+      member: {
+        id: updated.id,
+        userId: updated.user.id,
+        email: updated.user.email,
+        firstName: updated.user.firstName || undefined,
+        lastName: updated.user.lastName || undefined,
+        roleName: updated.role.name,
+        roleId: updated.role.id,
+        joinedAt: updated.joinedAt,
+      },
+    };
+  }
+
+  /**
+   * Release a member from an organization
+   * The user becomes an individual user and keeps their account/data
+   * but loses organization membership and counselor oversight
+   */
+  async releaseMember(
+    adminUserId: string,
+    organizationId: string,
+    userId: string,
+  ): Promise<any> {
+    this.logger.log(`[releaseMember] Releasing userId=${userId} from orgId=${organizationId}`);
+
+    // Verify membership exists
+    const membership = await this.prisma.organizationMember.findFirst({
+      where: {
+        organizationId,
+        userId,
+      },
+      include: {
+        user: true,
+        role: true,
+      },
+    });
+
+    if (!membership) {
+      this.logger.error(`[releaseMember] Membership not found for userId=${userId} in orgId=${organizationId}`);
+      throw new NotFoundException('User is not a member of this organization');
+    }
+
+    // Delete the organization membership
+    await this.prisma.organizationMember.delete({
+      where: { id: membership.id },
+    });
+
+    // Update user's accountType to 'individual' if it was 'organization'
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        accountType: 'individual',
+      },
+    });
+
+    this.logger.log(`[releaseMember] Successfully released member ${userId} from organization`);
+
+    // Log admin action
+    await this.logAdminAction(
+      adminUserId,
+      'release_member',
+      {
+        userEmail: membership.user.email,
+        role: membership.role.name,
+        organizationName: membership.organization.name,
+      },
+      userId,
+      organizationId,
+    );
+
+    return {
+      message: 'Member released successfully',
+      user: {
+        id: membership.user.id,
+        email: membership.user.email,
+        firstName: membership.user.firstName || undefined,
+        lastName: membership.user.lastName || undefined,
+      },
+    };
+  }
+
+  /**
+   * Check if user is an admin of a specific organization
+   */
+  async isOrganizationAdmin(userId: string, organizationId: string): Promise<boolean> {
+    const membership = await this.prisma.organizationMember.findFirst({
+      where: {
+        userId,
+        organizationId,
+        role: {
+          OR: [
+            { name: 'Owner' },
+            { name: 'Admin' },
+          ],
+        },
+      },
+    });
+
+    return !!membership;
+  }
+
+  /**
+   * Manually update user subscription (Platform Admin only)
+   */
+  async updateUserSubscription(
+    adminUserId: string,
+    targetUserId: string,
+    subscriptionData: {
+      subscriptionStatus: string;
+      subscriptionTier?: string | null;
+      subscriptionStart?: Date;
+      subscriptionEnd?: Date;
+    },
+  ): Promise<any> {
+    // Verify target user exists
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Update subscription
+    const updated = await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: {
+        subscriptionStatus: subscriptionData.subscriptionStatus,
+        subscriptionTier: subscriptionData.subscriptionTier,
+        subscriptionStart: subscriptionData.subscriptionStart,
+        subscriptionEnd: subscriptionData.subscriptionEnd,
+      },
+      select: {
+        id: true,
+        email: true,
+        subscriptionStatus: true,
+        subscriptionTier: true,
+        subscriptionStart: true,
+        subscriptionEnd: true,
+      },
+    });
+
+    // Log admin action
+    await this.logAdminAction(
+      adminUserId,
+      'update_user_subscription',
+      {
+        targetUserEmail: targetUser.email,
+        oldStatus: targetUser.subscriptionStatus,
+        newStatus: subscriptionData.subscriptionStatus,
+        subscriptionTier: subscriptionData.subscriptionTier,
+      },
+      targetUserId,
+    );
+
+    return {
+      message: 'User subscription updated successfully',
+      userId: updated.id,
+      subscriptionStatus: updated.subscriptionStatus,
+      subscriptionTier: updated.subscriptionTier,
+    };
+  }
+
+  /**
+   * Update organization subscription limits (Platform Admin only)
+   */
+  async updateOrganizationSubscription(
+    adminUserId: string,
+    organizationId: string,
+    subscriptionData: {
+      maxMembers?: number;
+      licenseStatus?: string;
+      licenseType?: string;
+      licenseExpiresAt?: Date;
+    },
+  ): Promise<any> {
+    // Verify organization exists
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      include: {
+        _count: {
+          select: {
+            members: true,
+          },
+        },
+      },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    // If reducing maxMembers, verify it's not less than current member count
+    if (subscriptionData.maxMembers !== undefined &&
+        subscriptionData.maxMembers < organization._count.members) {
+      throw new BadRequestException(
+        `Cannot set maxMembers to ${subscriptionData.maxMembers}. Organization currently has ${organization._count.members} members.`
+      );
+    }
+
+    // Update organization subscription
+    const updated = await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: {
+        maxMembers: subscriptionData.maxMembers,
+        licenseStatus: subscriptionData.licenseStatus,
+        licenseType: subscriptionData.licenseType,
+        licenseExpiresAt: subscriptionData.licenseExpiresAt,
+      },
+      include: {
+        _count: {
+          select: {
+            members: true,
+          },
+        },
+      },
+    });
+
+    // Log admin action
+    await this.logAdminAction(
+      adminUserId,
+      'update_org_subscription',
+      {
+        organizationName: organization.name,
+        oldMaxMembers: organization.maxMembers,
+        newMaxMembers: updated.maxMembers,
+        oldLicenseStatus: organization.licenseStatus,
+        newLicenseStatus: updated.licenseStatus,
+        licenseType: subscriptionData.licenseType,
+      },
+      undefined,
+      organizationId,
+    );
+
+    return {
+      message: 'Organization subscription updated successfully',
+      organizationId: updated.id,
+      maxMembers: updated.maxMembers,
+      licenseStatus: updated.licenseStatus,
+      currentMemberCount: updated._count.members,
+    };
+  }
+
+  /**
+   * Get organization-specific metrics for organization admins
+   * Returns metrics only for the specified organization
+   */
+  async getOrganizationMetrics(organizationId: string): Promise<OrgMetrics> {
+    // Verify organization exists
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      include: {
+        _count: {
+          select: {
+            members: true,
+          },
+        },
+      },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    // Get active members count
+    // TODO: Implement proper activity tracking with lastActiveAt field
+    // For now, count all organization members
+    const activeMembers = await this.prisma.organizationMember.count({
+      where: {
+        organizationId,
+      },
+    });
+
+    // Get counseling sessions count
+    // TODO: Add CounselSession model and organization relationship
+    // For now, return 0 as counseling sessions are not yet implemented
+    const counselingSessions = 0;
+
+    // Calculate license utilization
+    const used = organization._count.members;
+    const available = organization.maxMembers;
+    const percentage = available > 0 ? Math.round((used / available) * 100) : 0;
+
+    return {
+      organizationId: organization.id,
+      activeMembers,
+      counselingSessions,
+      licenseUtilization: {
+        used,
+        available,
+        percentage,
+      },
+    };
+  }
+
+  /**
+   * Create a new organization (Platform Admin only)
+   */
+  async createOrganization(
+    adminUserId: string,
+    data: {
+      name: string;
+      description?: string;
+      licenseType?: string;
+      licenseStatus?: string;
+      maxMembers?: number;
+    },
+  ): Promise<any> {
+    this.logger.log(`[createOrganization] Admin ${adminUserId} creating organization: ${data.name}`);
+
+    // Create organization with provided data
+    const organization = await this.prisma.organization.create({
+      data: {
+        name: data.name,
+        description: data.description,
+        licenseType: data.licenseType || null,
+        licenseStatus: data.licenseStatus || 'trial',
+        maxMembers: data.maxMembers || 10,
+      },
+    });
+
+    // Create system roles for the organization
+    const ownerRole = await this.prisma.organizationRole.create({
+      data: {
+        organizationId: organization.id,
+        name: 'Owner',
+        description: 'Full access to manage organization',
+        isSystemRole: true,
+        permissions: [
+          'MANAGE_ORGANIZATION',
+          'MANAGE_MEMBERS',
+          'INVITE_MEMBERS',
+          'REMOVE_MEMBERS',
+          'VIEW_MEMBERS',
+          'MANAGE_ROLES',
+          'ASSIGN_ROLES',
+          'VIEW_MEMBER_CONVERSATIONS',
+          'VIEW_ANALYTICS',
+          'EXPORT_DATA',
+          'MANAGE_BILLING',
+          'VIEW_BILLING',
+        ],
+      },
+    });
+
+    await this.prisma.organizationRole.create({
+      data: {
+        organizationId: organization.id,
+        name: 'Admin',
+        description: 'Can manage members and roles',
+        isSystemRole: true,
+        permissions: [
+          'VIEW_ORGANIZATION',
+          'MANAGE_MEMBERS',
+          'INVITE_MEMBERS',
+          'REMOVE_MEMBERS',
+          'VIEW_MEMBERS',
+          'ASSIGN_ROLES',
+          'VIEW_MEMBER_CONVERSATIONS',
+          'VIEW_ANALYTICS',
+          'EXPORT_DATA',
+          'VIEW_BILLING',
+        ],
+      },
+    });
+
+    await this.prisma.organizationRole.create({
+      data: {
+        organizationId: organization.id,
+        name: 'Counselor',
+        description: 'Can view member conversations and analytics',
+        isSystemRole: true,
+        permissions: [
+          'VIEW_ORGANIZATION',
+          'VIEW_MEMBERS',
+          'VIEW_MEMBER_CONVERSATIONS',
+          'VIEW_ANALYTICS',
+        ],
+      },
+    });
+
+    await this.prisma.organizationRole.create({
+      data: {
+        organizationId: organization.id,
+        name: 'Member',
+        description: 'Basic member access',
+        isSystemRole: true,
+        permissions: ['VIEW_ORGANIZATION'],
+      },
+    });
+
+    // Log admin action
+    await this.logAdminAction(
+      adminUserId,
+      'create_organization',
+      {
+        organizationName: organization.name,
+        licenseType: data.licenseType,
+        maxMembers: data.maxMembers || 10,
+      },
+      undefined,
+      organization.id,
+    );
+
+    this.logger.log(`[createOrganization] Successfully created organization ${organization.id}`);
+
+    return {
+      ...organization,
+      message: 'Organization created successfully',
+    };
+  }
+
+  /**
+   * Archive an organization (Platform Admin only)
+   * Sets licenseStatus to 'archived' and marks all members for self-removal
+   */
+  async archiveOrganization(
+    adminUserId: string,
+    organizationId: string,
+  ): Promise<any> {
+    this.logger.log(`[archiveOrganization] Archiving organization ${organizationId}`);
+
+    // Verify organization exists and is not already archived
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      include: {
+        _count: {
+          select: { members: true },
+        },
+      },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    if (organization.licenseStatus === 'archived') {
+      throw new BadRequestException('Organization is already archived');
+    }
+
+    if (organization.isSystemOrganization) {
+      throw new BadRequestException('Cannot archive system organization');
+    }
+
+    // Update organization to archived status
+    const updated = await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: {
+        licenseStatus: 'archived',
+        archivedAt: new Date(),
+      },
+    });
+
+    // Log admin action
+    await this.logAdminAction(
+      adminUserId,
+      'archive_organization',
+      {
+        organizationName: organization.name,
+        memberCount: organization._count.members,
+      },
+      undefined,
+      organizationId,
+    );
+
+    this.logger.log(`[archiveOrganization] Successfully archived organization ${organizationId}`);
+
+    return {
+      ...updated,
+      message: 'Organization archived successfully. Members can now remove themselves from this organization.',
+    };
+  }
+
+  /**
+   * Unarchive an organization (Platform Admin only)
+   * Restores organization to active status
+   */
+  async unarchiveOrganization(
+    adminUserId: string,
+    organizationId: string,
+  ): Promise<any> {
+    this.logger.log(`[unarchiveOrganization] Unarchiving organization ${organizationId}`);
+
+    // Verify organization exists and is archived
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    if (organization.licenseStatus !== 'archived') {
+      throw new BadRequestException('Organization is not archived');
+    }
+
+    // Update organization to active status
+    const updated = await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: {
+        licenseStatus: 'active',
+        archivedAt: null,
+      },
+    });
+
+    // Log admin action
+    await this.logAdminAction(
+      adminUserId,
+      'unarchive_organization',
+      {
+        organizationName: organization.name,
+      },
+      undefined,
+      organizationId,
+    );
+
+    this.logger.log(`[unarchiveOrganization] Successfully unarchived organization ${organizationId}`);
+
+    return {
+      ...updated,
+      message: 'Organization unarchived successfully',
+    };
   }
 }

@@ -115,4 +115,37 @@ ${currentQuestionCount >= maxClarifyingQuestions
 
     return matches;
   }
+
+  /**
+   * Extract theological themes from user message
+   * TODO: Enhance with AI-powered theme extraction
+   */
+  async extractTheologicalThemes(message: string): Promise<string[]> {
+    // Basic keyword-based theme detection
+    const themes: string[] = [];
+    const lowerMessage = message.toLowerCase();
+
+    const themeKeywords = {
+      prayer: ['pray', 'prayer', 'praying'],
+      faith: ['faith', 'believe', 'believing', 'trust'],
+      salvation: ['salvation', 'saved', 'eternal life'],
+      forgiveness: ['forgive', 'forgiveness', 'mercy'],
+      love: ['love', 'loving', 'charity'],
+      hope: ['hope', 'hopeful', 'hoping'],
+      suffering: ['suffer', 'suffering', 'pain', 'hurt'],
+      guidance: ['guidance', 'guide', 'direction', 'path'],
+      relationship: ['relationship', 'marriage', 'family'],
+      sin: ['sin', 'sinning', 'temptation'],
+      worship: ['worship', 'praise', 'glorify'],
+      scripture: ['bible', 'scripture', 'word of god']
+    };
+
+    for (const [theme, keywords] of Object.entries(themeKeywords)) {
+      if (keywords.some(keyword => lowerMessage.includes(keyword))) {
+        themes.push(theme);
+      }
+    }
+
+    return themes.length > 0 ? themes : ['general'];
+  }
 }

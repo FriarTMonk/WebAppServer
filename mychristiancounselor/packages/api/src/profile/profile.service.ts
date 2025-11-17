@@ -127,13 +127,18 @@ export class ProfileService {
       if (dateTo) where.createdAt.lte = dateTo;
     }
 
-    // Fetch sessions
+    // Fetch sessions with note count
     const sessions = await this.prisma.session.findMany({
       where,
       include: {
         messages: {
           orderBy: { timestamp: 'asc' },
           take: 2, // Only first 2 messages for excerpt
+        },
+        _count: {
+          select: {
+            notes: true,
+          },
         },
       },
       orderBy: { updatedAt: 'desc' },
@@ -161,9 +166,10 @@ export class ProfileService {
       id: session.id,
       title: session.title,
       excerpt: session.messages[0]?.content.substring(0, 150) + '...',
-      topics: [], // Would extract from messages/session metadata
+      topics: session.topics || [],
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
+      noteCount: session._count.notes,
     }));
   }
 
