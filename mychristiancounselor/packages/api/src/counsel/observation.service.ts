@@ -8,16 +8,14 @@ export class ObservationService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Create a new counselor observation
-   * Only assigned counselor can create observations (NOT coverage counselors)
+   * Verify counselor is assigned to member (NOT coverage)
+   * Throws ForbiddenException if not assigned
    */
-  async createObservation(
+  private async verifyAssignedCounselor(
     counselorId: string,
     memberId: string,
     organizationId: string,
-    dto: CreateObservationDto,
   ) {
-    // Verify counselor is assigned to member (NOT coverage)
     const assignment = await this.prisma.counselorAssignment.findFirst({
       where: {
         counselorId,
@@ -28,8 +26,22 @@ export class ObservationService {
     });
 
     if (!assignment) {
-      throw new ForbiddenException('Only assigned counselors can create observations');
+      throw new ForbiddenException('Only assigned counselors can access observations');
     }
+  }
+
+  /**
+   * Create a new counselor observation
+   * Only assigned counselor can create observations (NOT coverage counselors)
+   */
+  async createObservation(
+    counselorId: string,
+    memberId: string,
+    organizationId: string,
+    dto: CreateObservationDto,
+  ) {
+    // Verify counselor is assigned to member (NOT coverage)
+    await this.verifyAssignedCounselor(counselorId, memberId, organizationId);
 
     return this.prisma.counselorObservation.create({
       data: {
@@ -50,18 +62,7 @@ export class ObservationService {
     organizationId: string,
   ) {
     // Verify counselor is assigned to member
-    const assignment = await this.prisma.counselorAssignment.findFirst({
-      where: {
-        counselorId,
-        memberId,
-        organizationId,
-        status: 'active',
-      },
-    });
-
-    if (!assignment) {
-      throw new ForbiddenException('Only assigned counselors can view observations');
-    }
+    await this.verifyAssignedCounselor(counselorId, memberId, organizationId);
 
     return this.prisma.counselorObservation.findMany({
       where: { counselorId, memberId },
