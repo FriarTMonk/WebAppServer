@@ -17,20 +17,6 @@ export class IsCounselorGuard implements CanActivate {
     }
 
     // Check if user has Counselor role in any organization
-    const counselorMembership = await this.prisma.organizationMember.findFirst({
-      where: {
-        userId: user.id,
-      },
-      include: {
-        role: true,
-      },
-    });
-
-    if (!counselorMembership) {
-      throw new ForbiddenException('User is not a member of any organization');
-    }
-
-    // Check if any membership has Counselor in the role name
     const memberships = await this.prisma.organizationMember.findMany({
       where: {
         userId: user.id,
@@ -39,6 +25,10 @@ export class IsCounselorGuard implements CanActivate {
         role: true,
       },
     });
+
+    if (memberships.length === 0) {
+      throw new ForbiddenException('User is not a member of any organization');
+    }
 
     const isCounselor = memberships.some(m =>
       m.role.name.includes('Counselor')

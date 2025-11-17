@@ -9,6 +9,7 @@ import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { IsCounselorGuard } from './guards/is-counselor.guard';
 import { Public } from '../auth/decorators/public.decorator';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('counsel')
 export class CounselController {
@@ -16,6 +17,7 @@ export class CounselController {
     private counselService: CounselService,
     private counselExportService: CounselExportService,
     private assignmentService: AssignmentService,
+    private prisma: PrismaService,
   ) {}
 
   @Public()
@@ -125,7 +127,7 @@ export class CounselController {
 
     if (!organizationId) {
       // Get user's first organization if not specified
-      const membership = await this.assignmentService['prisma'].organizationMember.findFirst({
+      const membership = await this.prisma.organizationMember.findFirst({
         where: { userId: counselorId },
         select: { organizationId: true },
       });
@@ -158,7 +160,7 @@ export class CounselController {
     const counselorId = req.user.id;
 
     // Verify counselor has assignment to this member
-    const membership = await this.assignmentService['prisma'].organizationMember.findFirst({
+    const membership = await this.prisma.organizationMember.findFirst({
       where: { userId: counselorId },
       select: { organizationId: true },
     });
@@ -178,7 +180,7 @@ export class CounselController {
     }
 
     // Get all sessions for the member
-    const sessions = await this.assignmentService['prisma'].session.findMany({
+    const sessions = await this.prisma.session.findMany({
       where: {
         userId: memberId,
       },
