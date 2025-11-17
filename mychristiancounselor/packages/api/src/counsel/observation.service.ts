@@ -114,8 +114,9 @@ export class ObservationService {
       throw new ForbiddenException('Only the authoring counselor can delete this observation');
     }
 
-    await this.prisma.counselorObservation.delete({
+    await this.prisma.counselorObservation.update({
       where: { id: observationId },
+      data: { deletedAt: new Date() },
     });
 
     return { success: true };
