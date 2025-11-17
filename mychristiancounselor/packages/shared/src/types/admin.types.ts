@@ -100,7 +100,7 @@ export interface AdminResetPasswordResponse {
 
 // ===== ORGANIZATION MEMBER DTOS =====
 
-export interface OrganizationMember {
+export interface AdminOrganizationMember {
   id: string;
   userId: string;
   email: string;
@@ -112,7 +112,7 @@ export interface OrganizationMember {
 }
 
 export interface GetOrganizationMembersResponse {
-  members: OrganizationMember[];
+  members: AdminOrganizationMember[];
   organizationId: string;
   organizationName: string;
 }
@@ -123,7 +123,7 @@ export interface UpdateMemberRoleRequest {
 
 export interface UpdateMemberRoleResponse {
   message: string;
-  member: OrganizationMember;
+  member: AdminOrganizationMember;
 }
 
 // ===== SUBSCRIPTION MANAGEMENT DTOS =====

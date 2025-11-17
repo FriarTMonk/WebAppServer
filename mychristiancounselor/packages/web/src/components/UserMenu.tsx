@@ -8,24 +8,81 @@ import { getAccessToken } from '../lib/auth';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
 export function UserMenu() {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, morphSession } = useAuth();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const [hasOrganizations, setHasOrganizations] = useState(false);
+  const [_hasOrganizations, setHasOrganizations] = useState(false);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [isOrgAdmin, setIsOrgAdmin] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    console.log('[UserMenu] useEffect triggered - isAuthenticated:', isAuthenticated, 'user:', user?.email);
+    if (isAuthenticated && user) {
       const token = getAccessToken();
       if (token) {
+        // Check for organizations
         fetch(`${API_URL}/organizations`, {
           headers: { Authorization: `Bearer ${token}` },
         })
           .then(res => res.ok ? res.json() : [])
           .then(data => setHasOrganizations(Array.isArray(data) && data.length > 0))
           .catch(() => setHasOrganizations(false));
+
+        // Check if user is Platform Admin
+        fetch(`${API_URL}/admin/health-check`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then(res => {
+            console.log('[UserMenu] Platform admin check response:', res.status);
+            if (res.ok) {
+              return res.json();
+            }
+            throw new Error('Not a platform admin');
+          })
+          .then(data => {
+            console.log('[UserMenu] Platform admin check data:', data);
+            setIsPlatformAdmin(data.isPlatformAdmin === true);
+          })
+          .catch((err) => {
+            console.error('[UserMenu] Platform admin check error:', err);
+            setIsPlatformAdmin(false);
+          });
+
+        // Check if user is Organization Admin
+        console.log('[UserMenu] Checking org admin status...');
+        fetch(`${API_URL}/org-admin/organization`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then(res => {
+            console.log('[UserMenu] Org admin check response:', res.status);
+            if (res.ok) {
+              return res.json().then(data => {
+                console.log('[UserMenu] Org admin check succeeded:', data);
+                setIsOrgAdmin(true);
+              });
+            } else {
+              return res.json().then(errorData => {
+                console.log('[UserMenu] Org admin check failed:', res.status, errorData);
+                setIsOrgAdmin(false);
+              }).catch(() => {
+                console.log('[UserMenu] Org admin check failed:', res.status);
+                setIsOrgAdmin(false);
+              });
+            }
+          })
+          .catch((err) => {
+            console.error('[UserMenu] Org admin check error:', err);
+            setIsOrgAdmin(false);
+          });
       }
+    } else {
+      // Reset states when user logs out
+      console.log('[UserMenu] Resetting admin states (not authenticated or no user)');
+      setHasOrganizations(false);
+      setIsPlatformAdmin(false);
+      setIsOrgAdmin(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   if (!isAuthenticated) {
     return (
@@ -79,29 +136,47 @@ export function UserMenu() {
             }}
             className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
           >
-            History
+            Journal
           </button>
-          {hasOrganizations && (
+          {isOrgAdmin && !isPlatformAdmin && (
             <button
               onClick={() => {
                 setIsOpen(false);
-                router.push('/organizations');
+                router.push('/org-admin');
               }}
               className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
-              Organizations
+              Organization Admin
             </button>
           )}
-          <button
-            onClick={() => {
-              logout();
-              setIsOpen(false);
-              router.push('/');
-            }}
-            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Sign out
-          </button>
+          {isPlatformAdmin && (
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                router.push('/admin');
+              }}
+              className="block w-full text-left px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 border-t border-gray-200"
+            >
+              Admin
+            </button>
+          )}
+          {morphSession?.isMorphed ? (
+            <div className="px-4 py-3 text-sm text-yellow-800 bg-yellow-50 border-t border-gray-200">
+              <p className="font-semibold mb-1">Morphed Session Active</p>
+              <p className="text-xs">Use the "End Morph Session" button in the yellow banner above to return to your admin account.</p>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                logout();
+                router.push('/');
+              }}
+              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Sign out
+            </button>
+          )}
         </div>
       )}
     </div>
