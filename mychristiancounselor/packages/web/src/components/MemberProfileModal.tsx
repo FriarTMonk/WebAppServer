@@ -102,6 +102,11 @@ export default function MemberProfileModal({
     }
   };
 
+  const handleExport = () => {
+    const exportUrl = `/counsel/export/member/${memberId}${organizationId ? `?organizationId=${organizationId}` : ''}`;
+    window.open(exportUrl, '_blank');
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] overflow-hidden">
@@ -110,12 +115,21 @@ export default function MemberProfileModal({
           <h2 className="text-xl font-semibold text-gray-900">
             Member Profile: {memberName}
           </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-          >
-            ×
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExport}
+              className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
+              title="Export/Print Profile"
+            >
+              🖨️ Export
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            >
+              ×
+            </button>
+          </div>
         </div>
 
         {/* Content */}
