@@ -62,6 +62,7 @@ export function MemberProfileExportView({ memberId, organizationId }: MemberProf
   const [data, setData] = useState<MemberProfileExportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showObservationsGrey, setShowObservationsGrey] = useState(false);
 
   useEffect(() => {
     const fetchExportData = async () => {
@@ -208,13 +209,27 @@ export function MemberProfileExportView({ memberId, organizationId }: MemberProf
         }
       `}</style>
 
-      <button
-        onClick={() => window.print()}
-        className="no-print fixed top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 z-50"
-        aria-label="Print member profile"
-      >
-        🖨️ Print
-      </button>
+      <div className="no-print fixed top-4 right-4 z-50 flex flex-col gap-2 items-end">
+        <button
+          onClick={() => window.print()}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700"
+          aria-label="Print member profile"
+        >
+          🖨️ Print
+        </button>
+
+        {data.observations.length > 0 && (
+          <label className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-lg text-sm cursor-pointer hover:bg-gray-50">
+            <input
+              type="checkbox"
+              checked={showObservationsGrey}
+              onChange={(e) => setShowObservationsGrey(e.target.checked)}
+              className="w-4 h-4 cursor-pointer"
+            />
+            <span className="text-gray-700">Print Observations in Grey</span>
+          </label>
+        )}
+      </div>
 
       <main>
         {/* Header */}
@@ -303,16 +318,16 @@ export function MemberProfileExportView({ memberId, organizationId }: MemberProf
                   className="avoid-break border rounded-lg p-4 bg-white border-gray-200 print:border-gray-400"
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs text-gray-600 print:text-black">
+                    <span className={`text-xs text-gray-600 ${showObservationsGrey ? 'print:text-gray-400' : 'print:text-black'}`}>
                       {formatDateTime(observation.createdAt)}
                     </span>
                     {observation.updatedAt !== observation.createdAt && (
-                      <span className="text-xs text-gray-500 print:text-black italic">
+                      <span className={`text-xs text-gray-500 italic ${showObservationsGrey ? 'print:text-gray-400' : 'print:text-black'}`}>
                         Updated: {formatDateTime(observation.updatedAt)}
                       </span>
                     )}
                   </div>
-                  <div className="text-gray-800 print:text-black whitespace-pre-wrap leading-relaxed">
+                  <div className={`text-gray-800 whitespace-pre-wrap leading-relaxed ${showObservationsGrey ? 'print:text-gray-500' : 'print:text-black'}`}>
                     {observation.content}
                   </div>
                 </div>
