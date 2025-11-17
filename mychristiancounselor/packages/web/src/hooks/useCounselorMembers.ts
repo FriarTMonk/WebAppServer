@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CounselorMemberSummary } from '@mychristiancounselor/shared';
 
 export function useCounselorMembers(organizationId?: string) {
@@ -6,7 +6,7 @@ export function useCounselorMembers(organizationId?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
@@ -36,11 +36,11 @@ export function useCounselorMembers(organizationId?: string) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizationId]);
 
   useEffect(() => {
     fetchMembers();
-  }, [organizationId]);
+  }, [fetchMembers]);
 
   return { members, loading, error, refetch: fetchMembers };
 }
