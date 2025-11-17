@@ -421,9 +421,10 @@ export class CounselService {
       throw new ForbiddenException('You can only delete your own notes');
     }
 
-    // 3. Delete note
-    await this.prisma.sessionNote.delete({
+    // 3. Soft delete note
+    await this.prisma.sessionNote.update({
       where: { id: noteId },
+      data: { deletedAt: new Date() },
     });
   }
 }
