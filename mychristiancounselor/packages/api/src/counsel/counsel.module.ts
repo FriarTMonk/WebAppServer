@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CounselService } from './counsel.service';
 import { CounselExportService } from './counsel-export.service';
+import { AssignmentService } from './assignment.service';
 import { CounselController } from './counsel.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AiModule } from '../ai/ai.module';
@@ -17,6 +18,14 @@ import { SubscriptionModule } from '../subscription/subscription.module';
     SubscriptionModule,
   ],
   controllers: [CounselController],
-  providers: [CounselService, CounselExportService],
+  providers: [
+    CounselService,
+    CounselExportService,
+    AssignmentService,
+  ],
+  exports: [
+    CounselService,
+    AssignmentService,
+  ],
 })
 export class CounselModule {}
