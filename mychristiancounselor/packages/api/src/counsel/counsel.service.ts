@@ -198,6 +198,7 @@ export class CounselService {
   async createNote(
     sessionId: string,
     authorId: string,
+    organizationId: string,
     createNoteDto: CreateNoteDto
   ) {
     // 1. Verify session exists
@@ -220,8 +221,49 @@ export class CounselService {
       throw new NotFoundException('User not found');
     }
 
-    // 3. Determine role
-    const authorRole = session.userId === authorId ? 'user' : 'counselor';
+    // 3. Determine role with enhanced counselor assignment checks
+    let authorRole = session.userId === authorId ? 'user' : 'viewer';
+
+    const memberId = session.userId;
+    if (memberId) {
+      // Check if author is assigned counselor
+      const assignment = await this.prisma.counselorAssignment.findFirst({
+        where: {
+          counselorId: authorId,
+          memberId,
+          organizationId,
+          status: 'active',
+        },
+      });
+
+      // Check if author is coverage counselor
+      const coverageGrant = await this.prisma.counselorCoverageGrant.findFirst({
+        where: {
+          backupCounselorId: authorId,
+          memberId,
+          revokedAt: null,
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gte: new Date() } }
+          ],
+        },
+      });
+
+      const isAssignedCounselor = !!assignment;
+      const isCoverageCounselor = !!coverageGrant && !isAssignedCounselor;
+
+      // Coverage counselors cannot create private notes
+      if (createNoteDto.isPrivate && isCoverageCounselor) {
+        throw new ForbiddenException('Coverage counselors cannot create private notes');
+      }
+
+      // Enhanced role detection
+      if (isAssignedCounselor) {
+        authorRole = 'counselor';
+      } else if (isCoverageCounselor) {
+        authorRole = 'counselor';
+      }
+    }
 
     // 4. Build author name
     const authorName = [author.firstName, author.lastName]
@@ -243,7 +285,8 @@ export class CounselService {
 
   async getNotesForSession(
     sessionId: string,
-    requestingUserId: string
+    requestingUserId: string,
+    organizationId: string
   ) {
     // 1. Verify session exists and user has access
     const session = await this.prisma.session.findUnique({
@@ -254,21 +297,54 @@ export class CounselService {
       throw new NotFoundException('Session not found');
     }
 
-    // 2. Get all notes for session
+    // 2. Check if requesting user is coverage counselor
+    const memberId = session.userId;
+    let isCoverageCounselor = false;
+
+    if (memberId) {
+      // Check if user is assigned counselor
+      const assignment = await this.prisma.counselorAssignment.findFirst({
+        where: {
+          counselorId: requestingUserId,
+          memberId,
+          organizationId,
+          status: 'active',
+        },
+      });
+
+      // Check if user is coverage counselor (but not assigned)
+      const coverageGrant = await this.prisma.counselorCoverageGrant.findFirst({
+        where: {
+          backupCounselorId: requestingUserId,
+          memberId,
+          revokedAt: null,
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gte: new Date() } }
+          ],
+        },
+      });
+
+      isCoverageCounselor = !!coverageGrant && !assignment;
+    }
+
+    // 3. Get all notes for session
     const notes = await this.prisma.sessionNote.findMany({
       where: { sessionId },
       orderBy: { createdAt: 'asc' },
     });
 
-    // 3. Filter private notes
+    // 4. Filter private notes with enhanced privacy rules
     return notes.filter(note => {
       // Public notes visible to all
       if (!note.isPrivate) return true;
 
-      // Private notes only visible to author
+      // Private notes visible to author
       if (note.authorId === requestingUserId) return true;
 
-      // TODO: Future - check if user is org admin
+      // Coverage counselors cannot see private notes
+      if (isCoverageCounselor) return false;
+
       return false;
     });
   }
@@ -276,6 +352,7 @@ export class CounselService {
   async updateNote(
     noteId: string,
     requestingUserId: string,
+    organizationId: string,
     updateNoteDto: UpdateNoteDto
   ) {
     // 1. Find note
@@ -292,10 +369,28 @@ export class CounselService {
       throw new ForbiddenException('You can only edit your own notes');
     }
 
-    // 3. Check time limit - 30 minutes
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    if (note.createdAt < thirtyMinutesAgo) {
-      throw new ForbiddenException('Notes can only be edited within 30 minutes of creation');
+    // 3. If changing to private, verify user is assigned counselor (not coverage)
+    if (updateNoteDto.isPrivate && !note.isPrivate) {
+      // User is trying to make note private - verify they're assigned counselor
+      const noteWithSession = await this.prisma.sessionNote.findUnique({
+        where: { id: noteId },
+        include: { session: { select: { userId: true } } },
+      });
+
+      if (noteWithSession?.session?.userId) {
+        const assignment = await this.prisma.counselorAssignment.findFirst({
+          where: {
+            counselorId: requestingUserId,
+            memberId: noteWithSession.session.userId,
+            organizationId,
+            status: 'active',
+          },
+        });
+
+        if (!assignment) {
+          throw new ForbiddenException('Only assigned counselors can create private notes');
+        }
+      }
     }
 
     // 4. Update note
@@ -326,13 +421,7 @@ export class CounselService {
       throw new ForbiddenException('You can only delete your own notes');
     }
 
-    // 3. Check time limit - 30 minutes
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    if (note.createdAt < thirtyMinutesAgo) {
-      throw new ForbiddenException('Notes can only be deleted within 30 minutes of creation');
-    }
-
-    // 4. Delete note
+    // 3. Delete note
     await this.prisma.sessionNote.delete({
       where: { id: noteId },
     });
