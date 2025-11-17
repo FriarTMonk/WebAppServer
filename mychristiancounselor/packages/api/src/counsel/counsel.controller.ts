@@ -124,6 +124,21 @@ export class CounselController {
     return this.counselExportService.getSessionForExport(sessionId, userId);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('export/member/:memberId')
+  async exportMemberProfile(
+    @Param('memberId') memberId: string,
+    @Query('organizationId') organizationId: string,
+    @Request() req
+  ) {
+    const counselorId = req.user.id;
+    return this.counselExportService.getMemberProfileForExport(
+      memberId,
+      counselorId,
+      organizationId
+    );
+  }
+
   // ===== COUNSELOR DASHBOARD ENDPOINTS =====
 
   /**
