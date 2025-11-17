@@ -123,10 +123,14 @@ export interface AuthResponse {
 }
 
 export interface JwtPayload {
-  sub: string; // userId
+  sub: string; // userId (when morphed, this is the morphed user's ID)
   email: string;
   iat?: number;
   exp?: number;
+  // Morph session metadata (optional, only present when admin is morphed into another user)
+  isMorphed?: boolean; // True when this token represents a morphed session
+  originalAdminId?: string; // ID of the admin who initiated the morph
+  morphSessionId?: string; // UUID linking all actions during this morph session
 }
 
 export interface RefreshTokenDto {
@@ -288,4 +292,38 @@ export interface NotesResponse {
   notes: SessionNote[];
 }
 
+// ===== SESSION SHARING TYPES =====
+
+export interface SessionShare {
+  id: string;
+  sessionId: string;
+  shareToken: string;
+  sharedBy: string;
+  sharedWith: string | null;
+  organizationId: string | null;
+  createdAt: Date | string;
+  expiresAt: Date | string | null;
+}
+
+export interface CreateShareRequest {
+  sessionId: string;
+  expiresInDays?: number; // 7, 30, 90, or null for no expiration
+  allowNotesAccess?: boolean; // If true, recipients can add notes (default: false - read-only)
+  sharedWith?: string; // Optional email or user ID
+}
+
+export interface CreateShareResponse {
+  share: SessionShare;
+  shareUrl: string;
+}
+
+export interface ValidateShareResponse {
+  sessionId: string;
+  canView: boolean;
+  canAddNotes: boolean;
+  sharedBy: string;
+  expiresAt: Date | string | null;
+}
+
 export * from './admin.types';
+export * from './counselor.types';
