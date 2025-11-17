@@ -12,6 +12,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [organizations, setOrganizations] = useState<any[]>([]);
+  const [counselorAssignments, setCounselorAssignments] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -62,6 +63,15 @@ export default function ProfilePage() {
         if (orgResponse.ok) {
           const orgData = await orgResponse.json();
           setOrganizations(orgData);
+        }
+
+        const counselorResponse = await fetch(`${API_URL}/profile/counselor-assignments`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (counselorResponse.ok) {
+          const counselorData = await counselorResponse.json();
+          setCounselorAssignments(counselorData);
         }
       } catch (err) {
         console.error('Error fetching profile:', err);
@@ -456,7 +466,7 @@ export default function ProfilePage() {
         )}
 
         {organizations.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Organizations</h2>
             <div className="space-y-3">
               {organizations.map((org) => (
@@ -473,6 +483,51 @@ export default function ProfilePage() {
                     <span className="text-xs text-gray-500">
                       Joined {new Date(org.joinedAt).toLocaleDateString()}
                     </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {counselorAssignments.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">My Counselors</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Counselors who have been assigned to work with you across your organizations.
+            </p>
+            <div className="space-y-3">
+              {counselorAssignments.map((assignment) => (
+                <div
+                  key={assignment.id}
+                  className="border border-gray-200 rounded-lg p-4"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{assignment.counselor.name}</h3>
+                      <p className="text-sm text-gray-600">{assignment.counselor.email}</p>
+                    </div>
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded ${
+                        assignment.status === 'active'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {assignment.status === 'active' ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-sm text-gray-600">
+                    <p className="font-medium">{assignment.organization.name}</p>
+                    {assignment.organization.description && (
+                      <p className="text-xs text-gray-500">{assignment.organization.description}</p>
+                    )}
+                  </div>
+                  <div className="mt-2 flex gap-4 text-xs text-gray-500">
+                    <span>Assigned: {new Date(assignment.assignedAt).toLocaleDateString()}</span>
+                    {assignment.endedAt && (
+                      <span>Ended: {new Date(assignment.endedAt).toLocaleDateString()}</span>
+                    )}
                   </div>
                 </div>
               ))}
