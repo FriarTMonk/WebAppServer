@@ -1,0 +1,273 @@
+import { Controller, Get, Post, Patch, Delete, Logger, Param, Body, UseGuards, Request, ForbiddenException, Query, HttpCode } from '@nestjs/common';
+import { AdminService } from '../admin/admin.service';
+import { OrgAdminService } from './org-admin.service';
+import { IsOrgAdminGuard } from '../admin/guards/is-org-admin.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { User } from '@prisma/client';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminResetPasswordDto, UpdateMemberRoleRequest, CreateCounselorAssignmentDto } from '@mychristiancounselor/shared';
+
+/**
+ * Controller for organization admin operations.
+ * Organization admins can only manage users within their own organization.
+ */
+@Controller('org-admin')
+@UseGuards(JwtAuthGuard, IsOrgAdminGuard)
+export class OrgAdminController {
+  private readonly logger = new Logger(OrgAdminController.name);
+
+  constructor(
+    private adminService: AdminService,
+    private orgAdminService: OrgAdminService,
+  ) {}
+
+  /**
+   * Get the admin's organization info
+   * GET /org-admin/organization
+   */
+  @Get('organization')
+  async getOrganization(@Request() req: any) {
+    const orgInfo = req.userOrganization;
+    return {
+      id: orgInfo.id,
+      name: orgInfo.name,
+    };
+  }
+
+  /**
+   * Get all members of the admin's organization
+   * GET /org-admin/members
+   */
+  @Get('members')
+  async getOrganizationMembers(
+    @CurrentUser() user: User,
+    @Request() req: any,
+  ) {
+    const organizationId = req.userOrganization.id;
+
+    await this.adminService.logAdminAction(
+      user.id,
+      'org_admin_view_members',
+      { organizationId },
+      undefined,
+      organizationId,
+    );
+
+    return this.adminService.getOrganizationMembers(organizationId);
+  }
+
+  /**
+   * Get organization-specific metrics
+   * GET /org-admin/metrics
+   */
+  @Get('metrics')
+  async getOrganizationMetrics(
+    @CurrentUser() user: User,
+    @Request() req: any,
+  ) {
+    const organizationId = req.userOrganization.id;
+
+    await this.adminService.logAdminAction(
+      user.id,
+      'org_admin_view_metrics',
+      { organizationId },
+      undefined,
+      organizationId,
+    );
+
+    return this.adminService.getOrganizationMetrics(organizationId);
+  }
+
+  /**
+   * Get audit log for the organization
+   * GET /org-admin/audit-log
+   */
+  @Get('audit-log')
+  async getAuditLog(
+    @CurrentUser() user: User,
+    @Request() req: any,
+  ) {
+    const organizationId = req.userOrganization.id;
+
+    await this.adminService.logAdminAction(
+      user.id,
+      'org_admin_view_audit_log',
+      { organizationId },
+      undefined,
+      organizationId,
+    );
+
+    // Get audit log filtered for this organization only
+    return this.adminService.getAuditLog({
+      organizationId,
+    });
+  }
+
+  /**
+   * Reset a user's password (must be in admin's organization)
+   * POST /org-admin/users/:id/reset-password
+   */
+  @Post('users/:id/reset-password')
+  async resetUserPassword(
+    @CurrentUser() user: User,
+    @Param('id') targetUserId: string,
+    @Body() dto: AdminResetPasswordDto,
+    @Request() req: any,
+  ) {
+    const organizationId = req.userOrganization.id;
+
+    // Verify the target user is in the admin's organization
+    await this.verifyUserInOrganization(targetUserId, organizationId);
+
+    return this.adminService.resetUserPassword(user.id, targetUserId, dto.newPassword);
+  }
+
+  /**
+   * Start morphing into another user (must be in admin's organization)
+   * POST /org-admin/morph/start/:userId
+   */
+  @Post('morph/start/:userId')
+  async startMorph(
+    @CurrentUser() user: User,
+    @Param('userId') targetUserId: string,
+    @Request() req: any,
+  ) {
+    const organizationId = req.userOrganization.id;
+
+    // Verify the target user is in the admin's organization
+    await this.verifyUserInOrganization(targetUserId, organizationId);
+
+    return this.adminService.startMorph(user.id, targetUserId);
+  }
+
+  /**
+   * End morph session
+   * POST /org-admin/morph/end
+   */
+  @Post('morph/end')
+  async endMorph(@CurrentUser() user: any) {
+    const originalAdminId = user.originalAdminId || user.id;
+    const morphSessionId = user.morphSessionId;
+
+    return this.adminService.endMorph(originalAdminId, morphSessionId);
+  }
+
+  /**
+   * Update a user's role in the organization
+   * PATCH /org-admin/members/:userId/role
+   */
+  @Patch('members/:userId/role')
+  async updateMemberRole(
+    @CurrentUser() user: User,
+    @Param('userId') targetUserId: string,
+    @Body() dto: UpdateMemberRoleRequest,
+    @Request() req: any,
+  ) {
+    const organizationId = req.userOrganization.id;
+
+    return this.adminService.updateMemberRole(
+      user.id,
+      organizationId,
+      targetUserId,
+      dto.roleId,
+    );
+  }
+
+  /**
+   * Release a member from the organization
+   * The user becomes an individual user and retains their account/data
+   * POST /org-admin/members/:userId/release
+   */
+  @Post('members/:userId/release')
+  async releaseMember(
+    @CurrentUser() user: User,
+    @Param('userId') targetUserId: string,
+    @Request() req: any,
+  ) {
+    const organizationId = req.userOrganization.id;
+
+    // Verify the target user is in the admin's organization
+    await this.verifyUserInOrganization(targetUserId, organizationId);
+
+    return this.adminService.releaseMember(
+      user.id,
+      organizationId,
+      targetUserId,
+    );
+  }
+
+  /**
+   * Helper method to verify a user belongs to the specified organization
+   */
+  private async verifyUserInOrganization(userId: string, organizationId: string): Promise<void> {
+    const isInOrg = await this.adminService['prisma'].organizationMember.findFirst({
+      where: {
+        userId,
+        organizationId,
+      },
+    });
+
+    if (!isInOrg) {
+      throw new ForbiddenException('User is not in your organization');
+    }
+  }
+
+  /**
+   * Create counselor assignment
+   * POST /org-admin/counselor-assignments
+   */
+  @Post('counselor-assignments')
+  async createCounselorAssignment(
+    @CurrentUser() user: User,
+    @Query('organizationId') organizationId: string,
+    @Body() dto: CreateCounselorAssignmentDto,
+  ) {
+    return this.orgAdminService.createCounselorAssignment(
+      user.id,
+      organizationId,
+      dto
+    );
+  }
+
+  /**
+   * Get all counselor assignments
+   * GET /org-admin/counselor-assignments?organizationId=xxx
+   */
+  @Get('counselor-assignments')
+  async getCounselorAssignments(
+    @CurrentUser() user: User,
+    @Query('organizationId') organizationId: string,
+  ) {
+    return this.orgAdminService.getCounselorAssignments(user.id, organizationId);
+  }
+
+  /**
+   * End counselor assignment
+   * DELETE /org-admin/counselor-assignments/:id
+   */
+  @Delete('counselor-assignments/:id')
+  @HttpCode(204)
+  async endCounselorAssignment(
+    @CurrentUser() user: User,
+    @Query('organizationId') organizationId: string,
+    @Param('id') assignmentId: string,
+  ) {
+    await this.orgAdminService.endCounselorAssignment(
+      user.id,
+      organizationId,
+      assignmentId
+    );
+  }
+
+  /**
+   * Get counselor workload statistics
+   * GET /org-admin/counselor-workload?organizationId=xxx
+   */
+  @Get('counselor-workload')
+  async getCounselorWorkloads(
+    @CurrentUser() user: User,
+    @Query('organizationId') organizationId: string,
+  ) {
+    return this.orgAdminService.getCounselorWorkloads(user.id, organizationId);
+  }
+}
