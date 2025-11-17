@@ -25,14 +25,14 @@ model User {
   comparisonTranslations String[]  @default(["ESV", "NASB", "NIV", "NKJV"]) // For comparison mode
 
   // Individual subscription fields (denormalized for fast access)
-  subscriptionStatus     String    @default("none") // 'none' | 'active' | 'canceled' | 'past_due'
-  subscriptionTier       String?   // 'basic' | 'premium'
-  subscriptionStart      DateTime? // When current subscription started
-  subscriptionEnd        DateTime? // When subscription ended (for canceled)
-  stripeCustomerId       String?   @unique // Stripe customer ID
+  subscriptionStatus String    @default("none") // 'none' | 'active' | 'canceled' | 'past_due'
+  subscriptionTier   String? // 'basic' | 'premium'
+  subscriptionStart  DateTime? // When current subscription started
+  subscriptionEnd    DateTime? // When subscription ended (for canceled)
+  stripeCustomerId   String?   @unique // Stripe customer ID
 
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   refreshTokens           RefreshToken[]
@@ -247,15 +247,16 @@ model Message {
 
 // Session notes for collaborative journaling
 model SessionNote {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   sessionId  String
   authorId   String
   authorName String // Cached for display (denormalized)
   authorRole String // 'user' | 'counselor' | 'viewer'
-  content    String   @db.Text
-  isPrivate  Boolean  @default(false) // Private notes visible only to counselor
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  content    String    @db.Text
+  isPrivate  Boolean   @default(false) // Private notes visible only to counselor
+  deletedAt  DateTime? // Soft delete - scheduled for permanent deletion 30 days after set
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   author  User    @relation("SessionNotesAuthored", fields: [authorId], references: [id], onDelete: Cascade)
@@ -263,6 +264,7 @@ model SessionNote {
   @@index([sessionId])
   @@index([authorId])
   @@index([createdAt])
+  @@index([deletedAt])
 }
 
 // Bible Translation metadata
@@ -300,15 +302,15 @@ model BibleVerse {
 
 // Individual user subscriptions (for billing history and audit trail)
 model Subscription {
-  id                    String    @id @default(uuid())
-  userId                String
-  status                String // 'active' | 'canceled' | 'past_due' | 'incomplete'
-  tier                  String    @default("basic") // 'basic' | 'premium'
-  startDate             DateTime  @default(now())
-  endDate               DateTime?
-  stripeSubscriptionId  String?   @unique // Stripe subscription ID
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                   String    @id @default(uuid())
+  userId               String
+  status               String // 'active' | 'canceled' | 'past_due' | 'incomplete'
+  tier                 String    @default("basic") // 'basic' | 'premium'
+  startDate            DateTime  @default(now())
+  endDate              DateTime?
+  stripeSubscriptionId String?   @unique // Stripe subscription ID
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -328,7 +330,7 @@ model SessionShare {
   createdAt        DateTime  @default(now())
   expiresAt        DateTime?
 
-  session Session              @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session  Session              @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   accesses SessionShareAccess[]
 
   @@index([sessionId])
@@ -337,9 +339,9 @@ model SessionShare {
 
 // Track which users have accessed which shared sessions
 model SessionShareAccess {
-  id             String    @id @default(uuid())
-  shareId        String
-  userId         String
+  id              String    @id @default(uuid())
+  shareId         String
+  userId          String
   firstAccessedAt DateTime  @default(now())
   lastAccessedAt  DateTime  @default(now())
   isDismissed     Boolean   @default(false)
@@ -355,13 +357,13 @@ model SessionShareAccess {
 
 // Counselor-member assignment for pastoral care relationships
 model CounselorAssignment {
-  id             String   @id @default(uuid())
-  counselorId    String   // User with Counselor role
-  memberId       String   // User being counseled
+  id             String    @id @default(uuid())
+  counselorId    String // User with Counselor role
+  memberId       String // User being counseled
   organizationId String
-  status         String   @default("active") // 'active' | 'inactive'
-  assignedBy     String   // Admin who made assignment
-  assignedAt     DateTime @default(now())
+  status         String    @default("active") // 'active' | 'inactive'
+  assignedBy     String // Admin who made assignment
+  assignedAt     DateTime  @default(now())
   endedAt        DateTime?
 
   counselor    User         @relation("CounselorAssignments", fields: [counselorId], references: [id], onDelete: Cascade)
@@ -376,23 +378,25 @@ model CounselorAssignment {
 
 // Private counselor notes - only visible to authoring counselor
 model CounselorObservation {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   counselorId String
   memberId    String
-  content     String   @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  content     String    @db.Text
+  deletedAt   DateTime? // Soft delete - scheduled for permanent deletion 30 days after set
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   counselor User @relation("ObservationsAuthored", fields: [counselorId], references: [id], onDelete: Cascade)
   member    User @relation("ObservationsReceived", fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([counselorId, memberId])
   @@index([createdAt])
+  @@index([deletedAt])
 }
 
 // Temporary access permissions for workload sharing
 model CounselorCoverageGrant {
-  id                String    @id @default(uuid())
+  id                 String    @id @default(uuid())
   primaryCounselorId String
   backupCounselorId  String
   memberId           String
@@ -411,14 +415,14 @@ model CounselorCoverageGrant {
 
 // AI-generated and counselor-overridden wellbeing status
 model MemberWellbeingStatus {
-  id               String   @id @default(uuid())
-  memberId         String   @unique
-  status           String   // 'green' | 'yellow' | 'red'
-  aiSuggestedStatus String  // What AI detected
-  overriddenBy     String?  // Counselor who overrode
-  summary          String   @db.Text // AI-generated 7-day summary
-  lastAnalyzedAt   DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                String   @id @default(uuid())
+  memberId          String   @unique
+  status            String // 'green' | 'yellow' | 'red'
+  aiSuggestedStatus String // What AI detected
+  overriddenBy      String? // Counselor who overrode
+  summary           String   @db.Text // AI-generated 7-day summary
+  lastAnalyzedAt    DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   member User @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
@@ -430,12 +434,12 @@ model MemberWellbeingStatus {
 model Notification {
   id          String    @id @default(uuid())
   recipientId String
-  senderId    String?   // Null for system notifications
-  type        String    // 'system' | 'message' | 'alert'
-  category    String    // 'assignment' | 'note_added' | 'status_change' | 'direct_message'
-  title       String    // Brief header
+  senderId    String? // Null for system notifications
+  type        String // 'system' | 'message' | 'alert'
+  category    String // 'assignment' | 'note_added' | 'status_change' | 'direct_message'
+  title       String // Brief header
   message     String    @db.Text
-  linkTo      String?   // Optional URL to navigate to
+  linkTo      String? // Optional URL to navigate to
   isRead      Boolean   @default(false)
   isDismissed Boolean   @default(false)
   createdAt   DateTime  @default(now())
