@@ -3,10 +3,13 @@ import { CounselService } from './counsel.service';
 import { CounselExportService } from './counsel-export.service';
 import { AssignmentService } from './assignment.service';
 import { WellbeingAnalysisService } from './wellbeing-analysis.service';
+import { ObservationService } from './observation.service';
 import { CounselRequestDto } from './dto/counsel-request.dto';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { OverrideStatusDto } from './dto/override-status.dto';
+import { CreateObservationDto } from './dto/create-observation.dto';
+import { UpdateObservationDto } from './dto/update-observation.dto';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { IsCounselorGuard } from './guards/is-counselor.guard';
@@ -20,6 +23,7 @@ export class CounselController {
     private counselExportService: CounselExportService,
     private assignmentService: AssignmentService,
     private wellbeingAnalysisService: WellbeingAnalysisService,
+    private observationService: ObservationService,
     private prisma: PrismaService,
   ) {}
 
@@ -309,5 +313,73 @@ export class CounselController {
     }
 
     return { success: true, status };
+  }
+
+  // ===== COUNSELOR OBSERVATION ENDPOINTS =====
+
+  /**
+   * Create a new counselor observation
+   * POST /counsel/members/:memberId/observations
+   */
+  @UseGuards(JwtAuthGuard, IsCounselorGuard)
+  @Post('members/:memberId/observations')
+  async createObservation(
+    @Request() req,
+    @Param('memberId') memberId: string,
+    @Query('organizationId') organizationId: string,
+    @Body() dto: CreateObservationDto,
+  ) {
+    const counselorId = req.user.id;
+    return this.observationService.createObservation(
+      counselorId,
+      memberId,
+      organizationId,
+      dto,
+    );
+  }
+
+  /**
+   * Get all observations for a member
+   * GET /counsel/members/:memberId/observations
+   */
+  @UseGuards(JwtAuthGuard, IsCounselorGuard)
+  @Get('members/:memberId/observations')
+  async getObservations(
+    @Request() req,
+    @Param('memberId') memberId: string,
+    @Query('organizationId') organizationId: string,
+  ) {
+    const counselorId = req.user.id;
+    return this.observationService.getObservationsForMember(
+      counselorId,
+      memberId,
+      organizationId,
+    );
+  }
+
+  /**
+   * Update an observation
+   * PATCH /counsel/observations/:id
+   */
+  @UseGuards(JwtAuthGuard, IsCounselorGuard)
+  @Patch('observations/:id')
+  async updateObservation(
+    @Request() req,
+    @Param('id') observationId: string,
+    @Body() dto: UpdateObservationDto,
+  ) {
+    const counselorId = req.user.id;
+    return this.observationService.updateObservation(counselorId, observationId, dto);
+  }
+
+  /**
+   * Delete an observation
+   * DELETE /counsel/observations/:id
+   */
+  @UseGuards(JwtAuthGuard, IsCounselorGuard)
+  @Delete('observations/:id')
+  async deleteObservation(@Request() req, @Param('id') observationId: string) {
+    const counselorId = req.user.id;
+    return this.observationService.deleteObservation(counselorId, observationId);
   }
 }
