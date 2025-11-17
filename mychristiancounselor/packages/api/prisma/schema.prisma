@@ -23,6 +23,14 @@ model User {
   accountType            String    @default("individual") // 'individual' or 'organization'
   preferredTranslation   String?   @default("KJV") // User's preferred Bible translation
   comparisonTranslations String[]  @default(["ESV", "NASB", "NIV", "NKJV"]) // For comparison mode
+
+  // Individual subscription fields (denormalized for fast access)
+  subscriptionStatus     String    @default("none") // 'none' | 'active' | 'canceled' | 'past_due'
+  subscriptionTier       String?   // 'basic' | 'premium'
+  subscriptionStart      DateTime? // When current subscription started
+  subscriptionEnd        DateTime? // When subscription ended (for canceled)
+  stripeCustomerId       String?   @unique // Stripe customer ID
+
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
@@ -35,12 +43,26 @@ model User {
   adminActionsGiven       AdminAuditLog[]          @relation("AdminActions")
   adminActionsReceived    AdminAuditLog[]          @relation("ActionsReceived")
   sessionNotesAuthored    SessionNote[]            @relation("SessionNotesAuthored")
+  subscriptions           Subscription[]
+
+  // New counselor relations
+  counselorAssignments    CounselorAssignment[]    @relation("CounselorAssignments")
+  memberAssignments       CounselorAssignment[]    @relation("MemberAssignments")
+  observationsAuthored    CounselorObservation[]   @relation("ObservationsAuthored")
+  observationsReceived    CounselorObservation[]   @relation("ObservationsReceived")
+  coverageGrantsGiven     CounselorCoverageGrant[] @relation("CoverageGrantsGiven")
+  coverageGrantsReceived  CounselorCoverageGrant[] @relation("CoverageGrantsReceived")
+  coverageGrantsForMember CounselorCoverageGrant[] @relation("CoverageGrantsForMember")
+  wellbeingStatus         MemberWellbeingStatus?
+  notificationsReceived   Notification[]           @relation("NotificationsReceived")
+  notificationsSent       Notification[]           @relation("NotificationsSent")
 
   @@index([email])
   @@index([verificationToken])
   @@index([resetToken])
   @@index([accountType])
   @@index([isPlatformAdmin])
+  @@index([subscriptionStatus])
 }
 
 // JWT refresh tokens (server-side storage)
@@ -67,19 +89,21 @@ model Organization {
   name                 String
   description          String?   @db.Text
   licenseType          String? // 'Family', 'Small', 'Medium', 'Large'
-  licenseStatus        String    @default("trial") // 'trial', 'active', 'expired', 'cancelled'
+  licenseStatus        String    @default("trial") // 'trial', 'active', 'expired', 'cancelled', 'archived'
   licenseExpiresAt     DateTime?
   maxMembers           Int       @default(10)
   isSystemOrganization Boolean   @default(false) // true for Platform Admin org
+  archivedAt           DateTime? // When the organization was archived
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
   // Relations
-  members         OrganizationMember[]
-  invitations     OrganizationInvitation[]
-  roles           OrganizationRole[]
-  auditLogs       AdminAuditLog[]
-  metricSnapshots MetricSnapshot[]
+  members              OrganizationMember[]
+  invitations          OrganizationInvitation[]
+  roles                OrganizationRole[]
+  auditLogs            AdminAuditLog[]
+  metricSnapshots      MetricSnapshot[]
+  counselorAssignments CounselorAssignment[]
 
   @@index([licenseStatus])
   @@index([licenseExpiresAt])
@@ -184,21 +208,26 @@ model MetricSnapshot {
 }
 
 model Session {
-  id                   String        @id @default(uuid())
+  id                   String         @id @default(uuid())
   userId               String? // null for anonymous users
   title                String
-  topics               Json          @default("[]") // Theological topics/themes discussed (array of strings)
-  status               String        @default("active") // 'active' | 'completed'
-  preferredTranslation String        @default("ASV") // Bible translation preference (KJV or ASV)
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  topics               Json           @default("[]") // Theological topics/themes discussed (array of strings)
+  status               String         @default("active") // 'active' | 'completed' | 'archived'
+  preferredTranslation String         @default("ASV") // Bible translation preference (KJV or ASV)
+  questionCount        Int            @default(0) // Number of clarifying questions asked
+  archivedAt           DateTime? // When session was archived
+  deletedAt            DateTime? // Scheduled deletion date (30 days after archive)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
   messages             Message[]
   notes                SessionNote[]
+  shares               SessionShare[]
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([userId])
+  @@index([status])
 }
 
 model Message {
@@ -267,4 +296,155 @@ model BibleVerse {
   // Optimize verse lookups
   @@index([translationCode, book, chapter, verse])
   @@index([book])
+}
+
+// Individual user subscriptions (for billing history and audit trail)
+model Subscription {
+  id                    String    @id @default(uuid())
+  userId                String
+  status                String // 'active' | 'canceled' | 'past_due' | 'incomplete'
+  tier                  String    @default("basic") // 'basic' | 'premium'
+  startDate             DateTime  @default(now())
+  endDate               DateTime?
+  stripeSubscriptionId  String?   @unique // Stripe subscription ID
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+// Session sharing for collaboration
+model SessionShare {
+  id               String    @id @default(uuid())
+  sessionId        String
+  shareToken       String    @unique
+  sharedBy         String // User ID who created the share
+  sharedWith       String? // Email or user ID of recipient
+  organizationId   String? // If shared within organization
+  allowNotesAccess Boolean   @default(false) // If true, recipients can add notes
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime?
+
+  session Session              @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  accesses SessionShareAccess[]
+
+  @@index([sessionId])
+  @@index([shareToken])
+}
+
+// Track which users have accessed which shared sessions
+model SessionShareAccess {
+  id             String    @id @default(uuid())
+  shareId        String
+  userId         String
+  firstAccessedAt DateTime  @default(now())
+  lastAccessedAt  DateTime  @default(now())
+  isDismissed     Boolean   @default(false)
+  dismissedAt     DateTime?
+
+  share SessionShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
+
+  @@unique([shareId, userId])
+  @@index([userId])
+  @@index([shareId])
+  @@index([isDismissed])
+}
+
+// Counselor-member assignment for pastoral care relationships
+model CounselorAssignment {
+  id             String   @id @default(uuid())
+  counselorId    String   // User with Counselor role
+  memberId       String   // User being counseled
+  organizationId String
+  status         String   @default("active") // 'active' | 'inactive'
+  assignedBy     String   // Admin who made assignment
+  assignedAt     DateTime @default(now())
+  endedAt        DateTime?
+
+  counselor    User         @relation("CounselorAssignments", fields: [counselorId], references: [id], onDelete: Cascade)
+  member       User         @relation("MemberAssignments", fields: [memberId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([counselorId, memberId, organizationId])
+  @@index([counselorId, status])
+  @@index([memberId])
+  @@index([organizationId])
+}
+
+// Private counselor notes - only visible to authoring counselor
+model CounselorObservation {
+  id          String   @id @default(uuid())
+  counselorId String
+  memberId    String
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  counselor User @relation("ObservationsAuthored", fields: [counselorId], references: [id], onDelete: Cascade)
+  member    User @relation("ObservationsReceived", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([counselorId, memberId])
+  @@index([createdAt])
+}
+
+// Temporary access permissions for workload sharing
+model CounselorCoverageGrant {
+  id                String    @id @default(uuid())
+  primaryCounselorId String
+  backupCounselorId  String
+  memberId           String
+  grantedAt          DateTime  @default(now())
+  expiresAt          DateTime?
+  revokedAt          DateTime?
+
+  primaryCounselor User @relation("CoverageGrantsGiven", fields: [primaryCounselorId], references: [id], onDelete: Cascade)
+  backupCounselor  User @relation("CoverageGrantsReceived", fields: [backupCounselorId], references: [id], onDelete: Cascade)
+  member           User @relation("CoverageGrantsForMember", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([backupCounselorId, revokedAt])
+  @@index([primaryCounselorId])
+  @@index([memberId])
+}
+
+// AI-generated and counselor-overridden wellbeing status
+model MemberWellbeingStatus {
+  id               String   @id @default(uuid())
+  memberId         String   @unique
+  status           String   // 'green' | 'yellow' | 'red'
+  aiSuggestedStatus String  // What AI detected
+  overriddenBy     String?  // Counselor who overrode
+  summary          String   @db.Text // AI-generated 7-day summary
+  lastAnalyzedAt   DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  member User @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([lastAnalyzedAt])
+}
+
+// Ticker-tape notifications and counselor-member messaging
+model Notification {
+  id          String    @id @default(uuid())
+  recipientId String
+  senderId    String?   // Null for system notifications
+  type        String    // 'system' | 'message' | 'alert'
+  category    String    // 'assignment' | 'note_added' | 'status_change' | 'direct_message'
+  title       String    // Brief header
+  message     String    @db.Text
+  linkTo      String?   // Optional URL to navigate to
+  isRead      Boolean   @default(false)
+  isDismissed Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime? // Auto-dismiss after date
+
+  recipient User  @relation("NotificationsReceived", fields: [recipientId], references: [id], onDelete: Cascade)
+  sender    User? @relation("NotificationsSent", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, isRead, isDismissed])
+  @@index([createdAt])
+  @@index([recipientId, createdAt])
 }
