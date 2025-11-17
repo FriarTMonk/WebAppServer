@@ -56,12 +56,14 @@ export class CounselController {
   async createNote(
     @Param('sessionId') sessionId: string,
     @Request() req,
+    @Query('organizationId') organizationId: string,
     @Body() createNoteDto: CreateNoteDto
   ) {
     const userId = req.user.id;
     const note = await this.counselService.createNote(
       sessionId,
       userId,
+      organizationId,
       createNoteDto
     );
     return { note };
@@ -71,12 +73,14 @@ export class CounselController {
   @Get('notes/:sessionId')
   async getNotes(
     @Param('sessionId') sessionId: string,
+    @Query('organizationId') organizationId: string,
     @Request() req
   ) {
     const userId = req.user.id;
     const notes = await this.counselService.getNotesForSession(
       sessionId,
-      userId
+      userId,
+      organizationId
     );
     return { notes };
   }
@@ -85,6 +89,7 @@ export class CounselController {
   @Put('notes/:noteId')
   async updateNote(
     @Param('noteId') noteId: string,
+    @Query('organizationId') organizationId: string,
     @Request() req,
     @Body() updateNoteDto: UpdateNoteDto
   ) {
@@ -92,6 +97,7 @@ export class CounselController {
     const note = await this.counselService.updateNote(
       noteId,
       userId,
+      organizationId,
       updateNoteDto
     );
     return { note };
