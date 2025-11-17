@@ -30,6 +30,11 @@ export class WellbeingAnalysisService {
       const summary = await this.generateSevenDaySummary(messages, sessionCount);
       this.logger.debug(`Generated summary: ${summary}`);
 
+      // Get existing status to check for override
+      const existing = await this.prisma.memberWellbeingStatus.findUnique({
+        where: { memberId },
+      });
+
       // Upsert wellbeing status record
       await this.prisma.memberWellbeingStatus.upsert({
         where: { memberId },
@@ -41,11 +46,11 @@ export class WellbeingAnalysisService {
           lastAnalyzedAt: new Date(),
         },
         update: {
-          status, // Update status unless overridden
+          // Preserve manual override if it exists
+          ...(existing?.overriddenBy ? {} : { status }),
           aiSuggestedStatus: status,
           summary,
           lastAnalyzedAt: new Date(),
-          // Note: If overriddenBy exists, we keep current status but update aiSuggestedStatus
         },
       });
 
