@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useCounselorMembers } from '@/hooks/useCounselorMembers';
 import { WellbeingStatus, CounselorMemberSummary } from '@mychristiancounselor/shared';
 import OverrideStatusModal from './OverrideStatusModal';
+import MemberProfileModal from './MemberProfileModal';
 
 export default function CounselorDashboard() {
   const [selectedOrg] = useState<string | undefined>(undefined);
@@ -14,6 +15,10 @@ export default function CounselorDashboard() {
     memberId: string;
     currentStatus: WellbeingStatus;
     aiStatus: WellbeingStatus;
+  } | null>(null);
+  const [profileModal, setProfileModal] = useState<{
+    memberId: string;
+    memberName: string;
   } | null>(null);
 
   const getStoplightEmoji = (status: WellbeingStatus) => {
@@ -182,8 +187,16 @@ export default function CounselorDashboard() {
                       >
                         Override
                       </button>
-                      <button className="text-indigo-600 hover:text-indigo-900">
-                        View
+                      <button
+                        onClick={() =>
+                          setProfileModal({
+                            memberId: memberSummary.member.id,
+                            memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
+                          })
+                        }
+                        className="text-green-600 hover:text-green-900"
+                      >
+                        View Profile
                       </button>
                     </td>
                   </tr>
@@ -206,6 +219,15 @@ export default function CounselorDashboard() {
             refetch();
             setOverrideModal(null);
           }}
+        />
+      )}
+
+      {profileModal && (
+        <MemberProfileModal
+          memberId={profileModal.memberId}
+          memberName={profileModal.memberName}
+          organizationId={selectedOrg}
+          onClose={() => setProfileModal(null)}
         />
       )}
     </div>
