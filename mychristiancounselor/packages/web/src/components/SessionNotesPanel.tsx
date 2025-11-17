@@ -5,7 +5,7 @@ import { SessionNote, CreateNoteRequest } from '@mychristiancounselor/shared';
 import { getAccessToken } from '../lib/auth';
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:39996';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
 interface SessionNotesPanelProps {
   sessionId: string;
@@ -40,9 +40,16 @@ export function SessionNotesPanel({
 
       setNotes(response.data.notes);
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch notes:', err);
-      setError('Failed to load notes');
+      // 404 or empty notes is not an error - just means no notes yet
+      if (err.response?.status === 404 || err.response?.data?.notes?.length === 0) {
+        setNotes([]);
+        setError(null);
+      } else {
+        // Only show error for actual failures (500, network errors, etc.)
+        setError('Failed to load notes');
+      }
     } finally {
       setInitialLoading(false);
     }

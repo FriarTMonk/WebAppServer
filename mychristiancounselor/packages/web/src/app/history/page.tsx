@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAccessToken } from '../../lib/auth';
+import { SessionNotesPanel } from '../../components/SessionNotesPanel';
+import { ShareModal } from '../../components/ShareModal';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
@@ -14,6 +16,7 @@ interface ConversationSummary {
   topics: string[];
   createdAt: string;
   updatedAt: string;
+  noteCount: number;
 }
 
 interface FullConversation {
@@ -32,7 +35,7 @@ interface FullConversation {
 }
 
 export default function HistoryPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const router = useRouter();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<FullConversation | null>(null);
@@ -42,6 +45,8 @@ export default function HistoryPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareConversation, setShareConversation] = useState<{ id: string; title: string } | null>(null);
 
   const fetchHistory = async () => {
     try {
@@ -61,6 +66,8 @@ export default function HistoryPage() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Journal API Response:', data);
+        console.log('First conversation noteCount:', data[0]?.noteCount);
         setConversations(data);
       } else {
         setError('Failed to load conversation history');
@@ -141,9 +148,9 @@ export default function HistoryPage() {
     }
   };
 
-  const openShareModal = (conversationId: string) => {
-    // TODO: Implement share modal functionality
-    console.log('Share conversation:', conversationId);
+  const openShareModal = (conversationId: string, title: string) => {
+    setShareConversation({ id: conversationId, title });
+    setIsShareModalOpen(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -185,13 +192,13 @@ export default function HistoryPage() {
   if (selectedConversation) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-4xl mx-auto px-4">
+        <div className="max-w-7xl mx-auto px-4">
           <div className="mb-6 flex items-center justify-between no-print">
             <button
               onClick={() => setSelectedConversation(null)}
               className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
             >
-              ← Back to History
+              ← Back to Journal
             </button>
             <button
               onClick={handlePrint}
@@ -204,63 +211,88 @@ export default function HistoryPage() {
             </button>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6 mb-6 print:shadow-none print:border-0">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">{selectedConversation.title}</h1>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Conversation Column (2/3 width on desktop) */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-lg shadow p-6 mb-6 print:shadow-none print:border-0">
+                <h1 className="text-2xl font-bold text-gray-900 mb-4">{selectedConversation.title}</h1>
 
-            {parseTopics(selectedConversation.topics).length > 0 && (
-              <div className="mb-4">
-                <div className="flex flex-wrap gap-2">
-                  {parseTopics(selectedConversation.topics).map((topic, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                {parseTopics(selectedConversation.topics).length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex flex-wrap gap-2">
+                      {parseTopics(selectedConversation.topics).map((topic, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                        >
+                          {topic}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-sm text-gray-600 mb-6">
+                  Started: {formatDate(selectedConversation.createdAt)}
+                </div>
+
+                <div className="space-y-4">
+                  {selectedConversation.messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`p-4 rounded-lg ${
+                        message.role === 'user'
+                          ? 'bg-blue-50 border border-blue-200'
+                          : message.role === 'assistant'
+                          ? 'bg-gray-50 border border-gray-200'
+                          : 'bg-yellow-50 border border-yellow-200'
+                      }`}
                     >
-                      {topic}
-                    </span>
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-semibold text-gray-900 capitalize">
+                          {message.role === 'assistant' ? 'Counselor' : message.role}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {formatDate(message.timestamp)}
+                        </span>
+                      </div>
+                      <p className="text-gray-700 whitespace-pre-wrap">{message.content}</p>
+
+                      {message.scriptureReferences && message.scriptureReferences.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-300">
+                          <p className="text-sm font-semibold text-gray-700 mb-2">Scripture References:</p>
+                          {message.scriptureReferences.map((ref: any, index: number) => (
+                            <div key={index} className="text-sm text-gray-600 mb-2">
+                              <span className="font-semibold">
+                                {ref.book && ref.chapter && ref.verseStart ? (
+                                  <>
+                                    {ref.book} {ref.chapter}:{ref.verseStart}
+                                    {ref.verseEnd && ref.verseEnd !== ref.verseStart && `-${ref.verseEnd}`}
+                                    {ref.theme && <span className="italic font-normal"> ({ref.theme})</span>}
+                                    {' '}({ref.translation || 'KJV'})
+                                  </>
+                                ) : ref.reference ? (
+                                  ref.reference
+                                ) : null}
+                              </span>
+                              <p className="italic mt-1">"{ref.text}"</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
-            )}
-
-            <div className="text-sm text-gray-600 mb-6">
-              Started: {formatDate(selectedConversation.createdAt)}
             </div>
 
-            <div className="space-y-4">
-              {selectedConversation.messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`p-4 rounded-lg ${
-                    message.role === 'user'
-                      ? 'bg-blue-50 border border-blue-200'
-                      : message.role === 'assistant'
-                      ? 'bg-gray-50 border border-gray-200'
-                      : 'bg-yellow-50 border border-yellow-200'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-semibold text-gray-900 capitalize">
-                      {message.role === 'assistant' ? 'Counselor' : message.role}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {formatDate(message.timestamp)}
-                    </span>
-                  </div>
-                  <p className="text-gray-700 whitespace-pre-wrap">{message.content}</p>
-
-                  {message.scriptureReferences && message.scriptureReferences.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-300">
-                      <p className="text-sm font-semibold text-gray-700 mb-2">Scripture References:</p>
-                      {message.scriptureReferences.map((ref: any, index: number) => (
-                        <div key={index} className="text-sm text-gray-600 mb-2">
-                          <span className="font-semibold">{ref.reference}</span>
-                          <p className="italic mt-1">{ref.text}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+            {/* Notes Panel (1/3 width on desktop) */}
+            <div className="lg:col-span-1">
+              <SessionNotesPanel
+                sessionId={selectedConversation.id}
+                currentUserId={user?.id || ''}
+                userRole="user"
+              />
             </div>
           </div>
         </div>
@@ -280,7 +312,7 @@ export default function HistoryPage() {
           </button>
         </div>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Conversation History</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Conversation Journal</h1>
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
@@ -373,19 +405,29 @@ export default function HistoryPage() {
                 className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
               >
                 <div className="flex justify-between items-start mb-3">
-                  <h2
-                    onClick={() => loadConversation(conversation.id)}
-                    className="text-xl font-semibold text-gray-900 cursor-pointer hover:text-blue-600 flex-1"
-                  >
-                    {conversation.title}
-                  </h2>
+                  <div className="flex items-center gap-2 flex-1">
+                    <h2
+                      onClick={() => loadConversation(conversation.id)}
+                      className="text-xl font-semibold text-gray-900 cursor-pointer hover:text-blue-600"
+                    >
+                      {conversation.title}
+                    </h2>
+                    {conversation.noteCount > 0 && (
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-md text-sm font-medium"
+                        title={`${conversation.noteCount} note${conversation.noteCount === 1 ? '' : 's'}`}
+                      >
+                        📝 {conversation.noteCount}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex gap-2 ml-4">
                     {activeTab === 'active' && (
                       <>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            openShareModal(conversation.id);
+                            openShareModal(conversation.id, conversation.title);
                           }}
                           className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200"
                         >
@@ -439,6 +481,19 @@ export default function HistoryPage() {
           </div>
         )}
       </div>
+
+      {/* Share Modal */}
+      {shareConversation && (
+        <ShareModal
+          sessionId={shareConversation.id}
+          sessionTitle={shareConversation.title}
+          isOpen={isShareModalOpen}
+          onClose={() => {
+            setIsShareModalOpen(false);
+            setShareConversation(null);
+          }}
+        />
+      )}
     </div>
   );
 }

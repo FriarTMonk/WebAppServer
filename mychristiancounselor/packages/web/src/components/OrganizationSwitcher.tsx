@@ -3,21 +3,33 @@
 import { useState, useEffect } from 'react';
 import { Organization } from '@mychristiancounselor/shared';
 import { getAccessToken } from '../lib/auth';
+import { useAuth } from '../contexts/AuthContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
+/**
+ * OrganizationSwitcher displays the user's organization name.
+ * Shows "Individual" if the user is not a member of any organization.
+ */
 export function OrganizationSwitcher() {
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const { isAuthenticated, user } = useAuth();
+  const [organizationName, setOrganizationName] = useState<string>('Individual');
 
   useEffect(() => {
-    loadOrganizations();
-  }, []);
+    if (isAuthenticated) {
+      loadOrganization();
+    } else {
+      // Reset to Individual when user logs out
+      setOrganizationName('Individual');
+    }
+  }, [isAuthenticated, user]);
 
-  const loadOrganizations = async () => {
+  const loadOrganization = async () => {
     const token = getAccessToken();
-    if (!token) return;
+    if (!token) {
+      setOrganizationName('Individual');
+      return;
+    }
 
     try {
       const response = await fetch(`${API_URL}/organizations`, {
@@ -26,56 +38,28 @@ export function OrganizationSwitcher() {
 
       if (!response.ok) {
         console.error('Failed to load organizations:', response.statusText);
+        setOrganizationName('Individual');
         return;
       }
 
-      const data = await response.json();
-      setOrganizations(data);
+      const data: Organization[] = await response.json();
       if (data.length > 0) {
-        setCurrentOrg(data[0]);
+        setOrganizationName(data[0].name);
+      } else {
+        setOrganizationName('Individual');
       }
     } catch (error) {
       console.error('Failed to load organizations:', error);
+      setOrganizationName('Individual');
     }
   };
 
-  if (organizations.length === 0) {
-    return null;
-  }
-
   return (
-    <div className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-      >
-        {currentOrg?.name || 'Select Organization'}
-        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
-      </button>
-
-      {isOpen && (
-        <div className="absolute left-0 mt-2 w-64 bg-white rounded-md shadow-lg py-1 z-10">
-          {organizations.map(org => (
-            <button
-              key={org.id}
-              onClick={() => {
-                setCurrentOrg(org);
-                setIsOpen(false);
-              }}
-              className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
-                currentOrg?.id === org.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-              }`}
-            >
-              <div className="font-medium">{org.name}</div>
-              <div className="text-xs text-gray-500">
-                {org.licenseStatus} • {org.maxMembers} members
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md">
+      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+      </svg>
+      <span>{organizationName}</span>
     </div>
   );
 }

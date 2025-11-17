@@ -26,6 +26,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User not found or inactive');
     }
 
+    // If this is a morphed session, attach morph metadata to the user object
+    // This allows controllers to access morph info via req.user
+    if (payload.isMorphed && payload.originalAdminId && payload.morphSessionId) {
+      return {
+        ...user,
+        isMorphed: true,
+        originalAdminId: payload.originalAdminId,
+        morphSessionId: payload.morphSessionId,
+      };
+    }
+
     return user; // This becomes req.user
   }
 }

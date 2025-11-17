@@ -37,10 +37,13 @@ export class AuthService {
   // ===== TOKEN GENERATION =====
 
   async generateAccessToken(payload: JwtPayload): Promise<string> {
-    return this.jwtService.signAsync(payload, {
+    console.log('[AUTH] Generating JWT with payload:', JSON.stringify(payload, null, 2));
+    const token = await this.jwtService.signAsync(payload, {
       secret: this.configService.get('JWT_SECRET'),
       expiresIn: this.configService.get('JWT_ACCESS_EXPIRATION') || '15m',
     });
+    console.log('[AUTH] Generated JWT token (first 50 chars):', token.substring(0, 50));
+    return token;
   }
 
   async generateRefreshToken(userId: string, ipAddress?: string, userAgent?: string): Promise<string> {

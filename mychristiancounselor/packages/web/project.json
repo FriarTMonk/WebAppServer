@@ -1,0 +1,24 @@
+{
+  "name": "@mychristiancounselor/web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/web",
+  "projectType": "application",
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/web",
+        "command": "next dev -p ${PORT:-3699}",
+        "envFile": "packages/web/.env.local"
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/web",
+        "command": "next dev -p ${PORT:-3699}",
+        "envFile": "packages/web/.env.local"
+      }
+    }
+  }
+}

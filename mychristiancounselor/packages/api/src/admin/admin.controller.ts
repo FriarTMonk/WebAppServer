@@ -1,9 +1,10 @@
-import { Controller, Get, Logger, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Logger, Query, Param, Body, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { IsPlatformAdminGuard } from './guards/is-platform-admin.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminResetPasswordDto, UpdateMemberRoleRequest } from '@mychristiancounselor/shared';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, IsPlatformAdminGuard)
@@ -31,16 +32,6 @@ export class AdminController {
       startDate: startDate ? new Date(startDate) : undefined,
       endDate: endDate ? new Date(endDate) : undefined,
     });
-  }
-
-  @Get('health-check')
-  async healthCheck(@CurrentUser() user: User) {
-    const isPlatformAdmin = await this.adminService.isPlatformAdmin(user.id);
-    return {
-      isPlatformAdmin,
-      userId: user.id,
-      message: 'Admin access verified',
-    };
   }
 
   @Get('metrics')
@@ -103,5 +94,168 @@ export class AdminController {
       skip: skip ? parseInt(skip, 10) : undefined,
       take: take ? parseInt(take, 10) : undefined,
     });
+  }
+
+  /**
+   * Get all members of an organization
+   * GET /admin/organizations/:id/members
+   */
+  @Get('organizations/:id/members')
+  async getOrganizationMembers(
+    @CurrentUser() user: User,
+    @Param('id') organizationId: string,
+  ) {
+    await this.adminService.logAdminAction(
+      user.id,
+      'view_organization_members',
+      { organizationId },
+      undefined,
+      organizationId,
+    );
+
+    return this.adminService.getOrganizationMembers(organizationId);
+  }
+
+  /**
+   * Reset a user's password
+   * POST /admin/users/:id/reset-password
+   */
+  @Post('users/:id/reset-password')
+  async resetUserPassword(
+    @CurrentUser() user: User,
+    @Param('id') targetUserId: string,
+    @Body() dto: AdminResetPasswordDto,
+  ) {
+    return this.adminService.resetUserPassword(user.id, targetUserId, dto.newPassword);
+  }
+
+  /**
+   * Start morphing into another user
+   * POST /admin/morph/start/:userId
+   */
+  @Post('morph/start/:userId')
+  async startMorph(
+    @CurrentUser() user: User,
+    @Param('userId') targetUserId: string,
+  ) {
+    return this.adminService.startMorph(user.id, targetUserId);
+  }
+
+  /**
+   * End morph session
+   * POST /admin/morph/end
+   */
+  @Post('morph/end')
+  async endMorph(@CurrentUser() user: any) {
+    // user should have morph metadata if morphed
+    const originalAdminId = user.originalAdminId || user.id;
+    const morphSessionId = user.morphSessionId;
+
+    return this.adminService.endMorph(originalAdminId, morphSessionId);
+  }
+
+  /**
+   * Update a user's role in an organization
+   * PATCH /admin/organizations/:orgId/members/:userId/role
+   */
+  @Patch('organizations/:orgId/members/:userId/role')
+  async updateMemberRole(
+    @CurrentUser() user: User,
+    @Param('orgId') organizationId: string,
+    @Param('userId') targetUserId: string,
+    @Body() dto: UpdateMemberRoleRequest,
+  ) {
+    return this.adminService.updateMemberRole(
+      user.id,
+      organizationId,
+      targetUserId,
+      dto.roleId,
+    );
+  }
+
+  /**
+   * Manually update user subscription (Platform Admin only)
+   * PATCH /admin/users/:id/subscription
+   */
+  @Patch('users/:id/subscription')
+  async updateUserSubscription(
+    @CurrentUser() user: User,
+    @Param('id') targetUserId: string,
+    @Body() dto: any, // Will use UpdateUserSubscriptionRequest from shared
+  ) {
+    return this.adminService.updateUserSubscription(
+      user.id,
+      targetUserId,
+      {
+        subscriptionStatus: dto.subscriptionStatus,
+        subscriptionTier: dto.subscriptionTier,
+        subscriptionStart: dto.subscriptionStart ? new Date(dto.subscriptionStart) : undefined,
+        subscriptionEnd: dto.subscriptionEnd ? new Date(dto.subscriptionEnd) : undefined,
+      },
+    );
+  }
+
+  /**
+   * Update organization subscription limits (Platform Admin only)
+   * PATCH /admin/organizations/:id/subscription-limit
+   */
+  @Patch('organizations/:id/subscription-limit')
+  async updateOrganizationSubscription(
+    @CurrentUser() user: User,
+    @Param('id') organizationId: string,
+    @Body() dto: any, // Will use UpdateOrganizationSubscriptionRequest from shared
+  ) {
+    return this.adminService.updateOrganizationSubscription(
+      user.id,
+      organizationId,
+      {
+        maxMembers: dto.maxMembers,
+        licenseStatus: dto.licenseStatus,
+        licenseType: dto.licenseType,
+        licenseExpiresAt: dto.licenseExpiresAt ? new Date(dto.licenseExpiresAt) : undefined,
+      },
+    );
+  }
+
+  /**
+   * Create a new organization
+   * POST /admin/organizations
+   */
+  @Post('organizations')
+  async createOrganization(
+    @CurrentUser() user: User,
+    @Body() dto: {
+      name: string;
+      description?: string;
+      licenseType?: string;
+      licenseStatus?: string;
+      maxMembers?: number;
+    },
+  ) {
+    return this.adminService.createOrganization(user.id, dto);
+  }
+
+  /**
+   * Archive an organization
+   * POST /admin/organizations/:id/archive
+   */
+  @Post('organizations/:id/archive')
+  async archiveOrganization(
+    @CurrentUser() user: User,
+    @Param('id') organizationId: string,
+  ) {
+    return this.adminService.archiveOrganization(user.id, organizationId);
+  }
+
+  /**
+   * Unarchive an organization
+   * POST /admin/organizations/:id/unarchive
+   */
+  @Post('organizations/:id/unarchive')
+  async unarchiveOrganization(
+    @CurrentUser() user: User,
+    @Param('id') organizationId: string,
+  ) {
+    return this.adminService.unarchiveOrganization(user.id, organizationId);
   }
 }
