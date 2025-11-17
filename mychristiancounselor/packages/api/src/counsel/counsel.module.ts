@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CounselService } from './counsel.service';
 import { CounselExportService } from './counsel-export.service';
 import { AssignmentService } from './assignment.service';
+import { ObservationService } from './observation.service';
 import { WellbeingAnalysisService } from './wellbeing-analysis.service';
 import { WellbeingAnalysisScheduler } from './wellbeing-analysis.scheduler';
 import { CounselController } from './counsel.controller';
@@ -24,12 +25,14 @@ import { SubscriptionModule } from '../subscription/subscription.module';
     CounselService,
     CounselExportService,
     AssignmentService,
+    ObservationService,
     WellbeingAnalysisService,
     WellbeingAnalysisScheduler,
   ],
   exports: [
     CounselService,
     AssignmentService,
+    ObservationService,
     WellbeingAnalysisService,
   ],
 })
