@@ -28,6 +28,11 @@ export class ProfileController {
     return this.profileService.getUserOrganizations(req.user.id);
   }
 
+  @Get('counselor-assignments')
+  async getCounselorAssignments(@Request() req) {
+    return this.profileService.getCounselorAssignments(req.user.id);
+  }
+
   @Get('history')
   async getHistory(
     @Request() req,

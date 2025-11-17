@@ -256,4 +256,51 @@ export class ProfileService {
       where: { id: sessionId },
     });
   }
+
+  /**
+   * Get all counselor assignments for a user (both active and inactive)
+   */
+  async getCounselorAssignments(userId: string) {
+    const assignments = await this.prisma.counselorAssignment.findMany({
+      where: { memberId: userId },
+      include: {
+        counselor: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+      },
+      orderBy: [
+        { status: 'asc' }, // active first
+        { assignedAt: 'desc' }, // newest first within each status
+      ],
+    });
+
+    return assignments.map((assignment) => ({
+      id: assignment.id,
+      counselor: {
+        id: assignment.counselor.id,
+        name: `${assignment.counselor.firstName || ''} ${assignment.counselor.lastName || ''}`.trim() || assignment.counselor.email,
+        email: assignment.counselor.email,
+      },
+      organization: {
+        id: assignment.organization.id,
+        name: assignment.organization.name,
+        description: assignment.organization.description,
+      },
+      status: assignment.status,
+      assignedAt: assignment.assignedAt,
+      endedAt: assignment.endedAt,
+    }));
+  }
 }
