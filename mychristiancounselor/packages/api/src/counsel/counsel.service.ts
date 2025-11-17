@@ -330,7 +330,10 @@ export class CounselService {
 
     // 3. Get all notes for session
     const notes = await this.prisma.sessionNote.findMany({
-      where: { sessionId },
+      where: {
+        sessionId,
+        deletedAt: null,
+      },
       orderBy: { createdAt: 'asc' },
     });
 

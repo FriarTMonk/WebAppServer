@@ -65,7 +65,11 @@ export class ObservationService {
     await this.verifyAssignedCounselor(counselorId, memberId, organizationId);
 
     return this.prisma.counselorObservation.findMany({
-      where: { counselorId, memberId },
+      where: {
+        counselorId,
+        memberId,
+        deletedAt: null,
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
