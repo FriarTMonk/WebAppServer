@@ -2,12 +2,19 @@
 
 import { useState } from 'react';
 import { useCounselorMembers } from '@/hooks/useCounselorMembers';
-import { WellbeingStatus } from '@mychristiancounselor/shared';
+import { WellbeingStatus, CounselorMemberSummary } from '@mychristiancounselor/shared';
+import OverrideStatusModal from './OverrideStatusModal';
 
 export default function CounselorDashboard() {
   const [selectedOrg] = useState<string | undefined>(undefined);
   const { members, loading, error, refetch } = useCounselorMembers(selectedOrg);
   const [refreshing, setRefreshing] = useState<string | null>(null);
+  const [overrideModal, setOverrideModal] = useState<{
+    memberName: string;
+    memberId: string;
+    currentStatus: WellbeingStatus;
+    aiStatus: WellbeingStatus;
+  } | null>(null);
 
   const getStoplightEmoji = (status: WellbeingStatus) => {
     switch (status) {
@@ -52,6 +59,15 @@ export default function CounselorDashboard() {
     } finally {
       setRefreshing(null);
     }
+  };
+
+  const handleOpenOverride = (memberSummary: CounselorMemberSummary) => {
+    setOverrideModal({
+      memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
+      memberId: memberSummary.member.id,
+      currentStatus: memberSummary.wellbeingStatus?.status || 'green',
+      aiStatus: memberSummary.wellbeingStatus?.aiSuggestedStatus || 'green',
+    });
   };
 
   if (loading) {
@@ -160,6 +176,12 @@ export default function CounselorDashboard() {
                       >
                         {refreshing === memberSummary.member.id ? '↻ Refreshing...' : '↻ Refresh'}
                       </button>
+                      <button
+                        onClick={() => handleOpenOverride(memberSummary)}
+                        className="text-indigo-600 hover:text-indigo-900"
+                      >
+                        Override
+                      </button>
                       <button className="text-indigo-600 hover:text-indigo-900">
                         View
                       </button>
@@ -170,6 +192,21 @@ export default function CounselorDashboard() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {overrideModal && (
+        <OverrideStatusModal
+          memberName={overrideModal.memberName}
+          memberId={overrideModal.memberId}
+          currentStatus={overrideModal.currentStatus}
+          aiSuggestedStatus={overrideModal.aiStatus}
+          organizationId={selectedOrg || ''}
+          onClose={() => setOverrideModal(null)}
+          onSuccess={() => {
+            refetch();
+            setOverrideModal(null);
+          }}
+        />
       )}
     </div>
   );
