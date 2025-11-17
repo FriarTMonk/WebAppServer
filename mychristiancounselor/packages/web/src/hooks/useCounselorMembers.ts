@@ -10,10 +10,8 @@ export function useCounselorMembers(organizationId?: string) {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-
       if (!token) {
-        setError('Not authenticated');
-        return;
+        throw new Error('No authentication token');
       }
 
       const url = organizationId
@@ -21,19 +19,20 @@ export function useCounselorMembers(organizationId?: string) {
         : '/api/counsel/members';
 
       const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch members');
+        throw new Error(`Failed to fetch members: ${response.statusText}`);
       }
 
       const data = await response.json();
       setMembers(data.members || []);
+      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      console.error('Error fetching counselor members:', err);
     } finally {
       setLoading(false);
     }

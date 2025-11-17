@@ -6,7 +6,8 @@ import { WellbeingStatus } from '@mychristiancounselor/shared';
 
 export default function CounselorDashboard() {
   const [selectedOrg] = useState<string | undefined>(undefined);
-  const { members, loading, error } = useCounselorMembers(selectedOrg);
+  const { members, loading, error, refetch } = useCounselorMembers(selectedOrg);
+  const [refreshing, setRefreshing] = useState<string | null>(null);
 
   const getStoplightEmoji = (status: WellbeingStatus) => {
     switch (status) {
@@ -21,41 +22,74 @@ export default function CounselorDashboard() {
     }
   };
 
+  const formatDate = (date?: Date) => {
+    if (!date) return 'Never';
+    return new Date(date).toLocaleDateString();
+  };
+
+  const handleManualRefresh = async (memberId: string) => {
+    setRefreshing(memberId);
+    try {
+      const token = localStorage.getItem('token');
+      const url = selectedOrg
+        ? `/api/counsel/members/${memberId}/refresh-analysis?organizationId=${selectedOrg}`
+        : `/api/counsel/members/${memberId}/refresh-analysis`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to refresh analysis');
+      }
+
+      // Refresh the member list
+      await refetch();
+    } catch (err) {
+      console.error('Failed to refresh analysis:', err);
+      alert('Failed to refresh analysis. Please try again.');
+    } finally {
+      setRefreshing(null);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading your members...</div>
+      <div className="container mx-auto px-4 py-8">
+        <p>Loading counselor dashboard...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-600">Error: {error}</div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <p>Error loading dashboard: {error}</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Counselor Dashboard
-        </h1>
-        <p className="text-gray-600">
-          Monitor and support your assigned members' spiritual wellbeing
-        </p>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Counselor Dashboard</h1>
+        <button
+          onClick={() => refetch()}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Refresh All
+        </button>
       </div>
 
       {members.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-gray-600">
-            No members assigned yet. Contact your administrator to get started.
-          </p>
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded">
+          <p>You have no assigned members yet. Contact your organization admin to assign members to you.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white shadow-md rounded-lg overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -72,75 +106,67 @@ export default function CounselorDashboard() {
                   Last Active
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Sessions
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Notes
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {members.map((memberSummary) => (
-                <tr key={memberSummary.member.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div
-                      className="flex items-center justify-center w-8 h-8 rounded-full"
-                      title={`Status: ${memberSummary.wellbeingStatus.status}`}
-                    >
-                      <span className="text-2xl">
-                        {getStoplightEmoji(memberSummary.wellbeingStatus.status)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {memberSummary.member.firstName} {memberSummary.member.lastName}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {memberSummary.member.email}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 max-w-md">
-                      {memberSummary.wellbeingStatus.summary}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {memberSummary.lastConversationDate
-                      ? new Date(memberSummary.lastConversationDate).toLocaleDateString()
-                      : 'Never'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {memberSummary.totalConversations}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {memberSummary.observationCount}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      onClick={() => {
-                        // TODO: Navigate to member sessions
-                        alert('View Sessions - Coming in next task');
-                      }}
-                    >
-                      View Sessions
-                    </button>
-                    <button
-                      className="text-indigo-600 hover:text-indigo-900"
-                      onClick={() => {
-                        // TODO: Add observation
-                        alert('Add Observation - Coming in Phase 3');
-                      }}
-                    >
-                      Add Note
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {members.map((memberSummary) => {
+                const isOverridden = memberSummary.wellbeingStatus?.overriddenBy;
+                const displayStatus = memberSummary.wellbeingStatus?.status || 'green';
+                const aiStatus = memberSummary.wellbeingStatus?.aiSuggestedStatus;
+
+                return (
+                  <tr key={memberSummary.member.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-2xl" title={isOverridden ? `AI suggested: ${aiStatus}` : 'AI status'}>
+                          {getStoplightEmoji(displayStatus)}
+                        </span>
+                        {isOverridden && (
+                          <span className="text-xs text-gray-500" title="Counselor overridden">
+                            ✏️
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {memberSummary.member.firstName} {memberSummary.member.lastName}
+                        </div>
+                        <div className="text-sm text-gray-500">{memberSummary.member.email}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900">
+                        {memberSummary.wellbeingStatus?.summary || 'No analysis yet'}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Analyzed: {formatDate(memberSummary.wellbeingStatus?.lastAnalyzedAt)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(memberSummary.lastConversationDate)}
+                      <div className="text-xs text-gray-400">
+                        {memberSummary.totalConversations} total
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                      <button
+                        onClick={() => handleManualRefresh(memberSummary.member.id)}
+                        disabled={refreshing === memberSummary.member.id}
+                        className="text-blue-600 hover:text-blue-900 disabled:text-gray-400"
+                      >
+                        {refreshing === memberSummary.member.id ? '↻ Refreshing...' : '↻ Refresh'}
+                      </button>
+                      <button className="text-indigo-600 hover:text-indigo-900">
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
