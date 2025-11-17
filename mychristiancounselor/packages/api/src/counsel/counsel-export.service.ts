@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Session, Message, SessionNote } from '@prisma/client';
+import { Session, Message, SessionNote, CounselorObservation, User, Organization } from '@prisma/client';
 
 /**
  * Interface for scripture reference with full text
@@ -133,5 +133,110 @@ export class CounselExportService {
       reference,
       text: `Full text for ${reference} will be fetched from Bible API`,
     }));
+  }
+
+  /**
+   * Get comprehensive member profile data for export (PDF/print)
+   *
+   * @param memberId - The ID of the member to export
+   * @param counselorId - The ID of the counselor requesting the export
+   * @param organizationId - The ID of the organization context
+   * @returns Complete export data including member info, observations, and assignment details
+   * @throws NotFoundException if member doesn't exist
+   * @throws ForbiddenException if counselor doesn't have access to the member
+   */
+  async getMemberProfileForExport(
+    memberId: string,
+    counselorId: string,
+    organizationId: string
+  ) {
+    // 1. Verify counselor assignment
+    const assignment = await this.prisma.counselorAssignment.findFirst({
+      where: {
+        counselorId,
+        memberId,
+        organizationId,
+        status: 'active',
+      },
+      include: {
+        counselor: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        member: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            createdAt: true,
+          },
+        },
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+      },
+    });
+
+    if (!assignment) {
+      throw new ForbiddenException('You do not have access to this member');
+    }
+
+    // 2. Fetch all observations for this member (non-deleted)
+    const observations = await this.prisma.counselorObservation.findMany({
+      where: {
+        memberId,
+        counselorId,
+        deletedAt: null,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // 3. Fetch assignment history for this member in this organization
+    const assignmentHistory = await this.prisma.counselorAssignment.findMany({
+      where: {
+        memberId,
+        organizationId,
+      },
+      include: {
+        counselor: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: [
+        { status: 'asc' }, // active first
+        { assignedAt: 'desc' },
+      ],
+    });
+
+    // 4. Return structured export data
+    return {
+      member: assignment.member,
+      counselor: assignment.counselor,
+      organization: assignment.organization,
+      assignment: {
+        assignedAt: assignment.assignedAt,
+        status: assignment.status,
+      },
+      observations,
+      assignmentHistory: assignmentHistory.map(a => ({
+        counselorName: `${a.counselor.firstName || ''} ${a.counselor.lastName || ''}`.trim() || a.counselor.email,
+        status: a.status,
+        assignedAt: a.assignedAt,
+        endedAt: a.endedAt,
+      })),
+    };
   }
 }
