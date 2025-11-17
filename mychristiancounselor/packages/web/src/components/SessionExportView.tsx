@@ -34,6 +34,7 @@ export function SessionExportView({ sessionId }: SessionExportViewProps) {
   const [data, setData] = useState<SessionExportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showPrivateNotes, setShowPrivateNotes] = useState(false);
 
   useEffect(() => {
     const fetchExportData = async () => {
@@ -169,13 +170,27 @@ export function SessionExportView({ sessionId }: SessionExportViewProps) {
         }
       `}</style>
 
-      <button
-        onClick={() => window.print()}
-        className="no-print fixed top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 z-50"
-        aria-label="Print session"
-      >
-        🖨️ Print
-      </button>
+      <div className="no-print fixed top-4 right-4 z-50 flex flex-col gap-2 items-end">
+        <button
+          onClick={() => window.print()}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700"
+          aria-label="Print session"
+        >
+          🖨️ Print
+        </button>
+
+        {data.notes.some(note => note.isPrivate) && (
+          <label className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-lg text-sm cursor-pointer hover:bg-gray-50">
+            <input
+              type="checkbox"
+              checked={showPrivateNotes}
+              onChange={(e) => setShowPrivateNotes(e.target.checked)}
+              className="w-4 h-4 cursor-pointer"
+            />
+            <span className="text-gray-700">Show Private Notes</span>
+          </label>
+        )}
+      </div>
 
       <main>
         {/* Header */}
@@ -290,34 +305,34 @@ export function SessionExportView({ sessionId }: SessionExportViewProps) {
           </div>
 
           <div className="space-y-3">
-            {data.notes.map((note) => (
+            {data.notes.filter(note => !note.isPrivate || showPrivateNotes).map((note) => (
               <div
                 key={note.id}
                 className={`avoid-break border rounded-lg p-4 print:border-gray-400 ${
                   note.isPrivate
-                    ? 'bg-yellow-50 border-yellow-200 print:bg-white print:border-gray-400'
+                    ? 'bg-yellow-50 border-yellow-200 print:bg-white print:border-gray-400 private-note'
                     : 'bg-white border-gray-200 print:border-gray-400'
                 }`}
               >
                 <div className="flex justify-between items-start mb-2 flex-wrap gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-gray-900 print:text-black">
+                    <span className={`font-semibold text-sm text-gray-900 ${note.isPrivate ? 'print:text-gray-500' : 'print:text-black'}`}>
                       {note.authorName}
                     </span>
-                    <span className="text-xs text-gray-600 print:text-black">
+                    <span className={`text-xs text-gray-600 ${note.isPrivate ? 'print:text-gray-400' : 'print:text-black'}`}>
                       ({note.authorRole})
                     </span>
                     {note.isPrivate && (
-                      <span className="text-xs bg-yellow-200 print:bg-white border print:border-gray-400 text-yellow-900 print:text-black px-2 py-1 rounded font-medium">
+                      <span className="text-xs bg-yellow-200 print:bg-white border print:border-gray-400 text-yellow-900 print:text-gray-500 px-2 py-1 rounded font-medium">
                         Private
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-gray-600 print:text-black">
+                  <span className={`text-xs text-gray-600 ${note.isPrivate ? 'print:text-gray-400' : 'print:text-black'}`}>
                     {formatTimestamp(note.createdAt)}
                   </span>
                 </div>
-                <p className="text-gray-800 print:text-black whitespace-pre-wrap leading-relaxed">
+                <p className={`text-gray-800 whitespace-pre-wrap leading-relaxed ${note.isPrivate ? 'print:text-gray-500' : 'print:text-black'}`}>
                   {note.content}
                 </p>
               </div>
