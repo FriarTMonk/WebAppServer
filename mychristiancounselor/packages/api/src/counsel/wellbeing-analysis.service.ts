@@ -238,4 +238,50 @@ Write in professional pastoral language suitable for clinical documentation.`;
       return `Had ${sessionCount} conversation(s) this week. Summary generation failed.`;
     }
   }
+
+  /**
+   * Override AI-suggested status with counselor's judgment
+   */
+  async overrideStatus(
+    memberId: string,
+    counselorId: string,
+    newStatus: 'red' | 'yellow' | 'green',
+    reason: string,
+  ): Promise<void> {
+    this.logger.log(
+      `Counselor ${counselorId} overriding status for member ${memberId} to ${newStatus}`,
+    );
+
+    try {
+      // Get current status record
+      const current = await this.prisma.memberWellbeingStatus.findUnique({
+        where: { memberId },
+      });
+
+      if (!current) {
+        throw new Error('Member wellbeing status not found. Run analysis first.');
+      }
+
+      // Update with override
+      await this.prisma.memberWellbeingStatus.update({
+        where: { memberId },
+        data: {
+          status: newStatus,
+          overriddenBy: counselorId,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Log the override action (for audit trail)
+      this.logger.log(
+        `Status override complete: ${current.aiSuggestedStatus} -> ${newStatus}. Reason: ${reason}`,
+      );
+
+      // TODO: Create notification for member's assigned counselor (if different)
+      // TODO: Add to audit log table when implemented in Phase 5
+    } catch (error) {
+      this.logger.error(`Failed to override status for member ${memberId}`, error);
+      throw error;
+    }
+  }
 }

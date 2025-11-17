@@ -99,9 +99,19 @@ export interface MemberWellbeingStatus {
   updatedAt: Date;
 }
 
-export interface OverrideStatusDto {
+export interface OverrideStatusRequest {
   status: WellbeingStatus;
   reason: string;
+}
+
+export interface OverrideStatusResponse {
+  success: boolean;
+  status: MemberWellbeingStatus;
+}
+
+export interface RefreshAnalysisResponse {
+  success: boolean;
+  status: MemberWellbeingStatus | null;
 }
 
 // Counselor Dashboard Types

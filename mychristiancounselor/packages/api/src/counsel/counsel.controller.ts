@@ -1,10 +1,12 @@
-import { Controller, Post, Get, Body, Param, Request, UseGuards, Put, Delete, HttpCode, Query, ForbiddenException } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Request, UseGuards, Put, Delete, HttpCode, Query, ForbiddenException, Patch } from '@nestjs/common';
 import { CounselService } from './counsel.service';
 import { CounselExportService } from './counsel-export.service';
 import { AssignmentService } from './assignment.service';
+import { WellbeingAnalysisService } from './wellbeing-analysis.service';
 import { CounselRequestDto } from './dto/counsel-request.dto';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
+import { OverrideStatusDto } from './dto/override-status.dto';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { IsCounselorGuard } from './guards/is-counselor.guard';
@@ -17,6 +19,7 @@ export class CounselController {
     private counselService: CounselService,
     private counselExportService: CounselExportService,
     private assignmentService: AssignmentService,
+    private wellbeingAnalysisService: WellbeingAnalysisService,
     private prisma: PrismaService,
   ) {}
 
@@ -198,5 +201,86 @@ export class CounselController {
     });
 
     return { sessions };
+  }
+
+  /**
+   * Manually refresh wellbeing analysis for a specific member
+   * POST /counsel/members/:memberId/refresh-analysis
+   */
+  @UseGuards(JwtAuthGuard, IsCounselorGuard)
+  @Post('members/:memberId/refresh-analysis')
+  async refreshMemberAnalysis(
+    @Param('memberId') memberId: string,
+    @Request() req,
+    @Query('organizationId') organizationId: string,
+  ) {
+    const counselorId = req.user.id;
+
+    // Verify counselor has assignment to this member
+    const hasAssignment = await this.assignmentService.verifyCounselorAssignment(
+      counselorId,
+      memberId,
+      organizationId,
+    );
+
+    if (!hasAssignment) {
+      throw new ForbiddenException('You are not assigned to this member');
+    }
+
+    // Run analysis
+    await this.wellbeingAnalysisService.analyzeMemberWellbeing(memberId);
+
+    // Return updated status
+    const status = await this.prisma.memberWellbeingStatus.findUnique({
+      where: { memberId },
+    });
+
+    return { success: true, status };
+  }
+
+  /**
+   * Override AI-suggested wellbeing status
+   * PATCH /counsel/members/:memberId/status
+   */
+  @UseGuards(JwtAuthGuard, IsCounselorGuard)
+  @Patch('members/:memberId/status')
+  async overrideMemberStatus(
+    @Param('memberId') memberId: string,
+    @Body() dto: OverrideStatusDto,
+    @Request() req,
+    @Query('organizationId') organizationId: string,
+  ) {
+    const counselorId = req.user.id;
+
+    // Verify counselor has assignment to this member (not just coverage)
+    const assignment = await this.prisma.counselorAssignment.findFirst({
+      where: {
+        counselorId,
+        memberId,
+        organizationId,
+        status: 'active',
+      },
+    });
+
+    if (!assignment) {
+      throw new ForbiddenException(
+        'Only the assigned counselor can override status (not coverage counselors)',
+      );
+    }
+
+    // Override status
+    await this.wellbeingAnalysisService.overrideStatus(
+      memberId,
+      counselorId,
+      dto.status,
+      dto.reason,
+    );
+
+    // Return updated status
+    const status = await this.prisma.memberWellbeingStatus.findUnique({
+      where: { memberId },
+    });
+
+    return { success: true, status };
   }
 }
