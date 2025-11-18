@@ -163,6 +163,7 @@ Criteria for TRUE crisis:
 - Active suicidal ideation with intent or plan
 - Immediate self-harm intent
 - Active abuse or violence happening now
+- Active addiction requiring immediate intervention
 - Severe mental health emergency
 
 Do NOT flag as crisis:
@@ -206,6 +207,8 @@ Criteria for TRUE grief:
 - Current mourning or bereavement
 - Processing loss and seeking comfort
 - Spiritual questions about death and afterlife
+- High anxiety or severe anxiety disorders
+- Current bullying or harassment
 
 Do NOT flag as grief:
 - Theoretical questions about death
@@ -213,6 +216,7 @@ Do NOT flag as grief:
 - Past grief that's fully resolved
 - Academic theological discussions
 - Metaphorical references
+- Mild everyday stress
 
 Respond with ONLY "true" or "false" and nothing else.`;
 
