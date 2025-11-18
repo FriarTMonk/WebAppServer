@@ -148,4 +148,87 @@ ${currentQuestionCount >= maxClarifyingQuestions
 
     return themes.length > 0 ? themes : ['general'];
   }
+
+  /**
+   * AI-powered contextual crisis detection
+   * Uses theological discernment to identify genuine crisis situations
+   */
+  async detectCrisisContextual(message: string): Promise<boolean> {
+    try {
+      const prompt = `As a Christian counselor with theological training, analyze this message for genuine crisis indicators requiring immediate professional intervention.
+
+Message: "${message}"
+
+Criteria for TRUE crisis:
+- Active suicidal ideation with intent or plan
+- Immediate self-harm intent
+- Active abuse or violence happening now
+- Severe mental health emergency
+
+Do NOT flag as crisis:
+- Past struggles now resolved
+- Hypothetical questions about theology of suffering
+- Academic or theological discussions
+- Historical references to past pain
+- Metaphorical language ("dying inside", "killing me")
+
+Respond with ONLY "true" or "false" and nothing else.`;
+
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1, // Low temperature for consistent detection
+        max_tokens: 10,
+      });
+
+      const response = completion.choices[0].message.content?.trim().toLowerCase();
+      return response === 'true';
+    } catch (error) {
+      console.error('AI crisis detection error:', error);
+      // Fall back to false to avoid false positives
+      return false;
+    }
+  }
+
+  /**
+   * AI-powered contextual grief detection
+   * Uses theological discernment to identify genuine grief situations
+   */
+  async detectGriefContextual(message: string): Promise<boolean> {
+    try {
+      const prompt = `As a Christian counselor with theological training, analyze this message for genuine grief and loss indicators.
+
+Message: "${message}"
+
+Criteria for TRUE grief:
+- Recent death of loved one
+- Terminal illness of self or loved one
+- Current mourning or bereavement
+- Processing loss and seeking comfort
+- Spiritual questions about death and afterlife
+
+Do NOT flag as grief:
+- Theoretical questions about death
+- General suffering without loss
+- Past grief that's fully resolved
+- Academic theological discussions
+- Metaphorical references
+
+Respond with ONLY "true" or "false" and nothing else.`;
+
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1, // Low temperature for consistent detection
+        max_tokens: 10,
+      });
+
+      const response = completion.choices[0].message.content?.trim().toLowerCase();
+      return response === 'true';
+    } catch (error) {
+      console.error('AI grief detection error:', error);
+      // Fall back to false to avoid false positives
+      return false;
+    }
+  }
 }
