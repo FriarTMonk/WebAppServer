@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
 import { ScriptureService } from '../scripture/scripture.service';
 import { SafetyService } from '../safety/safety.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 import { TranslationService } from '../scripture/translation.service';
 import { CounselResponse, BibleTranslation } from '@mychristiancounselor/shared';
 import { randomUUID } from 'crypto';
@@ -16,6 +17,7 @@ export class CounselService {
     private aiService: AiService,
     private scriptureService: ScriptureService,
     private safetyService: SafetyService,
+    private subscriptionService: SubscriptionService,
     private translationService: TranslationService
   ) {}
 
@@ -27,7 +29,10 @@ export class CounselService {
     comparisonTranslations?: BibleTranslation[],
     userId?: string
   ): Promise<CounselResponse> {
-    // 0. Get user information if userId is provided
+    // 0. Get subscription status and user information
+    const subscriptionStatus = await this.subscriptionService.getSubscriptionStatus(userId);
+    const maxClarifyingQuestions = subscriptionStatus.maxClarifyingQuestions;
+
     let userName: string | undefined;
     if (userId) {
       const user = await this.prisma.user.findUnique({
@@ -37,8 +42,8 @@ export class CounselService {
       userName = user?.firstName || undefined;
     }
 
-    // 1. Check for crisis
-    const isCrisis = this.safetyService.detectCrisis(message);
+    // 1. Check for crisis using AI-powered contextual detection
+    const isCrisis = await this.aiService.detectCrisisContextual(message);
 
     if (isCrisis) {
       return {
@@ -57,8 +62,8 @@ export class CounselService {
       };
     }
 
-    // 2. Check for grief - flag but continue with normal flow
-    const isGrief = this.safetyService.detectGrief(message);
+    // 2. Check for grief using AI-powered contextual detection - flag but continue with normal flow
+    const isGrief = await this.aiService.detectGriefContextual(message);
 
     // 3. Get or create session
     let session;
@@ -72,7 +77,10 @@ export class CounselService {
     // 6. Extract theological themes from the question
     const themes = await this.aiService.extractTheologicalThemes(message);
 
-    if (!session) {
+    // Only create/save sessions for subscribed users
+    const canSaveSession = subscriptionStatus.hasHistoryAccess;
+
+    if (!session && canSaveSession) {
       // Create new session with title from first message
       const title = message.substring(0, 50) + (message.length > 50 ? '...' : '');
       const validTranslation = await this.translationService.validateTranslation(preferredTranslation);
@@ -80,7 +88,7 @@ export class CounselService {
       session = await this.prisma.session.create({
         data: {
           id: randomUUID(),
-          userId: userId || null, // Store userId if authenticated, otherwise anonymous
+          userId: userId!, // Only subscribed users reach here
           title,
           topics: JSON.stringify(themes), // Store theological topics
           status: 'active',
@@ -88,7 +96,7 @@ export class CounselService {
         },
         include: { messages: true },
       });
-    } else if (preferredTranslation && preferredTranslation !== session.preferredTranslation) {
+    } else if (session && preferredTranslation && preferredTranslation !== session.preferredTranslation) {
       // Update session translation preference if it changed
       const validTranslation = await this.translationService.validateTranslation(preferredTranslation);
       session = await this.prisma.session.update({
@@ -98,17 +106,35 @@ export class CounselService {
       });
     }
 
-    // 4. Store user message
-    await this.prisma.message.create({
-      data: {
-        id: randomUUID(),
-        sessionId: session.id,
-        role: 'user',
-        content: message,
-        scriptureReferences: [],
-        timestamp: new Date(),
-      },
-    });
+    // For non-subscribed users without a session, create a temporary session object for conversation flow
+    if (!session) {
+      const validTranslation = await this.translationService.validateTranslation(preferredTranslation);
+      session = {
+        id: sessionId || randomUUID(),
+        userId: userId || null,
+        title: '',
+        topics: JSON.stringify(themes),
+        status: 'active' as const,
+        preferredTranslation: validTranslation,
+        messages: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
+    // 4. Store user message (only for subscribed users)
+    if (canSaveSession) {
+      await this.prisma.message.create({
+        data: {
+          id: randomUUID(),
+          sessionId: session.id,
+          role: 'user',
+          content: message,
+          scriptureReferences: [],
+          timestamp: new Date(),
+        },
+      });
+    }
 
     // 5. Count clarifying questions so far
     const clarificationCount = session.messages.filter(
@@ -145,7 +171,7 @@ export class CounselService {
       scriptures,
       conversationHistory,
       clarificationCount,
-      userName
+      maxClarifyingQuestions
     );
 
     // 10. Extract scripture references from response
@@ -154,17 +180,30 @@ export class CounselService {
     //   aiResponse.content
     // );
 
-    // 11. Store assistant message
-    const assistantMessage = await this.prisma.message.create({
-      data: {
+    // 11. Store assistant message (only for subscribed users)
+    let assistantMessage;
+    if (canSaveSession) {
+      assistantMessage = await this.prisma.message.create({
+        data: {
+          id: randomUUID(),
+          sessionId: session.id,
+          role: 'assistant',
+          content: aiResponse.content,
+          scriptureReferences: JSON.parse(JSON.stringify(scriptures)),
+          timestamp: new Date(),
+        },
+      });
+    } else {
+      // For non-subscribed users, create a temporary message object
+      assistantMessage = {
         id: randomUUID(),
         sessionId: session.id,
-        role: 'assistant',
+        role: 'assistant' as const,
         content: aiResponse.content,
         scriptureReferences: JSON.parse(JSON.stringify(scriptures)),
         timestamp: new Date(),
-      },
-    });
+      };
+    }
 
     // 12. Return response with grief detection flag if applicable
     return {
@@ -201,6 +240,12 @@ export class CounselService {
     organizationId: string,
     createNoteDto: CreateNoteDto
   ) {
+    // 0. Check subscription status - only subscribed users can create notes
+    const subscriptionStatus = await this.subscriptionService.getSubscriptionStatus(authorId);
+    if (!subscriptionStatus.hasHistoryAccess) {
+      throw new ForbiddenException('Session notes are only available to subscribed users');
+    }
+
     // 1. Verify session exists
     const session = await this.prisma.session.findUnique({
       where: { id: sessionId },
@@ -288,6 +333,12 @@ export class CounselService {
     requestingUserId: string,
     organizationId: string
   ) {
+    // 0. Check subscription status - only subscribed users can access notes
+    const subscriptionStatus = await this.subscriptionService.getSubscriptionStatus(requestingUserId);
+    if (!subscriptionStatus.hasHistoryAccess) {
+      throw new ForbiddenException('Session notes are only available to subscribed users');
+    }
+
     // 1. Verify session exists and user has access
     const session = await this.prisma.session.findUnique({
       where: { id: sessionId },
