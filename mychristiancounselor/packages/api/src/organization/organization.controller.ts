@@ -146,12 +146,38 @@ export class OrganizationController {
     return this.organizationService.getPendingInvitations(organizationId, userId);
   }
 
+  @Get('invitations/my-pending')
+  async getMyPendingInvitations(
+    @CurrentUser('email') userEmail: string
+  ): Promise<OrganizationInvitation[]> {
+    return this.organizationService.getMyPendingInvitations(userEmail);
+  }
+
   @Post('invitations/accept')
   async acceptInvitation(
     @CurrentUser('id') userId: string,
     @Body() dto: AcceptInvitationDto
   ): Promise<OrganizationMember> {
     return this.organizationService.acceptInvitation(dto.token, userId);
+  }
+
+  @Post(':id/invitations/:invitationId/resend')
+  async resendInvitation(
+    @Param('id') organizationId: string,
+    @Param('invitationId') invitationId: string,
+    @CurrentUser('id') userId: string
+  ): Promise<OrganizationInvitation> {
+    return this.organizationService.resendInvitation(invitationId, organizationId, userId);
+  }
+
+  @Post(':id/invitations/:invitationId/cancel')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async cancelInvitation(
+    @Param('id') organizationId: string,
+    @Param('invitationId') invitationId: string,
+    @CurrentUser('id') userId: string
+  ): Promise<void> {
+    await this.organizationService.cancelInvitation(invitationId, organizationId, userId);
   }
 
   // ===== PERMISSIONS =====

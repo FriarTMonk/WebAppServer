@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { WellbeingStatus } from '@mychristiancounselor/shared';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+
 interface OverrideStatusModalProps {
   memberName: string;
   memberId: string;
@@ -39,9 +41,9 @@ export default function OverrideStatusModal({
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       const response = await fetch(
-        `/api/counsel/members/${memberId}/status?organizationId=${organizationId}`,
+        `${API_URL}/counsel/members/${memberId}/status?organizationId=${organizationId}`,
         {
           method: 'PATCH',
           headers: {

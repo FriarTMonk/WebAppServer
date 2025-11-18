@@ -345,6 +345,11 @@ export class CounselService {
       // Private notes visible to author
       if (note.authorId === requestingUserId) return true;
 
+      // Private counselor notes visible to the member whose session it is
+      if (session.userId === requestingUserId && note.authorRole === 'counselor') {
+        return true;
+      }
+
       // Coverage counselors cannot see private notes
       if (isCoverageCounselor) return false;
 

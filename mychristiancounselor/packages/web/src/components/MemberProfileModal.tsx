@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useMemberObservations } from '../hooks/useMemberObservations';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+
 interface MemberProfileModalProps {
   memberId: string;
   memberName: string;
@@ -28,10 +30,10 @@ export default function MemberProfileModal({
 
     setSaving(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       const url = organizationId
-        ? `/api/counsel/members/${memberId}/observations?organizationId=${organizationId}`
-        : `/api/counsel/members/${memberId}/observations`;
+        ? `${API_URL}/counsel/members/${memberId}/observations?organizationId=${organizationId}`
+        : `${API_URL}/counsel/members/${memberId}/observations`;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -59,8 +61,8 @@ export default function MemberProfileModal({
 
     setSaving(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/counsel/observations/${id}`, {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/counsel/observations/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -86,8 +88,8 @@ export default function MemberProfileModal({
 
     setSaving(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/counsel/observations/${id}`, {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_URL}/counsel/observations/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -103,7 +105,7 @@ export default function MemberProfileModal({
   };
 
   const handleExport = () => {
-    const exportUrl = `/counsel/export/member/${memberId}${organizationId ? `?organizationId=${organizationId}` : ''}`;
+    const exportUrl = `${API_URL}/counsel/export/member/${memberId}${organizationId ? `?organizationId=${organizationId}` : ''}`;
     window.open(exportUrl, '_blank');
   };
 

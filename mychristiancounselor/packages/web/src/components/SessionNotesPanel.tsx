@@ -75,7 +75,7 @@ export function SessionNotesPanel({
 
       const payload: CreateNoteRequest = {
         content: newNote,
-        isPrivate: userRole === 'counselor' ? isPrivate : false,
+        isPrivate: isPrivate,
       };
 
       const response = await axios.post(
@@ -166,7 +166,7 @@ export function SessionNotesPanel({
 
           <div className="flex justify-between items-center mt-2">
             <div className="flex items-center gap-4">
-              {userRole === 'counselor' && (
+              {(userRole === 'counselor' || userRole === 'user') && (
                 <label className="flex items-center text-sm text-gray-700">
                   <input
                     type="checkbox"
@@ -175,7 +175,7 @@ export function SessionNotesPanel({
                     className="mr-2"
                     disabled={loading}
                   />
-                  Private note (counselor only)
+                  Private note (member & counselor only)
                 </label>
               )}
               <span className="text-xs text-gray-500">

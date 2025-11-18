@@ -13,41 +13,46 @@ export default function CounselorAssignmentManager() {
 
   useEffect(() => {
     fetchAssignments();
-  }, [selectedOrg]);
+  }, []); // Only run on mount
 
   async function fetchAssignments() {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const token = localStorage.getItem('accessToken');
 
       if (!token) {
         setError('Not authenticated');
         return;
       }
 
-      // Get user's organization
-      const userResponse = await fetch('/api/profile/me', {
+      // Get user's organizations
+      const userResponse = await fetch(`${apiUrl}/profile/organizations`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
       if (!userResponse.ok) {
-        throw new Error('Failed to fetch user profile');
+        throw new Error('Failed to fetch user organizations');
       }
 
-      const userData = await userResponse.json();
-      const orgId = userData.organizationMemberships?.[0]?.organizationId;
+      const orgs = await userResponse.json();
+      console.log('User organizations:', orgs);
+      const orgId = orgs?.[0]?.organization?.id;
+      console.log('Extracted orgId:', orgId);
 
       if (!orgId) {
+        console.error('No organization ID found in user profile!');
         setAssignments([]);
         return;
       }
 
+      console.log('Setting selectedOrg to:', orgId);
       setSelectedOrg(orgId);
 
       const response = await fetch(
-        `/api/org-admin/counselor-assignments?organizationId=${orgId}`,
+        `${apiUrl}/org-admin/counselor-assignments?organizationId=${orgId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -74,10 +79,11 @@ export default function CounselorAssignmentManager() {
     }
 
     try {
-      const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const token = localStorage.getItem('accessToken');
 
       const response = await fetch(
-        `/api/org-admin/counselor-assignments/${assignmentId}?organizationId=${selectedOrg}`,
+        `${apiUrl}/org-admin/counselor-assignments/${assignmentId}?organizationId=${selectedOrg}`,
         {
           method: 'DELETE',
           headers: {
@@ -127,8 +133,12 @@ export default function CounselorAssignmentManager() {
           </p>
         </div>
         <button
-          onClick={() => setShowAssignModal(true)}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          onClick={() => {
+            console.log('Assign Counselor clicked. selectedOrg:', selectedOrg);
+            setShowAssignModal(true);
+          }}
+          disabled={!selectedOrg || loading}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Assign Counselor
         </button>

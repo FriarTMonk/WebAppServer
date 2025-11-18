@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 
 interface InviteMemberModalProps {
   organizationId: string;
-  availableRoles: Array<{ id: string; name: string }>;
+  availableRoles: Array<{ id: string; name: string; organizationId: string }>;
   onClose: () => void;
   onInviteSent: () => void;
 }
@@ -129,7 +129,11 @@ export function InviteMemberModal({
               >
                 <option value="">Select a role</option>
                 {availableRoles.map((role) => (
-                  <option key={role.id} value={role.id}>
+                  <option
+                    key={role.id}
+                    value={role.id}
+                    className={role.organizationId === '00000000-0000-0000-0000-000000000001' ? 'text-gray-500' : 'text-gray-900'}
+                  >
                     {role.name}
                   </option>
                 ))}

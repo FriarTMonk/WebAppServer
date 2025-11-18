@@ -145,10 +145,10 @@ export default function SharedConversationPage() {
         {/* Header with share info */}
         <div className="mb-6">
           <button
-            onClick={() => router.push('/history')}
+            onClick={() => router.back()}
             className="text-blue-600 hover:text-blue-700 flex items-center gap-2 mb-4"
           >
-            ← Back to Journal
+            ← Back
           </button>
 
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">

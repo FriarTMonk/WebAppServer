@@ -9,14 +9,15 @@ export function useCounselorMembers(organizationId?: string) {
   const fetchMembers = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       if (!token) {
         throw new Error('No authentication token');
       }
 
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
       const url = organizationId
-        ? `/api/counsel/members?organizationId=${organizationId}`
-        : '/api/counsel/members';
+        ? `${apiUrl}/counsel/members?organizationId=${organizationId}`
+        : `${apiUrl}/counsel/members`;
 
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },

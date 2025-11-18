@@ -154,17 +154,21 @@ export class CounselController {
     const counselorId = req.user.id;
 
     if (!organizationId) {
-      // Get user's first organization if not specified
-      const membership = await this.prisma.organizationMember.findFirst({
-        where: { userId: counselorId },
+      // Get first organization where counselor has active assignments
+      const activeAssignment = await this.prisma.counselorAssignment.findFirst({
+        where: {
+          counselorId,
+          status: 'active',
+        },
         select: { organizationId: true },
+        orderBy: { assignedAt: 'desc' },
       });
 
-      if (!membership) {
+      if (!activeAssignment) {
         return { members: [] };
       }
 
-      organizationId = membership.organizationId;
+      organizationId = activeAssignment.organizationId;
     }
 
     const members = await this.assignmentService.getCounselorMembers(

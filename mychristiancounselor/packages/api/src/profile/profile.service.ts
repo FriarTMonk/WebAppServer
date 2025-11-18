@@ -262,7 +262,7 @@ export class ProfileService {
    */
   async getCounselorAssignments(userId: string) {
     const assignments = await this.prisma.counselorAssignment.findMany({
-      where: { memberId: userId },
+      where: { counselorId: userId },
       include: {
         counselor: {
           select: {

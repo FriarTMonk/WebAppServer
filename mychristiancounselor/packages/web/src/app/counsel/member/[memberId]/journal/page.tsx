@@ -1,22 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '../../contexts/AuthContext';
-import { getAccessToken } from '../../lib/auth';
-import { SessionNotesPanel } from '../../components/SessionNotesPanel';
-import { ShareModal } from '../../components/ShareModal';
+import { useRouter, useParams } from 'next/navigation';
+import { useAuth } from '../../../../../contexts/AuthContext';
+import { getAccessToken } from '../../../../../lib/auth';
+import { SessionNotesPanel } from '../../../../../components/SessionNotesPanel';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
-interface ConversationSummary {
+interface SessionSummary {
   id: string;
   title: string;
-  excerpt: string;
-  topics: string[];
   createdAt: string;
   updatedAt: string;
-  noteCount: number;
+  status: string;
+  questionCount: number;
 }
 
 interface FullConversation {
@@ -34,79 +32,100 @@ interface FullConversation {
   }>;
 }
 
-export default function HistoryPage() {
-  const { isAuthenticated, user } = useAuth();
+interface MemberInfo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+export default function MemberJournalPage() {
+  const { user } = useAuth();
   const router = useRouter();
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const params = useParams();
+  const memberId = params?.memberId as string;
+
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<FullConversation | null>(null);
+  const [memberInfo, setMemberInfo] = useState<MemberInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [shareConversation, setShareConversation] = useState<{ id: string; title: string } | null>(null);
 
-  const fetchHistory = async () => {
+  useEffect(() => {
+    if (!memberId) {
+      setError('Member ID is required');
+      setLoading(false);
+      return;
+    }
+
+    // Only fetch if we have authentication (token exists)
+    const token = getAccessToken();
+    if (token) {
+      fetchMemberSessions();
+    } else {
+      // No token, redirect to login (replace to avoid adding to history)
+      router.replace('/login');
+    }
+  }, [memberId, router]);
+
+  const fetchMemberSessions = async () => {
     try {
       setLoading(true);
       setError('');
       const token = getAccessToken();
+
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
       if (dateFrom) params.append('dateFrom', dateFrom);
       if (dateTo) params.append('dateTo', dateTo);
-      params.append('status', activeTab);
 
-      const response = await fetch(
-        `${API_URL}/profile/history?${params.toString()}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const url = params.toString()
+        ? `${API_URL}/counsel/members/${memberId}/sessions?${params.toString()}`
+        : `${API_URL}/counsel/members/${memberId}/sessions`;
+
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Journal API Response:', data);
-        console.log('First conversation noteCount:', data[0]?.noteCount);
-        setConversations(data);
+        setSessions(data.sessions || []);
+      } else if (response.status === 403) {
+        setError('You do not have access to this member');
       } else {
-        setError('Failed to load conversation history');
+        setError('Failed to load member sessions');
       }
     } catch (err) {
-      console.error('Error fetching history:', err);
-      setError('An error occurred while loading history');
+      console.error('Error fetching member sessions:', err);
+      setError('An error occurred while loading sessions');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-      return;
-    }
-
-    fetchHistory();
-  }, [isAuthenticated, router]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchHistory();
-    }
-  }, [activeTab]);
-
-  const loadConversation = async (conversationId: string) => {
+  const loadConversation = async (sessionId: string) => {
     try {
       const token = getAccessToken();
-      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-
-      const response = await fetch(`${API_URL}/counsel/session/${conversationId}`, {
-        headers
+      const response = await fetch(`${API_URL}/counsel/session/${sessionId}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.ok) {
         const data = await response.json();
         setSelectedConversation(data);
+
+        // Extract member info from session user data if available
+        if (data.user && !memberInfo) {
+          setMemberInfo({
+            id: memberId,
+            firstName: data.user.firstName || '',
+            lastName: data.user.lastName || '',
+            email: data.user.email || ''
+          });
+        }
       } else {
         setError('Failed to load conversation details');
       }
@@ -114,43 +133,6 @@ export default function HistoryPage() {
       console.error('Error fetching conversation:', err);
       setError('An error occurred while loading conversation');
     }
-  };
-
-  const archiveConversation = async (conversationId: string) => {
-    if (!confirm('Archive this conversation? It will be deleted in 30 days.')) {
-      return;
-    }
-
-    try {
-      const token = getAccessToken();
-      await fetch(`${API_URL}/profile/conversations/${conversationId}/archive`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      fetchHistory();
-    } catch (err) {
-      console.error('Error archiving conversation:', err);
-      setError('Failed to archive conversation');
-    }
-  };
-
-  const restoreConversation = async (conversationId: string) => {
-    try {
-      const token = getAccessToken();
-      await fetch(`${API_URL}/profile/conversations/${conversationId}/restore`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      fetchHistory();
-    } catch (err) {
-      console.error('Error restoring conversation:', err);
-      setError('Failed to restore conversation');
-    }
-  };
-
-  const openShareModal = (conversationId: string, title: string) => {
-    setShareConversation({ id: conversationId, title });
-    setIsShareModalOpen(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -177,17 +159,37 @@ export default function HistoryPage() {
     return [];
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+        <div className="text-gray-600">Loading member journal...</div>
       </div>
     );
   }
 
-  const handlePrint = () => {
-    window.print();
-  };
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="mb-6">
+            <button
+              onClick={() => router.back()}
+              className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
+            >
+              ← Back
+            </button>
+          </div>
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (selectedConversation) {
     return (
@@ -198,7 +200,7 @@ export default function HistoryPage() {
               onClick={() => setSelectedConversation(null)}
               className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
             >
-              ← Back to Journal
+              ← Back to Member Journal
             </button>
             <button
               onClick={handlePrint}
@@ -250,7 +252,7 @@ export default function HistoryPage() {
                     >
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-semibold text-gray-900 capitalize">
-                          {message.role === 'assistant' ? 'Counselor' : message.role}
+                          {message.role === 'assistant' ? 'Counselor AI' : 'Member'}
                         </span>
                         <span className="text-xs text-gray-500">
                           {formatDate(message.timestamp)}
@@ -291,7 +293,7 @@ export default function HistoryPage() {
               <SessionNotesPanel
                 sessionId={selectedConversation.id}
                 currentUserId={user?.id || ''}
-                userRole="user"
+                userRole="counselor"
               />
             </div>
           </div>
@@ -312,12 +314,13 @@ export default function HistoryPage() {
           </button>
         </div>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Conversation Journal</h1>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Member Journal
+        </h1>
+        {memberInfo && (
+          <p className="text-gray-600 mb-6">
+            {memberInfo.firstName} {memberInfo.lastName} ({memberInfo.email})
+          </p>
         )}
 
         <div className="mb-6 bg-white rounded-lg shadow p-4">
@@ -356,144 +359,55 @@ export default function HistoryPage() {
             </div>
 
             <button
-              onClick={fetchHistory}
+              onClick={fetchMemberSessions}
               className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
               Apply Filters
             </button>
           </div>
-
-          <div className="mt-4 flex gap-2">
-            <button
-              onClick={() => setActiveTab('active')}
-              className={`flex-1 px-4 py-2 rounded-md ${
-                activeTab === 'active'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Active
-            </button>
-            <button
-              onClick={() => setActiveTab('archived')}
-              className={`flex-1 px-4 py-2 rounded-md ${
-                activeTab === 'archived'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Archived
-            </button>
-          </div>
         </div>
 
-        {conversations.length === 0 ? (
+        {sessions.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-8 text-center">
-            <p className="text-gray-600">You haven't started any conversations yet.</p>
-            <button
-              onClick={() => router.push('/')}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Start a Conversation
-            </button>
+            <p className="text-gray-600">This member hasn't started any conversations yet.</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {conversations.map((conversation) => (
+            {sessions.map((session) => (
               <div
-                key={conversation.id}
+                key={session.id}
                 className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
               >
                 <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-center gap-2 flex-1">
-                    <h2
-                      onClick={() => loadConversation(conversation.id)}
-                      className="text-xl font-semibold text-gray-900 cursor-pointer hover:text-blue-600"
-                    >
-                      {conversation.title}
-                    </h2>
-                    {conversation.noteCount > 0 && (
-                      <span
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-md text-sm font-medium"
-                        title={`${conversation.noteCount} note${conversation.noteCount === 1 ? '' : 's'}`}
-                      >
-                        📝 {conversation.noteCount}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-2 ml-4">
-                    {activeTab === 'active' && (
-                      <>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openShareModal(conversation.id, conversation.title);
-                          }}
-                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200"
-                        >
-                          Share
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            archiveConversation(conversation.id);
-                          }}
-                          className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded text-sm hover:bg-yellow-200"
-                        >
-                          Archive
-                        </button>
-                      </>
-                    )}
-                    {activeTab === 'archived' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          restoreConversation(conversation.id);
-                        }}
-                        className="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200"
-                      >
-                        Restore
-                      </button>
-                    )}
-                  </div>
+                  <h2
+                    onClick={() => loadConversation(session.id)}
+                    className="text-xl font-semibold text-gray-900 cursor-pointer hover:text-blue-600"
+                  >
+                    {session.title}
+                  </h2>
                 </div>
 
-                <span className="text-sm text-gray-500">{formatDate(conversation.createdAt)}</span>
+                <div className="flex justify-between items-center text-sm text-gray-500">
+                  <span>{formatDate(session.createdAt)}</span>
+                  <span className="text-gray-400">
+                    {session.questionCount} {session.questionCount === 1 ? 'question' : 'questions'}
+                  </span>
+                </div>
 
-                {parseTopics(conversation.topics).length > 0 && (
-                  <div className="mt-3 mb-3">
-                    <div className="flex flex-wrap gap-2">
-                      {parseTopics(conversation.topics).map((topic, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs"
-                        >
-                          {topic}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <p className="text-gray-600 line-clamp-2">{conversation.excerpt}</p>
+                <div className="mt-2">
+                  <span className={`inline-block px-2 py-1 text-xs rounded ${
+                    session.status === 'active'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {session.status}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
-
-      {/* Share Modal */}
-      {shareConversation && (
-        <ShareModal
-          sessionId={shareConversation.id}
-          sessionTitle={shareConversation.title}
-          isOpen={isShareModalOpen}
-          onClose={() => {
-            setIsShareModalOpen(false);
-            setShareConversation(null);
-          }}
-        />
-      )}
     </div>
   );
 }
