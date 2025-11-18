@@ -27,11 +27,12 @@ export default function AssignCounselorModal({
 
   async function fetchData() {
     try {
-      const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const token = localStorage.getItem('accessToken');
 
       // Fetch organization members
       const response = await fetch(
-        `/api/organization/${organizationId}/members`,
+        `${apiUrl}/organizations/${organizationId}/members`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -40,21 +41,32 @@ export default function AssignCounselorModal({
       );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch members');
+        const errorText = await response.text();
+        console.error('Failed to fetch members:', response.status, errorText);
+        throw new Error(`Failed to fetch members: ${response.status} ${errorText}`);
       }
 
-      const data = await response.json();
-      const allMembers = data.members || [];
+      const allMembers = await response.json();
+      console.log('Fetched members:', allMembers);
+
+      // Validate that we got an array
+      if (!Array.isArray(allMembers)) {
+        console.error('Expected array but got:', typeof allMembers, allMembers);
+        throw new Error('Invalid response format: expected array');
+      }
 
       // Filter counselors (those with Counselor role)
       const counselorList = allMembers.filter((m: any) =>
         m.role?.name?.includes('Counselor')
       );
 
+      console.log('Filtered counselors:', counselorList);
+
       // All members can be assigned
       setCounselors(counselorList);
       setMembers(allMembers);
     } catch (err) {
+      console.error('Error in fetchData:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     }
   }
@@ -76,7 +88,8 @@ export default function AssignCounselorModal({
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const token = localStorage.getItem('accessToken');
 
       const dto: CreateCounselorAssignmentDto = {
         counselorId: selectedCounselor,
@@ -85,7 +98,7 @@ export default function AssignCounselorModal({
       };
 
       const response = await fetch(
-        `/api/org-admin/counselor-assignments?organizationId=${organizationId}`,
+        `${apiUrl}/org-admin/counselor-assignments?organizationId=${organizationId}`,
         {
           method: 'POST',
           headers: {
@@ -151,11 +164,13 @@ export default function AssignCounselorModal({
               required
             >
               <option value="">-- Select Member --</option>
-              {members.map((member) => (
-                <option key={member.user.id} value={member.user.id}>
-                  {member.user.firstName} {member.user.lastName} ({member.user.email})
-                </option>
-              ))}
+              {members
+                .filter((member) => member.user.id !== selectedCounselor)
+                .map((member) => (
+                  <option key={member.user.id} value={member.user.id}>
+                    {member.user.firstName} {member.user.lastName} ({member.user.email})
+                  </option>
+                ))}
             </select>
           </div>
 

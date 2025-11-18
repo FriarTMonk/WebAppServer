@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@mychristiancounselor/shared';
+import { User, OrganizationInvitation } from '@mychristiancounselor/shared';
 import { getAccessToken, clearTokens } from '../lib/auth';
 import axios from 'axios';
 
@@ -18,9 +18,13 @@ interface AuthContextType {
   setUser: (user: User | null) => void;
   isAuthenticated: boolean;
   morphSession: MorphSession | null;
+  pendingInvitations: OrganizationInvitation[];
   logout: () => void;
   endMorph: () => Promise<void>;
   refreshAuth: () => Promise<void>;
+  fetchPendingInvitations: () => Promise<void>;
+  acceptInvitation: (token: string) => Promise<void>;
+  dismissInvitationBanner: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,9 +46,11 @@ function decodeJWT(token: string): any {
   }
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode}) {
   const [user, setUser] = useState<User | null>(null);
   const [morphSession, setMorphSession] = useState<MorphSession | null>(null);
+  const [pendingInvitations, setPendingInvitations] = useState<OrganizationInvitation[]>([]);
+  const [invitationsDismissed, setInvitationsDismissed] = useState(false);
   const [_isInitialized, setIsInitialized] = useState(false);
 
   // Extract morph session info from JWT
@@ -195,6 +201,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const fetchPendingInvitations = async (): Promise<void> => {
+    const token = getAccessToken();
+    if (!token || !user) {
+      setPendingInvitations([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/organizations/invitations/my-pending`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const invitations = await response.json();
+        setPendingInvitations(invitations);
+        setInvitationsDismissed(false); // Reset dismissed state when new invitations are fetched
+      } else {
+        setPendingInvitations([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch pending invitations:', error);
+      setPendingInvitations([]);
+    }
+  };
+
+  const acceptInvitation = async (token: string): Promise<void> => {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+      throw new Error('Not authenticated');
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/organizations/invitations/accept`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to accept invitation');
+      }
+
+      // After accepting, refresh auth and fetch invitations again
+      await refreshAuth();
+      await fetchPendingInvitations();
+    } catch (error) {
+      console.error('Failed to accept invitation:', error);
+      throw error;
+    }
+  };
+
+  const dismissInvitationBanner = () => {
+    setInvitationsDismissed(true);
+  };
+
   const endMorph = async (): Promise<void> => {
     const token = getAccessToken();
     if (!token || !morphSession?.isMorphed) {
@@ -254,15 +319,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Fetch pending invitations when user logs in
+  useEffect(() => {
+    if (user) {
+      fetchPendingInvitations();
+    } else {
+      setPendingInvitations([]);
+      setInvitationsDismissed(false);
+    }
+  }, [user?.id]); // Only re-run when user ID changes
+
+  // Filter invitations based on dismissed state
+  const visibleInvitations = invitationsDismissed ? [] : pendingInvitations;
+
   return (
     <AuthContext.Provider value={{
       user,
       setUser,
       isAuthenticated: !!user,
       morphSession,
+      pendingInvitations: visibleInvitations,
       logout,
       endMorph,
       refreshAuth,
+      fetchPendingInvitations,
+      acceptInvitation,
+      dismissInvitationBanner,
     }}>
       {children}
     </AuthContext.Provider>

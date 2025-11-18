@@ -14,6 +14,9 @@ export function UserMenu() {
   const [_hasOrganizations, setHasOrganizations] = useState(false);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [isOrgAdmin, setIsOrgAdmin] = useState(false);
+  const [isCounselor, setIsCounselor] = useState(false);
+  const [hasJournalAccess, setHasJournalAccess] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   useEffect(() => {
     console.log('[UserMenu] useEffect triggered - isAuthenticated:', isAuthenticated, 'user:', user?.email);
@@ -74,6 +77,45 @@ export function UserMenu() {
             console.error('[UserMenu] Org admin check error:', err);
             setIsOrgAdmin(false);
           });
+
+        // Check if user has Counselor role in any organization
+        console.log('[UserMenu] Checking counselor role status...');
+        fetch(`${API_URL}/profile/organizations`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then(res => {
+            console.log('[UserMenu] Organizations check response:', res.status);
+            if (res.ok) {
+              res.json().then(orgs => {
+                console.log('[UserMenu] User organizations:', orgs);
+                // Check if user has Counselor role in any organization
+                const hasCounselorRole = Array.isArray(orgs) &&
+                  orgs.some(org => org.role?.name?.includes('Counselor'));
+                console.log('[UserMenu] Has counselor role:', hasCounselorRole);
+                setIsCounselor(hasCounselorRole);
+
+                // Check journal access: user has access if they have an active subscription OR are part of an organization
+                const hasOrgs = Array.isArray(orgs) && orgs.length > 0;
+                const hasActiveSubscription = user?.subscriptionStatus === 'active';
+                const hasAccess = hasActiveSubscription || hasOrgs;
+                console.log('[UserMenu] Journal access check:', { hasOrgs, hasActiveSubscription, hasAccess });
+                setHasJournalAccess(hasAccess);
+              });
+            } else {
+              console.log('[UserMenu] Organizations check failed:', res.status);
+              setIsCounselor(false);
+              // If no organizations, check if user has active subscription
+              const hasActiveSubscription = user?.subscriptionStatus === 'active';
+              setHasJournalAccess(hasActiveSubscription);
+            }
+          })
+          .catch((err) => {
+            console.error('[UserMenu] Organizations check error:', err);
+            setIsCounselor(false);
+            // If error fetching organizations, check if user has active subscription
+            const hasActiveSubscription = user?.subscriptionStatus === 'active';
+            setHasJournalAccess(hasActiveSubscription);
+          });
       }
     } else {
       // Reset states when user logs out
@@ -81,6 +123,8 @@ export function UserMenu() {
       setHasOrganizations(false);
       setIsPlatformAdmin(false);
       setIsOrgAdmin(false);
+      setIsCounselor(false);
+      setHasJournalAccess(false);
     }
   }, [isAuthenticated, user]);
 
@@ -132,12 +176,31 @@ export function UserMenu() {
           <button
             onClick={() => {
               setIsOpen(false);
-              router.push('/history');
+              if (hasJournalAccess) {
+                router.push('/history');
+              } else {
+                setShowSubscriptionModal(true);
+              }
             }}
-            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            className={`block w-full text-left px-4 py-2 text-sm ${
+              hasJournalAccess
+                ? 'text-gray-700 hover:bg-gray-100'
+                : 'text-gray-400 cursor-not-allowed bg-gray-50'
+            }`}
           >
             Journal
           </button>
+          {isCounselor && (
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                router.push('/counsel');
+              }}
+              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Counselor
+            </button>
+          )}
           {isOrgAdmin && !isPlatformAdmin && (
             <button
               onClick={() => {
@@ -177,6 +240,36 @@ export function UserMenu() {
               Sign out
             </button>
           )}
+        </div>
+      )}
+
+      {/* Subscription Required Modal */}
+      {showSubscriptionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Subscription Required</h3>
+            <p className="text-gray-700 mb-6">
+              This feature is for subscribed Members only. Subscribe to access your Journal and track your spiritual growth journey.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSubscriptionModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  setShowSubscriptionModal(false);
+                  // TODO: Navigate to subscription page when it's ready
+                  alert('Subscription feature coming soon!');
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Subscribe Now
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

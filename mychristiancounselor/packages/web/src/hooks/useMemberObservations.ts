@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+
 export interface CounselorObservation {
   id: string;
   counselorId: string;
@@ -17,12 +19,12 @@ export function useMemberObservations(memberId: string, organizationId?: string)
   const fetchObservations = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       if (!token) throw new Error('No authentication token');
 
       const url = organizationId
-        ? `/api/counsel/members/${memberId}/observations?organizationId=${organizationId}`
-        : `/api/counsel/members/${memberId}/observations`;
+        ? `${API_URL}/counsel/members/${memberId}/observations?organizationId=${organizationId}`
+        : `${API_URL}/counsel/members/${memberId}/observations`;
 
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },

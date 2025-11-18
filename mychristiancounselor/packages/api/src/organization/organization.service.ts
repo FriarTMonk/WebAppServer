@@ -17,8 +17,34 @@ import { randomBytes } from 'crypto';
 @Injectable()
 export class OrganizationService {
   private readonly INVITATION_EXPIRY_DAYS = 7;
+  private readonly SYSTEM_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
   constructor(private prisma: PrismaService) {}
+
+  // ===== PLATFORM ROLE HELPERS =====
+
+  /**
+   * Get a platform role by name from the System Organization.
+   * Platform roles are shared across all organizations.
+   */
+  private async getPlatformRole(roleName: string): Promise<OrganizationRole> {
+    const role = await this.prisma.organizationRole.findUnique({
+      where: {
+        organizationId_name: {
+          organizationId: this.SYSTEM_ORG_ID,
+          name: roleName,
+        },
+      },
+    });
+
+    if (!role) {
+      throw new Error(
+        `Platform role "${roleName}" not found. Run ensure-platform-roles.ts script first.`
+      );
+    }
+
+    return role as any;
+  }
 
   // ===== ORGANIZATION CRUD =====
 
@@ -33,72 +59,16 @@ export class OrganizationService {
       },
     });
 
-    // Create system roles: Owner, Admin, Counselor, Member
-    const ownerRole = await this.createSystemRole(
-      organization.id,
-      'Owner',
-      'Full access to manage organization',
-      [
-        Permission.MANAGE_ORGANIZATION,
-        Permission.MANAGE_MEMBERS,
-        Permission.INVITE_MEMBERS,
-        Permission.REMOVE_MEMBERS,
-        Permission.VIEW_MEMBERS,
-        Permission.MANAGE_ROLES,
-        Permission.ASSIGN_ROLES,
-        Permission.VIEW_MEMBER_CONVERSATIONS,
-        Permission.VIEW_ANALYTICS,
-        Permission.EXPORT_DATA,
-        Permission.MANAGE_BILLING,
-        Permission.VIEW_BILLING,
-      ]
-    );
+    // Get platform Owner role from System Organization
+    // Note: Platform roles are shared across all organizations - no duplication!
+    const platformOwnerRole = await this.getPlatformRole('Owner');
 
-    await this.createSystemRole(
-      organization.id,
-      'Admin',
-      'Can manage members and roles',
-      [
-        Permission.VIEW_ORGANIZATION,
-        Permission.MANAGE_MEMBERS,
-        Permission.INVITE_MEMBERS,
-        Permission.REMOVE_MEMBERS,
-        Permission.VIEW_MEMBERS,
-        Permission.ASSIGN_ROLES,
-        Permission.VIEW_MEMBER_CONVERSATIONS,
-        Permission.VIEW_ANALYTICS,
-        Permission.EXPORT_DATA,
-        Permission.VIEW_BILLING,
-      ]
-    );
-
-    await this.createSystemRole(
-      organization.id,
-      'Counselor',
-      'Can view member conversations and analytics',
-      [
-        Permission.VIEW_ORGANIZATION,
-        Permission.VIEW_MEMBERS,
-        Permission.VIEW_MEMBER_CONVERSATIONS,
-        Permission.VIEW_ANALYTICS,
-      ]
-    );
-
-    await this.createSystemRole(
-      organization.id,
-      'Member',
-      'Basic member access',
-      [
-        Permission.VIEW_ORGANIZATION,
-      ]
-    );
-
-    // Add creator as owner
+    // Add creator as owner using platform role
     await this.prisma.organizationMember.create({
       data: {
         organizationId: organization.id,
         userId,
-        roleId: ownerRole.id,
+        roleId: platformOwnerRole.id,
       },
     });
 
@@ -222,10 +192,16 @@ export class OrganizationService {
   }
 
   async getOrganizationRoles(organizationId: string): Promise<OrganizationRole[]> {
+    // Return both org-specific roles AND platform roles from System Organization
     return this.prisma.organizationRole.findMany({
-      where: { organizationId },
+      where: {
+        OR: [
+          { organizationId },  // Org-specific custom roles
+          { organizationId: this.SYSTEM_ORG_ID },  // Platform roles
+        ],
+      },
       orderBy: [
-        { isSystemRole: 'desc' },
+        { isSystemRole: 'desc' },  // Platform roles first
         { name: 'asc' },
       ],
     }) as any;
@@ -264,12 +240,12 @@ export class OrganizationService {
       throw new NotFoundException('Member not found');
     }
 
-    // Verify role belongs to organization
+    // Verify role belongs to organization (can be org-specific OR platform role)
     const role = await this.prisma.organizationRole.findUnique({
       where: { id: newRoleId },
     });
 
-    if (!role || role.organizationId !== organizationId) {
+    if (!role || (role.organizationId !== organizationId && role.organizationId !== this.SYSTEM_ORG_ID)) {
       throw new NotFoundException('Role not found');
     }
 
@@ -375,12 +351,12 @@ export class OrganizationService {
       throw new BadRequestException('Invitation already sent');
     }
 
-    // Verify role exists
+    // Verify role exists (can be org-specific OR platform role)
     const role = await this.prisma.organizationRole.findUnique({
       where: { id: dto.roleId },
     });
 
-    if (!role || role.organizationId !== organizationId) {
+    if (!role || (role.organizationId !== organizationId && role.organizationId !== this.SYSTEM_ORG_ID)) {
       throw new NotFoundException('Role not found');
     }
 
@@ -479,16 +455,130 @@ export class OrganizationService {
     // Check permission
     await this.requirePermission(organizationId, userId, Permission.VIEW_MEMBERS);
 
+    // Return all pending invitations, including expired ones
+    // The UI will show expired status and allow resending
     return this.prisma.organizationInvitation.findMany({
       where: {
         organizationId,
         status: 'pending',
-        expiresAt: { gt: new Date() },
       },
       include: {
         invitedBy: true,
       },
+      orderBy: {
+        createdAt: 'desc',
+      },
     }) as any;
+  }
+
+  async getMyPendingInvitations(userEmail: string): Promise<OrganizationInvitation[]> {
+    // No permission check needed - users can see their own invitations
+    return this.prisma.organizationInvitation.findMany({
+      where: {
+        email: userEmail.toLowerCase(),
+        status: 'pending',
+        expiresAt: { gt: new Date() },
+      },
+      include: {
+        organization: true,
+        invitedBy: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    }) as any;
+  }
+
+  async resendInvitation(
+    invitationId: string,
+    organizationId: string,
+    userId: string
+  ): Promise<OrganizationInvitation> {
+    // Check permission
+    await this.requirePermission(organizationId, userId, Permission.INVITE_MEMBERS);
+
+    // Get the existing invitation
+    const existingInvitation = await this.prisma.organizationInvitation.findUnique({
+      where: { id: invitationId },
+    });
+
+    if (!existingInvitation || existingInvitation.organizationId !== organizationId) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    if (existingInvitation.status !== 'pending') {
+      throw new BadRequestException('Can only resend pending invitations');
+    }
+
+    // Check if user is already a member
+    const existingMember = await this.prisma.organizationMember.findFirst({
+      where: {
+        organizationId,
+        user: { email: existingInvitation.email },
+      },
+    });
+
+    if (existingMember) {
+      throw new BadRequestException('User is already a member');
+    }
+
+    // Mark old invitation as cancelled
+    await this.prisma.organizationInvitation.update({
+      where: { id: invitationId },
+      data: { status: 'cancelled' },
+    });
+
+    // Create new invitation with fresh token and expiry
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + this.INVITATION_EXPIRY_DAYS);
+
+    const newInvitation = await this.prisma.organizationInvitation.create({
+      data: {
+        organizationId,
+        email: existingInvitation.email,
+        roleId: existingInvitation.roleId,
+        invitedById: userId, // New invitation sent by current user
+        token,
+        expiresAt,
+      },
+      include: {
+        organization: true,
+        invitedBy: true,
+      },
+    });
+
+    // TODO: Send invitation email (Task for later)
+
+    return newInvitation as any;
+  }
+
+  async cancelInvitation(
+    invitationId: string,
+    organizationId: string,
+    userId: string
+  ): Promise<void> {
+    // Check permission
+    await this.requirePermission(organizationId, userId, Permission.INVITE_MEMBERS);
+
+    // Get the invitation
+    const invitation = await this.prisma.organizationInvitation.findUnique({
+      where: { id: invitationId },
+    });
+
+    if (!invitation || invitation.organizationId !== organizationId) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    if (invitation.status !== 'pending') {
+      throw new BadRequestException('Can only cancel pending invitations');
+    }
+
+    // Mark invitation as cancelled
+    await this.prisma.organizationInvitation.update({
+      where: { id: invitationId },
+      data: { status: 'cancelled' },
+    });
   }
 
   // ===== PERMISSION CHECKING =====

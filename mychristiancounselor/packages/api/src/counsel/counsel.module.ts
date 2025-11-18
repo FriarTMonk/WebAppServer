@@ -3,7 +3,6 @@ import { CounselService } from './counsel.service';
 import { CounselExportService } from './counsel-export.service';
 import { AssignmentService } from './assignment.service';
 import { ObservationService } from './observation.service';
-import { SessionNoteService } from './session-note.service';
 import { WellbeingAnalysisService } from './wellbeing-analysis.service';
 import { WellbeingAnalysisScheduler } from './wellbeing-analysis.scheduler';
 import { CounselController } from './counsel.controller';
@@ -27,7 +26,6 @@ import { SubscriptionModule } from '../subscription/subscription.module';
     CounselExportService,
     AssignmentService,
     ObservationService,
-    SessionNoteService,
     WellbeingAnalysisService,
     WellbeingAnalysisScheduler,
   ],
@@ -35,7 +33,6 @@ import { SubscriptionModule } from '../subscription/subscription.module';
     CounselService,
     AssignmentService,
     ObservationService,
-    SessionNoteService,
     WellbeingAnalysisService,
   ],
 })

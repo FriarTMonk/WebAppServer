@@ -61,6 +61,14 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
               </li>
               <li>
                 <Link
+                  href="/org-admin/counselor-assignments"
+                  className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/counselor-assignments')}`}
+                >
+                  Counselor Assignments
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/org-admin/audit-log"
                   className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/audit-log')}`}
                 >

@@ -96,6 +96,7 @@ export interface User {
   lastName: string | null;
   emailVerified: boolean;
   isActive: boolean;
+  subscriptionStatus?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -205,27 +206,27 @@ export interface OrganizationInvitation {
 // Permission system
 export enum Permission {
   // Organization management
-  MANAGE_ORGANIZATION = 'manage_organization',
-  VIEW_ORGANIZATION = 'view_organization',
+  MANAGE_ORGANIZATION = 'MANAGE_ORGANIZATION',
+  VIEW_ORGANIZATION = 'VIEW_ORGANIZATION',
 
   // Member management
-  MANAGE_MEMBERS = 'manage_members',
-  INVITE_MEMBERS = 'invite_members',
-  REMOVE_MEMBERS = 'remove_members',
-  VIEW_MEMBERS = 'view_members',
+  MANAGE_MEMBERS = 'MANAGE_MEMBERS',
+  INVITE_MEMBERS = 'INVITE_MEMBERS',
+  REMOVE_MEMBERS = 'REMOVE_MEMBERS',
+  VIEW_MEMBERS = 'VIEW_MEMBERS',
 
   // Role management
-  MANAGE_ROLES = 'manage_roles',
-  ASSIGN_ROLES = 'assign_roles',
+  MANAGE_ROLES = 'MANAGE_ROLES',
+  ASSIGN_ROLES = 'ASSIGN_ROLES',
 
   // Counseling features
-  VIEW_MEMBER_CONVERSATIONS = 'view_member_conversations',
-  VIEW_ANALYTICS = 'view_analytics',
-  EXPORT_DATA = 'export_data',
+  VIEW_MEMBER_CONVERSATIONS = 'VIEW_MEMBER_CONVERSATIONS',
+  VIEW_ANALYTICS = 'VIEW_ANALYTICS',
+  EXPORT_DATA = 'EXPORT_DATA',
 
   // Billing (for future)
-  MANAGE_BILLING = 'manage_billing',
-  VIEW_BILLING = 'view_billing',
+  MANAGE_BILLING = 'MANAGE_BILLING',
+  VIEW_BILLING = 'VIEW_BILLING',
 }
 
 // DTOs for organization operations

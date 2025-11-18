@@ -11,6 +11,7 @@ import type { AdminOrganizationMember as OrganizationMember } from '@mychristian
 interface Role {
   id: string;
   name: string;
+  organizationId: string;
 }
 
 interface OrganizationInfo {
@@ -102,6 +103,7 @@ export default function OrgAdminMembersPage() {
         setRoles(rolesData.map((role: any) => ({
           id: role.id,
           name: role.name,
+          organizationId: role.organizationId,
         })));
       } else {
         console.error('Failed to fetch roles:', rolesResponse.status);
@@ -236,6 +238,70 @@ export default function OrgAdminMembersPage() {
     await fetchData();
   };
 
+  const handleResendInvitation = async (invitationId: string) => {
+    if (!organization) return;
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const token = localStorage.getItem('accessToken');
+
+    try {
+      const response = await fetch(
+        `${apiUrl}/organizations/${organization.id}/invitations/${invitationId}/resend`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to resend invitation');
+      }
+
+      // Refresh data to show updated invitation
+      await fetchData();
+    } catch (err) {
+      console.error('Error resending invitation:', err);
+      alert(err instanceof Error ? err.message : 'Failed to resend invitation');
+    }
+  };
+
+  const handleCancelInvitation = async (invitationId: string) => {
+    if (!organization) return;
+
+    if (!confirm('Are you sure you want to cancel this invitation?')) {
+      return;
+    }
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const token = localStorage.getItem('accessToken');
+
+    try {
+      const response = await fetch(
+        `${apiUrl}/organizations/${organization.id}/invitations/${invitationId}/cancel`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to cancel invitation');
+      }
+
+      // Refresh data to remove cancelled invitation
+      await fetchData();
+    } catch (err) {
+      console.error('Error cancelling invitation:', err);
+      alert(err instanceof Error ? err.message : 'Failed to cancel invitation');
+    }
+  };
+
   return (
     <OrgAdminLayout organizationName={organization?.name}>
       <div>
@@ -290,13 +356,20 @@ export default function OrgAdminMembersPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Expires
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {pendingInvitations.map((invitation) => {
-                    const isExpiringSoon = new Date(invitation.expiresAt).getTime() - Date.now() < 24 * 60 * 60 * 1000;
+                    const isExpired = new Date(invitation.expiresAt).getTime() < Date.now();
+                    const isExpiringSoon = !isExpired && new Date(invitation.expiresAt).getTime() - Date.now() < 24 * 60 * 60 * 1000;
                     return (
-                      <tr key={invitation.id} className={isExpiringSoon ? 'bg-yellow-50' : ''}>
+                      <tr key={invitation.id} className={isExpired ? 'bg-red-50' : isExpiringSoon ? 'bg-yellow-50' : ''}>
                         <td className="px-6 py-4 text-sm text-gray-900">{invitation.email}</td>
                         <td className="px-6 py-4 text-sm">
                           <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
@@ -310,9 +383,41 @@ export default function OrgAdminMembersPage() {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500">
                           {new Date(invitation.expiresAt).toLocaleDateString()}
-                          {isExpiringSoon && (
-                            <span className="ml-2 text-xs text-yellow-600">(expires soon)</span>
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          {isExpired ? (
+                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                              Expired
+                            </span>
+                          ) : isExpiringSoon ? (
+                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                              Expires Soon
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                              Active
+                            </span>
                           )}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          <div className="flex gap-2">
+                            {isExpired && (
+                              <button
+                                onClick={() => handleResendInvitation(invitation.id)}
+                                className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+                                title="Resend invitation with new expiry date"
+                              >
+                                Resend
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleCancelInvitation(invitation.id)}
+                              className="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors"
+                              title="Cancel this invitation"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

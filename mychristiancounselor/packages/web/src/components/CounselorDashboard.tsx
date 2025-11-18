@@ -15,10 +15,12 @@ export default function CounselorDashboard() {
     memberId: string;
     currentStatus: WellbeingStatus;
     aiStatus: WellbeingStatus;
+    organizationId: string;
   } | null>(null);
   const [profileModal, setProfileModal] = useState<{
     memberId: string;
     memberName: string;
+    organizationId: string;
   } | null>(null);
 
   const getStoplightEmoji = (status: WellbeingStatus) => {
@@ -42,10 +44,11 @@ export default function CounselorDashboard() {
   const handleManualRefresh = async (memberId: string) => {
     setRefreshing(memberId);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
       const url = selectedOrg
-        ? `/api/counsel/members/${memberId}/refresh-analysis?organizationId=${selectedOrg}`
-        : `/api/counsel/members/${memberId}/refresh-analysis`;
+        ? `${apiUrl}/counsel/members/${memberId}/refresh-analysis?organizationId=${selectedOrg}`
+        : `${apiUrl}/counsel/members/${memberId}/refresh-analysis`;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -53,14 +56,28 @@ export default function CounselorDashboard() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to refresh analysis');
+        // Try to get error details from response
+        let errorMessage = 'Failed to refresh analysis';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = `${errorMessage} (Status: ${response.status} ${response.statusText})`;
+        }
+        console.error('Refresh analysis failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          url,
+        });
+        throw new Error(errorMessage);
       }
 
       // Refresh the member list
       await refetch();
     } catch (err) {
       console.error('Failed to refresh analysis:', err);
-      alert('Failed to refresh analysis. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to refresh analysis. Please try again.';
+      alert(errorMessage);
     } finally {
       setRefreshing(null);
     }
@@ -72,6 +89,7 @@ export default function CounselorDashboard() {
       memberId: memberSummary.member.id,
       currentStatus: memberSummary.wellbeingStatus?.status || 'green',
       aiStatus: memberSummary.wellbeingStatus?.aiSuggestedStatus || 'green',
+      organizationId: memberSummary.assignment.organizationId,
     });
   };
 
@@ -95,6 +113,14 @@ export default function CounselorDashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <div className="mb-6">
+        <button
+          onClick={() => window.history.back()}
+          className="text-blue-600 hover:text-blue-700 flex items-center gap-2 mb-4"
+        >
+          ← Back
+        </button>
+      </div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Counselor Dashboard</h1>
         <button
@@ -188,15 +214,22 @@ export default function CounselorDashboard() {
                         Override
                       </button>
                       <button
+                        onClick={() => window.location.href = `/counsel/member/${memberSummary.member.id}/journal`}
+                        className="text-purple-600 hover:text-purple-900"
+                      >
+                        Journal
+                      </button>
+                      <button
                         onClick={() =>
                           setProfileModal({
                             memberId: memberSummary.member.id,
                             memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
+                            organizationId: memberSummary.assignment.organizationId,
                           })
                         }
                         className="text-green-600 hover:text-green-900"
                       >
-                        View Profile
+                        Profile
                       </button>
                     </td>
                   </tr>
@@ -213,7 +246,7 @@ export default function CounselorDashboard() {
           memberId={overrideModal.memberId}
           currentStatus={overrideModal.currentStatus}
           aiSuggestedStatus={overrideModal.aiStatus}
-          organizationId={selectedOrg || ''}
+          organizationId={overrideModal.organizationId}
           onClose={() => setOverrideModal(null)}
           onSuccess={() => {
             refetch();
@@ -226,7 +259,7 @@ export default function CounselorDashboard() {
         <MemberProfileModal
           memberId={profileModal.memberId}
           memberName={profileModal.memberName}
-          organizationId={selectedOrg}
+          organizationId={profileModal.organizationId}
           onClose={() => setProfileModal(null)}
         />
       )}
