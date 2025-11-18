@@ -236,7 +236,7 @@ export function ConversationView() {
               {comparisonMode ? 'Single Translation' : 'Compare Translations'}
             </button>
             {/* Mobile Notes Toggle */}
-            {sessionId && isAuthenticated && (
+            {sessionId && isAuthenticated && subscriptionStatus?.hasHistoryAccess && (
               <button
                 onClick={() => setShowMobileNotes(!showMobileNotes)}
                 className="lg:hidden px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
@@ -245,7 +245,7 @@ export function ConversationView() {
               </button>
             )}
             {/* Export Button */}
-            {sessionId && isAuthenticated && (
+            {sessionId && isAuthenticated && subscriptionStatus?.hasHistoryAccess && (
               <button
                 onClick={() => setShowExportModal(true)}
                 className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
@@ -262,9 +262,9 @@ export function ConversationView() {
 
       {/* Messages and Notes Grid */}
       <div className="flex-1 overflow-hidden p-4">
-        <div className={`h-full grid grid-cols-1 gap-4 ${sessionId && isAuthenticated ? 'lg:grid-cols-3' : ''}`}>
+        <div className={`h-full grid grid-cols-1 gap-4 ${sessionId && isAuthenticated && subscriptionStatus?.hasHistoryAccess ? 'lg:grid-cols-3' : ''}`}>
           {/* Conversation Column (2/3 width on desktop) */}
-          <div className={sessionId && isAuthenticated ? 'lg:col-span-2 overflow-y-auto' : 'overflow-y-auto'}>
+          <div className={sessionId && isAuthenticated && subscriptionStatus?.hasHistoryAccess ? 'lg:col-span-2 overflow-y-auto' : 'overflow-y-auto'}>
             {messages.length === 0 && isAuthenticated && (
               <div className="mb-6">
                 <SharedWithMe />
@@ -314,8 +314,8 @@ export function ConversationView() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Notes Panel (1/3 width on desktop) */}
-          {sessionId && isAuthenticated && (
+          {/* Notes Panel (1/3 width on desktop) - Only for subscribed users */}
+          {sessionId && isAuthenticated && subscriptionStatus?.hasHistoryAccess && (
             <div className="lg:col-span-1 hidden lg:block">
               <SessionNotesPanel
                 sessionId={sessionId}
@@ -364,8 +364,8 @@ export function ConversationView() {
         onClose={() => setCrisisModal({ isOpen: false, resources: [] })}
       />
 
-      {/* Mobile Notes Overlay */}
-      {showMobileNotes && sessionId && isAuthenticated && (
+      {/* Mobile Notes Overlay - Only for subscribed users */}
+      {showMobileNotes && sessionId && isAuthenticated && subscriptionStatus?.hasHistoryAccess && (
         <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-50"
           onClick={() => setShowMobileNotes(false)}
@@ -397,8 +397,8 @@ export function ConversationView() {
         </div>
       )}
 
-      {/* Export Modal */}
-      {showExportModal && sessionId && (
+      {/* Export Modal - Only for subscribed users */}
+      {showExportModal && sessionId && subscriptionStatus?.hasHistoryAccess && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[90vh] flex flex-col">
             {/* Modal Header */}
