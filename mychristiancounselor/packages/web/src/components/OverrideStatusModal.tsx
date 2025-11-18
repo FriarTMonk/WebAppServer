@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { WellbeingStatus } from '@mychristiancounselor/shared';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+import { apiPatch } from '@/lib/api';
 
 interface OverrideStatusModalProps {
   memberName: string;
@@ -41,17 +40,9 @@ export default function OverrideStatusModal({
     setError(null);
 
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(
-        `${API_URL}/counsel/members/${memberId}/status?organizationId=${organizationId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status: newStatus, reason }),
-        }
+      const response = await apiPatch(
+        `/counsel/members/${memberId}/status?organizationId=${organizationId}`,
+        { status: newStatus, reason }
       );
 
       if (!response.ok) {

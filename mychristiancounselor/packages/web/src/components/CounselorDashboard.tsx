@@ -5,6 +5,7 @@ import { useCounselorMembers } from '@/hooks/useCounselorMembers';
 import { WellbeingStatus, CounselorMemberSummary } from '@mychristiancounselor/shared';
 import OverrideStatusModal from './OverrideStatusModal';
 import MemberProfileModal from './MemberProfileModal';
+import { apiPost } from '@/lib/api';
 
 export default function CounselorDashboard() {
   const [selectedOrg] = useState<string | undefined>(undefined);
@@ -44,16 +45,11 @@ export default function CounselorDashboard() {
   const handleManualRefresh = async (memberId: string) => {
     setRefreshing(memberId);
     try {
-      const token = localStorage.getItem('accessToken');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
-      const url = selectedOrg
-        ? `${apiUrl}/counsel/members/${memberId}/refresh-analysis?organizationId=${selectedOrg}`
-        : `${apiUrl}/counsel/members/${memberId}/refresh-analysis`;
+      const endpoint = selectedOrg
+        ? `/counsel/members/${memberId}/refresh-analysis?organizationId=${selectedOrg}`
+        : `/counsel/members/${memberId}/refresh-analysis`;
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await apiPost(endpoint);
 
       if (!response.ok) {
         // Try to get error details from response
@@ -64,11 +60,6 @@ export default function CounselorDashboard() {
         } catch {
           errorMessage = `${errorMessage} (Status: ${response.status} ${response.statusText})`;
         }
-        console.error('Refresh analysis failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          url,
-        });
         throw new Error(errorMessage);
       }
 

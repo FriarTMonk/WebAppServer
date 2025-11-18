@@ -2,10 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { SessionNote, CreateNoteRequest } from '@mychristiancounselor/shared';
-import { getAccessToken } from '../lib/auth';
-import axios from 'axios';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+import { apiGet, apiPost } from '../lib/api';
 
 interface SessionNotesPanelProps {
   sessionId: string;
@@ -31,25 +28,23 @@ export function SessionNotesPanel({
 
   const fetchNotes = useCallback(async () => {
     try {
-      const token = getAccessToken();
-      if (!token) return;
+      const response = await apiGet(`/counsel/notes/${sessionId}`);
 
-      const response = await axios.get(`${API_URL}/counsel/notes/${sessionId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setNotes(response.data.notes);
-      setError(null);
-    } catch (err: any) {
-      console.error('Failed to fetch notes:', err);
-      // 404 or empty notes is not an error - just means no notes yet
-      if (err.response?.status === 404 || err.response?.data?.notes?.length === 0) {
+      if (response.ok) {
+        const data = await response.json();
+        setNotes(data.notes);
+        setError(null);
+      } else if (response.status === 404) {
+        // 404 means no notes yet - not an error
         setNotes([]);
         setError(null);
       } else {
-        // Only show error for actual failures (500, network errors, etc.)
-        setError('Failed to load notes');
+        throw new Error('Failed to load notes');
       }
+    } catch (err: any) {
+      console.error('Failed to fetch notes:', err);
+      // Only show error for actual failures (500, network errors, etc.)
+      setError('Failed to load notes');
     } finally {
       setInitialLoading(false);
     }
@@ -67,29 +62,25 @@ export function SessionNotesPanel({
       setLoading(true);
       setError(null);
 
-      const token = getAccessToken();
-      if (!token) {
-        setError('You must be logged in to add notes');
-        return;
-      }
-
       const payload: CreateNoteRequest = {
         content: newNote,
         isPrivate: isPrivate,
       };
 
-      const response = await axios.post(
-        `${API_URL}/counsel/notes/${sessionId}`,
-        payload,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await apiPost(`/counsel/notes/${sessionId}`, payload);
 
-      setNotes([...notes, response.data.note]);
-      setNewNote('');
-      setIsPrivate(false);
+      if (response.ok) {
+        const data = await response.json();
+        setNotes([...notes, data.note]);
+        setNewNote('');
+        setIsPrivate(false);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to add note');
+      }
     } catch (err: any) {
       console.error('Failed to add note:', err);
-      setError(err.response?.data?.message || 'Failed to add note');
+      setError(err.message || 'Failed to add note');
     } finally {
       setLoading(false);
     }

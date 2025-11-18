@@ -2,10 +2,7 @@
 
 import { useState } from 'react';
 import { CreateShareRequest, CreateShareResponse } from '@mychristiancounselor/shared';
-import { getAccessToken } from '../lib/auth';
-import axios from 'axios';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+import { apiPost } from '../lib/api';
 
 interface ShareModalProps {
   sessionId: string;
@@ -27,31 +24,28 @@ export function ShareModal({ sessionId, sessionTitle, isOpen, onClose }: ShareMo
       setLoading(true);
       setError(null);
 
-      const token = getAccessToken();
-      if (!token) {
-        setError('You must be logged in to share conversations');
-        return;
-      }
-
       const payload: CreateShareRequest = {
         sessionId,
         expiresInDays: expiresInDays || undefined,
         allowNotesAccess,
       };
 
-      const response = await axios.post<CreateShareResponse>(
-        `${API_URL}/share`,
-        payload,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await apiPost('/share', payload);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to generate share link');
+      }
+
+      const data: CreateShareResponse = await response.json();
 
       // Build full URL
       const baseUrl = window.location.origin;
-      const fullUrl = `${baseUrl}${response.data.shareUrl}`;
+      const fullUrl = `${baseUrl}${data.shareUrl}`;
       setShareUrl(fullUrl);
     } catch (err: any) {
       console.error('Failed to generate share link:', err);
-      setError(err.response?.data?.message || 'Failed to generate share link');
+      setError(err.message || 'Failed to generate share link');
     } finally {
       setLoading(false);
     }
