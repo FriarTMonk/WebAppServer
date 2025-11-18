@@ -40,14 +40,16 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
     if (response.status === 401 || response.status === 403) {
       console.log('[API] Session expired, redirecting to home');
 
-      // Show friendly message to user
-      showToast('Your session has timed out. Redirecting to home...', 'warning', 2500);
-
       // Clear authentication state
       clearTokens();
 
-      // Redirect to home as anonymous after a short delay (let user see the message)
+      // Only show toast and redirect if not already on home page
+      // (prevents showing "signed out" message immediately after login)
       if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+        // Show friendly message to user
+        showToast('Your session has timed out. Redirecting to home...', 'warning', 2500);
+
+        // Redirect to home as anonymous after a short delay (let user see the message)
         setTimeout(() => {
           window.location.href = '/';
         }, 2000);
