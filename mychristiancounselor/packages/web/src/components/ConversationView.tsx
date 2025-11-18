@@ -13,11 +13,8 @@ import { SessionNotesPanel } from './SessionNotesPanel';
 import { SessionExportView } from './SessionExportView';
 import { SharedWithMe } from './SharedWithMe';
 import { Message, CrisisResource, GriefResource, BibleTranslation, DEFAULT_TRANSLATION } from '@mychristiancounselor/shared';
-import axios from 'axios';
-import { getAccessToken } from '../lib/auth';
+import { apiGet, apiPost } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
 // Extended message type to include grief resources for display
 interface ExtendedMessage extends Message {
@@ -74,19 +71,16 @@ export function ConversationView() {
       if (!isAuthenticated) return;
 
       try {
-        const token = getAccessToken();
-        if (!token) return;
+        const response = await apiGet('/profile');
 
-        const response = await axios.get(`${API_URL}/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const profile = response.data;
-        if (profile.preferredTranslation) {
-          setPreferredTranslation(profile.preferredTranslation as BibleTranslation);
-        }
-        if (profile.comparisonTranslations && profile.comparisonTranslations.length > 0) {
-          setComparisonTranslations(profile.comparisonTranslations as BibleTranslation[]);
+        if (response.ok) {
+          const profile = await response.json();
+          if (profile.preferredTranslation) {
+            setPreferredTranslation(profile.preferredTranslation as BibleTranslation);
+          }
+          if (profile.comparisonTranslations && profile.comparisonTranslations.length > 0) {
+            setComparisonTranslations(profile.comparisonTranslations as BibleTranslation[]);
+          }
         }
       } catch (error) {
         console.error('Error loading user preferences:', error);
@@ -100,8 +94,7 @@ export function ConversationView() {
   // Fetch subscription status on mount
   useEffect(() => {
     const fetchSubscriptionStatus = async () => {
-      const token = getAccessToken();
-      if (!token) {
+      if (!isAuthenticated) {
         setSubscriptionStatus({
           subscriptionStatus: 'none',
           maxClarifyingQuestions: 0,
@@ -110,9 +103,7 @@ export function ConversationView() {
       }
 
       try {
-        const response = await fetch(`${API_URL}/subscriptions/status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await apiGet('/subscriptions/status');
         if (response.ok) {
           setSubscriptionStatus(await response.json());
         }
@@ -122,7 +113,7 @@ export function ConversationView() {
     };
 
     fetchSubscriptionStatus();
-  }, []);
+  }, [isAuthenticated]);
 
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -141,20 +132,19 @@ export function ConversationView() {
     setIsLoading(true);
 
     try {
-      // Get auth token if user is logged in (optional)
-      const token = getAccessToken();
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-      const response = await axios.post(`${API_URL}/counsel/ask`, {
+      const response = await apiPost('/counsel/ask', {
         message: inputValue,
         sessionId,
         preferredTranslation,
         comparisonMode,
         comparisonTranslations: comparisonMode ? comparisonTranslations : undefined,
-      }, {
-        headers
       });
 
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      const data = await response.json();
       const {
         sessionId: newSessionId,
         message,
@@ -163,7 +153,7 @@ export function ConversationView() {
         isGriefDetected,
         griefResources,
         currentSessionQuestionCount: responseQuestionCount
-      } = response.data;
+      } = data;
 
       console.log('API Response:', { isGriefDetected, griefResources, hasGriefResources: !!griefResources });
 

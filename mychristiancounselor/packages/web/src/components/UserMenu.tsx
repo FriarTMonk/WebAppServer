@@ -3,9 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { getAccessToken } from '../lib/auth';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+import { apiGet } from '../lib/api';
 
 export function UserMenu() {
   const { user, logout, isAuthenticated, morphSession } = useAuth();
@@ -21,102 +19,91 @@ export function UserMenu() {
   useEffect(() => {
     console.log('[UserMenu] useEffect triggered - isAuthenticated:', isAuthenticated, 'user:', user?.email);
     if (isAuthenticated && user) {
-      const token = getAccessToken();
-      if (token) {
-        // Check for organizations
-        fetch(`${API_URL}/organizations`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-          .then(res => res.ok ? res.json() : [])
-          .then(data => setHasOrganizations(Array.isArray(data) && data.length > 0))
-          .catch(() => setHasOrganizations(false));
+      // Check for organizations
+      apiGet('/organizations')
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setHasOrganizations(Array.isArray(data) && data.length > 0))
+        .catch(() => setHasOrganizations(false));
 
-        // Check if user is Platform Admin
-        fetch(`${API_URL}/admin/health-check`, {
-          headers: { Authorization: `Bearer ${token}` },
+      // Check if user is Platform Admin
+      apiGet('/admin/health-check')
+        .then(res => {
+          console.log('[UserMenu] Platform admin check response:', res.status);
+          if (res.ok) {
+            return res.json();
+          }
+          throw new Error('Not a platform admin');
         })
-          .then(res => {
-            console.log('[UserMenu] Platform admin check response:', res.status);
-            if (res.ok) {
-              return res.json();
-            }
-            throw new Error('Not a platform admin');
-          })
-          .then(data => {
-            console.log('[UserMenu] Platform admin check data:', data);
-            setIsPlatformAdmin(data.isPlatformAdmin === true);
-          })
-          .catch((err) => {
-            console.error('[UserMenu] Platform admin check error:', err);
-            setIsPlatformAdmin(false);
-          });
-
-        // Check if user is Organization Admin
-        console.log('[UserMenu] Checking org admin status...');
-        fetch(`${API_URL}/org-admin/organization`, {
-          headers: { Authorization: `Bearer ${token}` },
+        .then(data => {
+          console.log('[UserMenu] Platform admin check data:', data);
+          setIsPlatformAdmin(data.isPlatformAdmin === true);
         })
-          .then(res => {
-            console.log('[UserMenu] Org admin check response:', res.status);
-            if (res.ok) {
-              return res.json().then(data => {
-                console.log('[UserMenu] Org admin check succeeded:', data);
-                setIsOrgAdmin(true);
-              });
-            } else {
-              return res.json().then(errorData => {
-                console.log('[UserMenu] Org admin check failed:', res.status, errorData);
-                setIsOrgAdmin(false);
-              }).catch(() => {
-                console.log('[UserMenu] Org admin check failed:', res.status);
-                setIsOrgAdmin(false);
-              });
-            }
-          })
-          .catch((err) => {
-            console.error('[UserMenu] Org admin check error:', err);
-            setIsOrgAdmin(false);
-          });
+        .catch((err) => {
+          console.error('[UserMenu] Platform admin check error:', err);
+          setIsPlatformAdmin(false);
+        });
 
-        // Check if user has Counselor role in any organization
-        console.log('[UserMenu] Checking counselor role status...');
-        fetch(`${API_URL}/profile/organizations`, {
-          headers: { Authorization: `Bearer ${token}` },
+      // Check if user is Organization Admin
+      console.log('[UserMenu] Checking org admin status...');
+      apiGet('/org-admin/organization')
+        .then(res => {
+          console.log('[UserMenu] Org admin check response:', res.status);
+          if (res.ok) {
+            return res.json().then(data => {
+              console.log('[UserMenu] Org admin check succeeded:', data);
+              setIsOrgAdmin(true);
+            });
+          } else {
+            return res.json().then(errorData => {
+              console.log('[UserMenu] Org admin check failed:', res.status, errorData);
+              setIsOrgAdmin(false);
+            }).catch(() => {
+              console.log('[UserMenu] Org admin check failed:', res.status);
+              setIsOrgAdmin(false);
+            });
+          }
         })
-          .then(res => {
-            console.log('[UserMenu] Organizations check response:', res.status);
-            if (res.ok) {
-              res.json().then(orgs => {
-                console.log('[UserMenu] User organizations:', orgs);
-                // Check if user has Counselor role in any organization
-                const hasCounselorRole = Array.isArray(orgs) &&
-                  orgs.some(org => org.role?.name?.includes('Counselor'));
-                console.log('[UserMenu] Has counselor role:', hasCounselorRole);
-                setIsCounselor(hasCounselorRole);
+        .catch((err) => {
+          console.error('[UserMenu] Org admin check error:', err);
+          setIsOrgAdmin(false);
+        });
 
-                // Check journal access: user has access if they have an active subscription OR are part of an organization
-                const hasOrgs = Array.isArray(orgs) && orgs.length > 0;
-                const hasActiveSubscription = user?.subscriptionStatus === 'active';
-                const hasAccess = hasActiveSubscription || hasOrgs;
-                console.log('[UserMenu] Journal access check:', { hasOrgs, hasActiveSubscription, hasAccess });
-                setHasJournalAccess(hasAccess);
-              });
-            } else {
-              console.log('[UserMenu] Organizations check failed:', res.status);
-              setIsCounselor(false);
-              // If no organizations, check if user has active subscription
+      // Check if user has Counselor role in any organization
+      console.log('[UserMenu] Checking counselor role status...');
+      apiGet('/profile/organizations')
+        .then(res => {
+          console.log('[UserMenu] Organizations check response:', res.status);
+          if (res.ok) {
+            res.json().then(orgs => {
+              console.log('[UserMenu] User organizations:', orgs);
+              // Check if user has Counselor role in any organization
+              const hasCounselorRole = Array.isArray(orgs) &&
+                orgs.some(org => org.role?.name?.includes('Counselor'));
+              console.log('[UserMenu] Has counselor role:', hasCounselorRole);
+              setIsCounselor(hasCounselorRole);
+
+              // Check journal access: user has access if they have an active subscription OR are part of an organization
+              const hasOrgs = Array.isArray(orgs) && orgs.length > 0;
               const hasActiveSubscription = user?.subscriptionStatus === 'active';
-              setHasJournalAccess(hasActiveSubscription);
-            }
-          })
-          .catch((err) => {
-            console.error('[UserMenu] Organizations check error:', err);
+              const hasAccess = hasActiveSubscription || hasOrgs;
+              console.log('[UserMenu] Journal access check:', { hasOrgs, hasActiveSubscription, hasAccess });
+              setHasJournalAccess(hasAccess);
+            });
+          } else {
+            console.log('[UserMenu] Organizations check failed:', res.status);
             setIsCounselor(false);
-            // If error fetching organizations, check if user has active subscription
+            // If no organizations, check if user has active subscription
             const hasActiveSubscription = user?.subscriptionStatus === 'active';
             setHasJournalAccess(hasActiveSubscription);
-          });
-      }
+          }
+        })
+        .catch((err) => {
+          console.error('[UserMenu] Organizations check error:', err);
+          setIsCounselor(false);
+          // If error fetching organizations, check if user has active subscription
+          const hasActiveSubscription = user?.subscriptionStatus === 'active';
+          setHasJournalAccess(hasActiveSubscription);
+        });
     } else {
       // Reset states when user logs out
       console.log('[UserMenu] Resetting admin states (not authenticated or no user)');

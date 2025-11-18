@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CounselorMemberSummary } from '@mychristiancounselor/shared';
+import { apiGet } from '@/lib/api';
 
 export function useCounselorMembers(organizationId?: string) {
   const [members, setMembers] = useState<CounselorMemberSummary[]>([]);
@@ -9,19 +10,12 @@ export function useCounselorMembers(organizationId?: string) {
   const fetchMembers = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('accessToken');
-      if (!token) {
-        throw new Error('No authentication token');
-      }
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
-      const url = organizationId
-        ? `${apiUrl}/counsel/members?organizationId=${organizationId}`
-        : `${apiUrl}/counsel/members`;
+      const endpoint = organizationId
+        ? `/counsel/members?organizationId=${organizationId}`
+        : `/counsel/members`;
 
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await apiGet(endpoint);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch members: ${response.statusText}`);
