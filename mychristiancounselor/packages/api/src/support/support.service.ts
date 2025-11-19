@@ -151,8 +151,11 @@ export class SupportService {
     options?: {
       skip?: number;
       take?: number;
+      status?: string[];
+      priority?: string[];
+      category?: string[];
     }
-  ): Promise<any> {
+  ): Promise<{ tickets: any[]; total: number; page: number; limit: number }> {
     // Get user with platform admin flag and org memberships
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -202,35 +205,60 @@ export class SupportService {
       }
     }
 
-    // Fetch tickets with related data
-    const tickets = await this.prisma.supportTicket.findMany({
-      where,
-      include: {
-        createdBy: {
-          select: { id: true, email: true, firstName: true, lastName: true },
-        },
-        assignedTo: {
-          select: { id: true, email: true, firstName: true, lastName: true },
-        },
-        organization: {
-          select: { id: true, name: true },
-        },
-        _count: {
-          select: {
-            messages: true,
+    // Add status filter
+    if (options?.status?.length) {
+      where.status = { in: options.status };
+    }
+
+    // Add priority filter
+    if (options?.priority?.length) {
+      where.priority = { in: options.priority };
+    }
+
+    // Add category filter
+    if (options?.category?.length) {
+      where.category = { in: options.category };
+    }
+
+    // Fetch tickets and total count in parallel
+    const [ticketsRaw, total] = await Promise.all([
+      this.prisma.supportTicket.findMany({
+        where,
+        include: {
+          createdBy: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          assignedTo: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          organization: {
+            select: { id: true, name: true },
+          },
+          _count: {
+            select: {
+              messages: true,
+            },
           },
         },
-      },
-      orderBy: { workPriorityScore: 'desc' }, // Highest priority first
-      skip: options?.skip || 0,
-      take: options?.take || 50, // Default limit of 50
-    });
+        orderBy: { workPriorityScore: 'desc' }, // Highest priority first
+        skip: options?.skip || 0,
+        take: options?.take || 50, // Default limit of 50
+      }),
+      this.prisma.supportTicket.count({ where }),
+    ]);
 
     // Transform to include messageCount in the response
-    return tickets.map(ticket => ({
+    const tickets = ticketsRaw.map(ticket => ({
       ...ticket,
       messageCount: ticket._count.messages,
       _count: undefined, // Remove _count from response
     }));
+
+    return {
+      tickets,
+      total,
+      page: Math.floor((options?.skip || 0) / (options?.take || 50)) + 1,
+      limit: options?.take || 50,
+    };
   }
 }
