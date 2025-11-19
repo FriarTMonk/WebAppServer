@@ -63,18 +63,18 @@ export default function CreateTicketPage() {
     // Title validation
     if (!formData.title.trim()) {
       errors.title = 'Title is required';
-    } else if (formData.title.length < 10) {
+    } else if (formData.title.trim().length < 10) {
       errors.title = 'Title must be at least 10 characters';
-    } else if (formData.title.length > 200) {
+    } else if (formData.title.trim().length > 200) {
       errors.title = 'Title must not exceed 200 characters';
     }
 
     // Description validation
     if (!formData.description.trim()) {
       errors.description = 'Description is required';
-    } else if (formData.description.length < 50) {
+    } else if (formData.description.trim().length < 50) {
       errors.description = 'Description must be at least 50 characters';
-    } else if (formData.description.length > 5000) {
+    } else if (formData.description.trim().length > 5000) {
       errors.description = 'Description must not exceed 5000 characters';
     }
 
@@ -99,25 +99,35 @@ export default function CreateTicketPage() {
 
     try {
       const response = await apiPost('/support/tickets', formData);
-      const data = await response.json();
+      let data;
+
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        setError('Server error. Please try again.');
+        setLoading(false);
+        return;
+      }
 
       if (response.ok) {
-        // Redirect to the ticket detail page
+        setLoading(false);
         router.push(`/support/tickets/${data.id}`);
       } else {
         setError(data.message || 'Failed to create ticket');
         setLoading(false);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating ticket:', err);
-      setError(err.message || 'Failed to create ticket. Please try again.');
+      const message = err instanceof Error ? err.message : 'Failed to create ticket. Please try again.';
+      setError(message);
       setLoading(false);
     }
   };
 
   const handleChange = (field: keyof FormData, value: string) => {
     setFormData({ ...formData, [field]: value });
-    // Clear error for this field when user starts typing
+    setError(''); // Clear global error when user makes changes
+    // Clear field-specific error
     if (formErrors[field]) {
       setFormErrors({ ...formErrors, [field]: undefined });
     }
@@ -178,8 +188,8 @@ export default function CreateTicketPage() {
                 ) : (
                   <p className="text-sm text-gray-500">Minimum 10 characters</p>
                 )}
-                <p className={`text-sm ${formData.title.length > 200 ? 'text-red-600' : 'text-gray-500'}`}>
-                  {formData.title.length}/200
+                <p className={`text-sm ${formData.title.trim().length > 200 ? 'text-red-600' : 'text-gray-500'}`}>
+                  {formData.title.trim().length}/200
                 </p>
               </div>
             </div>
@@ -254,8 +264,8 @@ export default function CreateTicketPage() {
                 ) : (
                   <p className="text-sm text-gray-500">Minimum 50 characters - Please be as detailed as possible</p>
                 )}
-                <p className={`text-sm ${formData.description.length > 5000 ? 'text-red-600' : 'text-gray-500'}`}>
-                  {formData.description.length}/5000
+                <p className={`text-sm ${formData.description.trim().length > 5000 ? 'text-red-600' : 'text-gray-500'}`}>
+                  {formData.description.trim().length}/5000
                 </p>
               </div>
             </div>
