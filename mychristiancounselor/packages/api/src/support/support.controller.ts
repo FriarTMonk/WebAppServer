@@ -3,6 +3,7 @@ import { SupportService } from './support.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { ReplyToTicketDto } from './dto/reply-to-ticket.dto';
+import { AssignTicketDto } from './dto/assign-ticket.dto';
 
 @Controller('support')
 export class SupportController {
@@ -82,5 +83,33 @@ export class SupportController {
       category: categoryFilter.length > 0 ? categoryFilter : undefined,
       assignedToId: assignedToId || undefined,
     });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('tickets/:ticketId/assign')
+  async assignTicket(
+    @Request() req,
+    @Param('ticketId') ticketId: string,
+    @Body() dto: AssignTicketDto,
+  ) {
+    return this.supportService.assignTicket(ticketId, req.user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('tickets/:ticketId/resolve')
+  async resolveTicket(
+    @Request() req,
+    @Param('ticketId') ticketId: string,
+  ) {
+    return this.supportService.resolveTicket(ticketId, req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('tickets/:ticketId/close')
+  async closeTicket(
+    @Request() req,
+    @Param('ticketId') ticketId: string,
+  ) {
+    return this.supportService.closeTicket(ticketId, req.user.id);
   }
 }
