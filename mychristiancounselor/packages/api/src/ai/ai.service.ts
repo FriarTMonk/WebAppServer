@@ -14,15 +14,43 @@ interface SimilarityResult {
   score: number;
 }
 
+/**
+ * Simple rate limiter for Claude API calls
+ * Prevents hitting rate limits during batch processing
+ */
+class RateLimiter {
+  private lastCallTime = 0;
+  private readonly minInterval: number;
+
+  constructor(callsPerMinute: number) {
+    // Calculate minimum interval between calls in milliseconds
+    this.minInterval = (60 * 1000) / callsPerMinute;
+  }
+
+  async wait(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastCall = now - this.lastCallTime;
+
+    if (timeSinceLastCall < this.minInterval) {
+      const waitTime = this.minInterval - timeSinceLastCall;
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+    }
+
+    this.lastCallTime = Date.now();
+  }
+}
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   private readonly anthropic: Anthropic;
+  private readonly rateLimiter: RateLimiter;
 
   constructor(private prisma: PrismaService) {
     this.anthropic = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY,
     });
+    this.rateLimiter = new RateLimiter(10); // 10 calls per minute
   }
 
   /**
@@ -290,6 +318,138 @@ Only include scores above 40. Return empty array [] if no matches.`;
       return filtered;
     } catch (error) {
       this.logger.error('Failed to find similar active tickets', {
+        error: error.message,
+        ticketId,
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Weekly batch job to find historical solutions for unresolved tickets
+   * Processes all unresolved tickets against all resolved tickets with rate limiting
+   */
+  async processWeeklySimilarityBatch(): Promise<void> {
+    this.logger.log('Starting weekly historical similarity batch job');
+
+    try {
+      // 1. Get all unresolved tickets
+      const unresolvedTickets = await this.prisma.supportTicket.findMany({
+        where: {
+          status: { in: ['open', 'in_progress', 'waiting_on_user'] },
+        },
+        select: { id: true, title: true, description: true },
+      });
+
+      // 2. Get all resolved tickets with resolutions
+      const resolvedTickets = await this.prisma.supportTicket.findMany({
+        where: {
+          status: { in: ['resolved', 'closed'] },
+          resolution: { not: null },
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          resolution: true,
+        },
+      });
+
+      this.logger.log(
+        `Processing ${unresolvedTickets.length} unresolved tickets ` +
+          `against ${resolvedTickets.length} resolved tickets`
+      );
+
+      if (unresolvedTickets.length === 0 || resolvedTickets.length === 0) {
+        this.logger.log('No tickets to process, batch job complete');
+        return;
+      }
+
+      // 3. Process each unresolved ticket
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const ticket of unresolvedTickets) {
+        try {
+          // Rate limit to avoid API throttling (10 calls/minute)
+          await this.rateLimiter.wait();
+
+          // Process in batches of 20 resolved tickets at a time
+          const allResults: SimilarityResult[] = [];
+
+          for (let i = 0; i < resolvedTickets.length; i += 20) {
+            const batch = resolvedTickets.slice(i, i + 20);
+            const batchResults = await this.batchSimilarityCheck(ticket, batch);
+            allResults.push(...batchResults);
+          }
+
+          // Filter by higher threshold (80+) for historical matches
+          const filtered = allResults.filter((r) => r.score >= 80);
+
+          // Cache for 7 days
+          await this.cacheSimilarityResults(
+            this.prisma,
+            ticket.id,
+            filtered,
+            'historical',
+            24 * 7 // 7 days in hours
+          );
+
+          this.logger.debug(
+            `Found ${filtered.length} historical matches for ticket ${ticket.id}`
+          );
+
+          successCount++;
+        } catch (error) {
+          this.logger.error(`Failed to process ticket ${ticket.id}`, {
+            error: error.message,
+          });
+          errorCount++;
+          // Continue with next ticket
+        }
+      }
+
+      this.logger.log('Weekly historical similarity batch job completed', {
+        totalTickets: unresolvedTickets.length,
+        successCount,
+        errorCount,
+      });
+    } catch (error) {
+      this.logger.error('Weekly batch job failed', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Get cached historical similarity matches
+   * @param ticketId Source ticket ID
+   * @returns Cached similarity results (empty if not found or expired)
+   */
+  async getCachedHistoricalMatches(
+    ticketId: string
+  ): Promise<SimilarityResult[]> {
+    try {
+      const cached = await this.prisma.ticketSimilarity.findMany({
+        where: {
+          sourceTicketId: ticketId,
+          matchType: 'historical',
+          expiresAt: { gt: new Date() },
+        },
+        select: {
+          similarTicketId: true,
+          similarityScore: true,
+        },
+        orderBy: {
+          similarityScore: 'desc',
+        },
+      });
+
+      return cached.map((c) => ({
+        similarTicketId: c.similarTicketId,
+        score: c.similarityScore,
+      }));
+    } catch (error) {
+      this.logger.error('Failed to get cached historical matches', {
         error: error.message,
         ticketId,
       });
