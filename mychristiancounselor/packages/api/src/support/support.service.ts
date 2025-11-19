@@ -146,7 +146,91 @@ export class SupportService {
     throw new Error('Not implemented');
   }
 
-  async getUserTickets(userId: string): Promise<any> {
-    throw new Error('Not implemented');
+  async getUserTickets(
+    userId: string,
+    options?: {
+      skip?: number;
+      take?: number;
+    }
+  ): Promise<any> {
+    // Get user with platform admin flag and org memberships
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        isPlatformAdmin: true,
+        organizationMemberships: {
+          select: {
+            organizationId: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Build where clause based on user role
+    let where: any;
+
+    if (user.isPlatformAdmin) {
+      // Platform admins see ALL tickets in the system
+      where = {};
+    } else {
+      // Regular users see tickets where they are creator OR assignee
+      // For org users, also include tickets from their organization(s)
+      const orgIds = user.organizationMemberships.map(m => m.organizationId);
+
+      if (orgIds.length > 0) {
+        // Org user: tickets they created, tickets assigned to them, OR tickets from their org
+        where = {
+          OR: [
+            { createdById: userId },
+            { assignedToId: userId },
+            { organizationId: { in: orgIds } },
+          ],
+        };
+      } else {
+        // Individual user: only tickets they created or are assigned to
+        where = {
+          OR: [
+            { createdById: userId },
+            { assignedToId: userId },
+          ],
+        };
+      }
+    }
+
+    // Fetch tickets with related data
+    const tickets = await this.prisma.supportTicket.findMany({
+      where,
+      include: {
+        createdBy: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        assignedTo: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        organization: {
+          select: { id: true, name: true },
+        },
+        _count: {
+          select: {
+            messages: true,
+          },
+        },
+      },
+      orderBy: { workPriorityScore: 'desc' }, // Highest priority first
+      skip: options?.skip || 0,
+      take: options?.take || 50, // Default limit of 50
+    });
+
+    // Transform to include messageCount in the response
+    return tickets.map(ticket => ({
+      ...ticket,
+      messageCount: ticket._count.messages,
+      _count: undefined, // Remove _count from response
+    }));
   }
 }
