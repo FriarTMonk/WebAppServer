@@ -11,5 +11,16 @@ export interface PlatformMetrics {
     active: number;
     expired: number;
   };
+  slaHealth?: {
+    breachedResponse: number;
+    breachedResolution: number;
+    criticalResponse: number;
+    criticalResolution: number;
+    complianceRate: {
+      overall: number;
+      response: number;
+      resolution: number;
+    };
+  };
   timestamp: Date;
 }

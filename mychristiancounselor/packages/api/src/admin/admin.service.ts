@@ -166,6 +166,9 @@ export class AdminService {
         }),
       ]);
 
+      // SLA Health Statistics
+      const slaHealth = await this.getSLAHealthStats();
+
       return {
         activeUsers: {
           total: activeUsers,
@@ -179,12 +182,117 @@ export class AdminService {
           active: activeOrgs,
           expired: expiredOrgs,
         },
+        slaHealth,
         timestamp: new Date(),
       };
     } catch (error) {
       this.logger.error('Failed to retrieve platform metrics', error);
       throw new InternalServerErrorException('Failed to retrieve platform metrics');
     }
+  }
+
+  /**
+   * Calculate SLA health statistics for admin dashboard
+   */
+  private async getSLAHealthStats() {
+    try {
+      // Count breached SLAs
+      const breachedResponse = await this.prisma.supportTicket.count({
+        where: {
+          status: { in: ['open', 'in_progress'] },
+          responseSLAStatus: 'breached',
+        },
+      });
+
+      const breachedResolution = await this.prisma.supportTicket.count({
+        where: {
+          status: { in: ['open', 'in_progress'] },
+          resolutionSLAStatus: 'breached',
+        },
+      });
+
+      // Count critical SLAs
+      const criticalResponse = await this.prisma.supportTicket.count({
+        where: {
+          status: { in: ['open', 'in_progress'] },
+          responseSLAStatus: 'critical',
+        },
+      });
+
+      const criticalResolution = await this.prisma.supportTicket.count({
+        where: {
+          status: { in: ['open', 'in_progress'] },
+          resolutionSLAStatus: 'critical',
+        },
+      });
+
+      // Calculate compliance rate
+      const complianceRate = await this.calculateComplianceRate();
+
+      return {
+        breachedResponse,
+        breachedResolution,
+        criticalResponse,
+        criticalResolution,
+        complianceRate,
+      };
+    } catch (error) {
+      this.logger.error('Failed to retrieve SLA health stats', error);
+      // Return zeros if SLA tracking not yet enabled or error occurs
+      return {
+        breachedResponse: 0,
+        breachedResolution: 0,
+        criticalResponse: 0,
+        criticalResolution: 0,
+        complianceRate: {
+          overall: 100,
+          response: 100,
+          resolution: 100,
+        },
+      };
+    }
+  }
+
+  /**
+   * Calculate SLA compliance rate for last 30 days
+   */
+  private async calculateComplianceRate() {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const resolvedTickets = await this.prisma.supportTicket.findMany({
+      where: {
+        resolvedAt: { gte: thirtyDaysAgo },
+        actualResponseTime: { not: null },
+      },
+      select: {
+        responseSLAMet: true,
+        resolutionSLAMet: true,
+      },
+    });
+
+    if (resolvedTickets.length === 0) {
+      return {
+        overall: 100,
+        response: 100,
+        resolution: 100,
+      };
+    }
+
+    const responseMet = resolvedTickets.filter((t) => t.responseSLAMet === true).length;
+    const resolutionMet = resolvedTickets.filter((t) => t.resolutionSLAMet === true).length;
+    const totalResponseSLAs = resolvedTickets.filter((t) => t.responseSLAMet !== null).length;
+    const totalResolutionSLAs = resolvedTickets.filter((t) => t.resolutionSLAMet !== null).length;
+
+    const responseRate = totalResponseSLAs > 0 ? (responseMet / totalResponseSLAs) * 100 : 100;
+    const resolutionRate = totalResolutionSLAs > 0 ? (resolutionMet / totalResolutionSLAs) * 100 : 100;
+    const overallRate = ((responseMet + resolutionMet) / (totalResponseSLAs + totalResolutionSLAs)) * 100;
+
+    return {
+      overall: Math.round(overallRate),
+      response: Math.round(responseRate),
+      resolution: Math.round(resolutionRate),
+    };
   }
 
   /**
