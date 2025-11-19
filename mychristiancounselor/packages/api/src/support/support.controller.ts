@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, Request, UseGuards, Query } from '@
 import { SupportService } from './support.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateTicketDto } from './dto/create-ticket.dto';
+import { ReplyToTicketDto } from './dto/reply-to-ticket.dto';
 
 @Controller('support')
 export class SupportController {
@@ -40,5 +41,15 @@ export class SupportController {
       priority: priorityFilter.length > 0 ? priorityFilter : undefined,
       category: categoryFilter.length > 0 ? categoryFilter : undefined,
     });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('tickets/:ticketId/reply')
+  async replyToTicket(
+    @Request() req,
+    @Param('ticketId') ticketId: string,
+    @Body() dto: ReplyToTicketDto,
+  ) {
+    return this.supportService.replyToTicket(ticketId, req.user.id, dto);
   }
 }
