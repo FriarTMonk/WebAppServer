@@ -4,7 +4,6 @@ import {
   addHours,
   addMinutes,
   differenceInMinutes,
-  format,
   getDay,
   getHours,
   isSameDay,
@@ -142,7 +141,7 @@ export class SlaCalculatorService {
     const hour = getHours(next);
     if (hour >= BUSINESS_HOURS.endHour || hour < BUSINESS_HOURS.startHour) {
       // Set to next day at start hour
-      next = startOfDay(addHours(next, 24 - hour + BUSINESS_HOURS.startHour));
+      next = addHours(startOfDay(next), 24 + BUSINESS_HOURS.startHour);
     }
 
     // Keep advancing by day until we hit a business day
@@ -158,8 +157,8 @@ export class SlaCalculatorService {
   /**
    * Calculate business minutes between two dates
    */
-  calculateBusinessMinutes(start: Date, end: Date): number {
-    const holidays = this.holidayCache; // Use cached holidays
+  async calculateBusinessMinutes(start: Date, end: Date): Promise<number> {
+    const holidays = await this.getHolidays(); // Ensure holidays are loaded
     let minutes = 0;
     let current = new Date(start);
 
@@ -170,20 +169,32 @@ export class SlaCalculatorService {
     current = new Date(startInTz);
     const endTime = new Date(endInTz);
 
-    // Count business minutes
+    // For multi-day spans, count by days first for performance
+    while (differenceInMinutes(endTime, current) > 60 * 24) {
+      // Count minutes for this entire day if it's a business day
+      const dayStart = new Date(current);
+      const dayEnd = addHours(startOfDay(current), BUSINESS_HOURS.endHour);
+
+      // Skip to next business day if not in business hours
+      if (!this.isBusinessHour(current, holidays)) {
+        current = this.advanceToNextBusinessHour(current, holidays);
+        continue;
+      }
+
+      // Count business hours for this day (12 hours * 60 minutes)
+      const businessMinutesInDay = (BUSINESS_HOURS.endHour - BUSINESS_HOURS.startHour) * 60;
+      minutes += businessMinutesInDay;
+
+      // Move to next day at start hour
+      current = addHours(startOfDay(current), 24 + BUSINESS_HOURS.startHour);
+    }
+
+    // Count remaining minutes minute-by-minute
     while (current < endTime) {
       if (this.isBusinessHour(current, holidays)) {
         minutes++;
       }
       current = addMinutes(current, 1);
-
-      // Performance optimization: if we're counting many days, skip ahead
-      if (differenceInMinutes(endTime, current) > 60 * 24) {
-        // Skip to next business day if not in business hours
-        if (!this.isBusinessHour(current, holidays)) {
-          current = this.advanceToNextBusinessHour(current, holidays);
-        }
-      }
     }
 
     return minutes;
@@ -192,18 +203,18 @@ export class SlaCalculatorService {
   /**
    * Calculate current SLA status
    */
-  calculateSLAStatus(
+  async calculateSLAStatus(
     createdAt: Date,
     deadline: Date | null,
     pausedMinutes: number = 0,
-  ): SLAStatus {
+  ): Promise<SLAStatus> {
     if (!deadline) {
       return 'on_track'; // No SLA for this priority
     }
 
-    const totalMinutes = this.calculateBusinessMinutes(createdAt, deadline);
+    const totalMinutes = await this.calculateBusinessMinutes(createdAt, deadline);
     const elapsedMinutes =
-      this.calculateBusinessMinutes(createdAt, new Date()) - pausedMinutes;
+      (await this.calculateBusinessMinutes(createdAt, new Date())) - pausedMinutes;
     const percentElapsed = (elapsedMinutes / totalMinutes) * 100;
 
     if (percentElapsed >= SLA_THRESHOLDS.breached) return 'breached';
@@ -215,7 +226,7 @@ export class SlaCalculatorService {
   /**
    * Get SLA hours for a priority level
    */
-  getSLAHours(priority: Priority, type: 'response' | 'resolution'): number {
+  getSLAHours(priority: Priority, type: 'response' | 'resolution'): number | null {
     const target = SLA_TARGETS[priority];
     if (!target) {
       this.logger.warn(`Unknown priority: ${priority}, defaulting to medium`);
@@ -252,7 +263,7 @@ export class SlaCalculatorService {
     }
 
     // Calculate pause duration in business minutes
-    const pauseDuration = this.calculateBusinessMinutes(
+    const pauseDuration = await this.calculateBusinessMinutes(
       ticket.slaPausedAt,
       new Date(),
     );
