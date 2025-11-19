@@ -57,6 +57,14 @@ model User {
   notificationsReceived   Notification[]           @relation("NotificationsReceived")
   notificationsSent       Notification[]           @relation("NotificationsSent")
 
+  // Support ticket relations
+  ticketsCreated       SupportTicket[]       @relation("TicketsCreated")
+  ticketsAssigned      SupportTicket[]       @relation("TicketsAssigned")
+  ticketsClosed        SupportTicket[]       @relation("TicketsClosed")
+  ticketMessagesAuthored TicketMessage[]     @relation("TicketMessagesAuthored")
+  ticketAttachmentsUploaded TicketAttachment[] @relation("TicketAttachmentsUploaded")
+  ticketLinksCreated   TicketLink[]          @relation("TicketLinksCreated")
+
   @@index([email])
   @@index([verificationToken])
   @@index([resetToken])
@@ -104,6 +112,7 @@ model Organization {
   auditLogs            AdminAuditLog[]
   metricSnapshots      MetricSnapshot[]
   counselorAssignments CounselorAssignment[]
+  supportTickets       SupportTicket[]
 
   @@index([licenseStatus])
   @@index([licenseExpiresAt])
@@ -237,6 +246,7 @@ model Message {
   content                  String   @db.Text
   scriptureReferences      Json     @default("[]")
   constitutionalReferences Json     @default("[]")
+  isClarifyingQuestion     Boolean  @default(false) // True if this assistant message was a clarifying question
   timestamp                DateTime @default(now())
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -451,4 +461,112 @@ model Notification {
   @@index([recipientId, isRead, isDismissed])
   @@index([createdAt])
   @@index([recipientId, createdAt])
+}
+
+// Support ticket for technical issues and feature requests
+model SupportTicket {
+  id                       String    @id @default(uuid())
+  title                    String
+  description              String    @db.Text
+  createdById              String
+  assignedToId             String?   // Null until admin claims
+  organizationId           String?   // Null for individual users
+
+  category                 String    // Role-specific categories
+  status                   String    @default("open") // open, in_progress, waiting_on_user, resolved, closed, rejected
+  priority                 String    @default("medium") // urgent, high, medium, low, feature (manual in Phase 1)
+  workPriorityScore        Float     @default(0) // Calculated: (priority × 10) + (age × 2) + (orgSize × 0.5)
+  tags                     String[]  @default([]) // Additional tagging
+
+  isEscalated              Boolean   @default(false)
+  escalatedAt              DateTime?
+  escalatedById            String?
+  escalatedFromOrgId       String?   // Track which org it came from
+  escalationRejectedAt     DateTime? // When escalation was rejected
+  escalationRejectedById   String?   // Platform admin who rejected escalation
+  escalationRejectionReason String?  // Why escalation was rejected
+
+  slaDeadline              DateTime? // Based on priority (Phase 2)
+  resolvedAt               DateTime?
+  closedAt                 DateTime?
+  closedById               String?   // Admin who closed/rejected
+  rejectionReason          String?   // Why ticket was rejected
+
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  // Relations
+  createdBy                User              @relation("TicketsCreated", fields: [createdById], references: [id])
+  assignedTo               User?             @relation("TicketsAssigned", fields: [assignedToId], references: [id])
+  closedBy                 User?             @relation("TicketsClosed", fields: [closedById], references: [id])
+  organization             Organization?     @relation(fields: [organizationId], references: [id])
+  messages                 TicketMessage[]
+  attachments              TicketAttachment[]
+  linksFrom                TicketLink[]      @relation("SourceTicket")
+  linksTo                  TicketLink[]      @relation("TargetTicket")
+
+  @@index([workPriorityScore])
+  @@index([status])
+  @@index([createdAt])
+  @@index([assignedToId])
+  @@index([organizationId])
+  @@index([priority])
+}
+
+// Messages and responses on support tickets
+model TicketMessage {
+  id          String   @id @default(uuid())
+  ticketId    String
+  authorId    String
+  authorRole  String   // 'user', 'org_admin', 'platform_admin'
+  content     String   @db.Text
+  isInternal  Boolean  @default(false) // Internal admin notes
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ticket      SupportTicket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author      User                 @relation("TicketMessagesAuthored", fields: [authorId], references: [id])
+  attachments TicketAttachment[]
+
+  @@index([ticketId])
+  @@index([createdAt])
+}
+
+// File attachments for tickets (images only in Phase 1)
+model TicketAttachment {
+  id           String   @id @default(uuid())
+  ticketId     String
+  messageId    String?  // Attached to specific message or ticket itself
+  fileName     String
+  filePath     String
+  fileSize     Int      // Bytes
+  mimeType     String   // image/png, image/jpeg, image/gif
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  ticket       SupportTicket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  message      TicketMessage? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  uploadedBy   User           @relation("TicketAttachmentsUploaded", fields: [uploadedById], references: [id])
+
+  @@index([ticketId])
+  @@index([messageId])
+}
+
+// Relationships between tickets (manual linking in Phase 1, AI suggestions in Phase 2)
+model TicketLink {
+  id              String   @id @default(uuid())
+  sourceTicketId  String
+  targetTicketId  String
+  relationship    String   // 'duplicate_of', 'related_to', 'blocks', 'blocked_by'
+  aiSuggested     Boolean  @default(false) // True if AI suggested this link (Phase 2)
+  createdById     String
+  createdAt       DateTime @default(now())
+
+  sourceTicket    SupportTicket @relation("SourceTicket", fields: [sourceTicketId], references: [id], onDelete: Cascade)
+  targetTicket    SupportTicket @relation("TargetTicket", fields: [targetTicketId], references: [id], onDelete: Cascade)
+  createdBy       User          @relation("TicketLinksCreated", fields: [createdById], references: [id])
+
+  @@unique([sourceTicketId, targetTicketId, relationship])
+  @@index([sourceTicketId])
+  @@index([targetTicketId])
 }
