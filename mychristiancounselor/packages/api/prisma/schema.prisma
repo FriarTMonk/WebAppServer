@@ -530,8 +530,9 @@ model SupportTicket {
   resolutionSLAStatus SLAStatus? @default(on_track)
 
   // SLA Pause tracking
-  slaPausedAt     DateTime? // When SLA was paused
-  slaPausedReason String? // "waiting_on_user"
+  slaPausedAt       DateTime? // When SLA was paused
+  slaPausedReason   String? // "waiting_on_user"
+  totalPausedMinutes Int      @default(0) // Accumulated paused time across all pause/resume cycles
 
   // SLA History (recorded when ticket resolved/closed)
   actualResponseTime   Int? // Minutes from creation to first admin response
