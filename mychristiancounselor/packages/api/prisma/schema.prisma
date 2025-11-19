@@ -494,7 +494,7 @@ model SupportTicket {
   closedAt                 DateTime?
   closedById               String?   // Admin who closed/rejected
   rejectionReason          String?   // Why ticket was rejected
-  aiDetectedPriority       String?   // AI-detected priority (Phase 2A)
+  aiDetectedPriority       Boolean   @default(false) // AI-detected priority flag (Phase 2A)
 
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
@@ -582,14 +582,16 @@ model TicketLink {
 model TicketSimilarity {
   id              String   @id @default(uuid())
   sourceTicketId  String
-  targetTicketId  String
+  similarTicketId String   // Renamed from targetTicketId for consistency
   similarityScore Float    // 0.0 to 1.0, cosine similarity of embeddings
-  computedAt      DateTime @default(now())
+  matchType       String   // "active" or "historical"
+  analyzedAt      DateTime @default(now()) // Renamed from computedAt for consistency
+  expiresAt       DateTime // For cache TTL management
 
   sourceTicket    SupportTicket @relation("SimilaritySource", fields: [sourceTicketId], references: [id], onDelete: Cascade)
-  targetTicket    SupportTicket @relation("SimilarityTarget", fields: [targetTicketId], references: [id], onDelete: Cascade)
+  similarTicket   SupportTicket @relation("SimilarityTarget", fields: [similarTicketId], references: [id], onDelete: Cascade)
 
-  @@unique([sourceTicketId, targetTicketId])
-  @@index([sourceTicketId, similarityScore])
-  @@index([targetTicketId, similarityScore])
+  @@unique([sourceTicketId, similarTicketId, matchType])
+  @@index([sourceTicketId, matchType, expiresAt])
+  @@index([expiresAt])
 }
