@@ -73,6 +73,7 @@ export interface CounselResponse {
   crisisResources?: CrisisResource[];
   isGriefDetected?: boolean;
   griefResources?: GriefResource[];
+  currentSessionQuestionCount?: number;
 }
 
 export interface CrisisResource {

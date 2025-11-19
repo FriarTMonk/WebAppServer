@@ -23,6 +23,8 @@ IMPORTANT DISCLAIMERS:
 - For severe mental health issues, recommend licensed Christian counselors
 
 RESPONSE FORMAT:
+You must respond with valid JSON only. Do not include any text outside the JSON structure.
+
 If you need clarification, respond with:
 {
   "requiresClarification": true,

@@ -37,8 +37,10 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
     const response = await fetch(url, fetchOptions);
 
     // Handle authentication errors gracefully
-    if (response.status === 401 || response.status === 403) {
-      console.log('[API] Session expired, redirecting to home');
+    // 401 = Unauthorized (invalid/expired token) -> session expired, redirect
+    // 403 = Forbidden (valid token but insufficient permissions) -> just return response, let caller handle
+    if (response.status === 401) {
+      console.log('[API] Session expired (401), redirecting to home');
 
       // Clear authentication state
       clearTokens();
@@ -59,6 +61,9 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
       // This allows calling code to handle it if needed
       return Promise.reject(new Error('Session expired. Redirecting to home...'));
     }
+
+    // For 403 (Forbidden), just return the response - let calling code decide how to handle
+    // This allows components like UserMenu to gracefully handle permission checks
 
     return response;
   } catch (error) {
@@ -111,3 +116,25 @@ export async function apiPatch(endpoint: string, data?: any, options: FetchOptio
 export async function apiDelete(endpoint: string, options: FetchOptions = {}) {
   return apiFetch(endpoint, { ...options, method: 'DELETE' });
 }
+
+/**
+ * API object that wraps fetch methods to provide axios-like interface
+ */
+export const api = {
+  get: async (endpoint: string, options: FetchOptions = {}) => {
+    const response = await apiGet(endpoint, options);
+    return { data: await response.json() };
+  },
+  post: async (endpoint: string, data?: any, options: FetchOptions = {}) => {
+    const response = await apiPost(endpoint, data, options);
+    return { data: await response.json() };
+  },
+  patch: async (endpoint: string, data?: any, options: FetchOptions = {}) => {
+    const response = await apiPatch(endpoint, data, options);
+    return { data: await response.json() };
+  },
+  delete: async (endpoint: string, options: FetchOptions = {}) => {
+    const response = await apiDelete(endpoint, options);
+    return { data: await response.json() };
+  },
+};

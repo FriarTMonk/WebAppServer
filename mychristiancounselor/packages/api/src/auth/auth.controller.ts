@@ -8,6 +8,12 @@ import {
 } from '@mychristiancounselor/shared';
 import { Request } from 'express';
 import { Public, CurrentUser } from './decorators';
+import {
+  VerifyEmailDto,
+  ResendVerificationDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+} from '../email/dto/send-email.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -56,5 +62,47 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async logoutAll(@CurrentUser() user: User): Promise<void> {
     await this.authService.logoutAll(user.id);
+  }
+
+  // ===== EMAIL VERIFICATION ENDPOINTS =====
+
+  @Public()
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  async verifyEmail(@Body() dto: VerifyEmailDto): Promise<{ message: string }> {
+    await this.authService.verifyEmail(dto.token);
+    return { message: 'Email verified successfully' };
+  }
+
+  @Public()
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.OK)
+  async resendVerification(
+    @Body() dto: ResendVerificationDto,
+    @Req() req: Request,
+  ): Promise<{ message: string }> {
+    await this.authService.resendVerificationEmail(dto.email, req.ip || '');
+    return { message: 'Verification email sent if account exists' };
+  }
+
+  // ===== PASSWORD RESET ENDPOINTS =====
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+    @Req() req: Request,
+  ): Promise<{ message: string }> {
+    await this.authService.forgotPassword(dto.email, req.ip || '');
+    return { message: 'Password reset email sent if account exists' };
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
+    await this.authService.resetPassword(dto.token, dto.newPassword);
+    return { message: 'Password reset successfully' };
   }
 }

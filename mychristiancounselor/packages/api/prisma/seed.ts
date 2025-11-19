@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { TRANSLATIONS } from '@mychristiancounselor/shared';
+import { seedHolidays } from './seeds/seed-holidays';
 
 const prisma = new PrismaClient();
 
@@ -88,6 +89,7 @@ async function main() {
   try {
     await seedTranslations();
     await seedVerses();
+    await seedHolidays();
 
     console.log('\n✅ Database seeding completed!');
   } catch (error) {
