@@ -409,25 +409,48 @@ export class SupportService {
         },
       });
 
+      // Determine the new status based on who replied
+      let newStatus = ticket.status;
+
       // Update ticket status based on who replied
       if (ticket.status === 'open' && authorRole !== 'user') {
         // Admin claimed the ticket by replying
-        await tx.supportTicket.update({
-          where: { id: ticketId },
-          data: { status: 'in_progress' },
-        });
+        newStatus = 'in_progress';
       } else if (ticket.status === 'waiting_on_user' && authorRole === 'user') {
         // User responded to admin's message
-        await tx.supportTicket.update({
-          where: { id: ticketId },
-          data: { status: 'in_progress' },
-        });
+        newStatus = 'in_progress';
       } else if (ticket.status === 'in_progress' && authorRole !== 'user' && !dto.isInternal) {
         // Internal admin messages don't change ticket status - only public replies trigger status transitions
         // Admin replied to user, now waiting on user
+        newStatus = 'waiting_on_user';
+      }
+
+      // SLA Pause/Resume Logic
+      // Auto-pause SLA when changing to waiting_on_user
+      if (
+        newStatus === 'waiting_on_user' &&
+        ticket.status !== 'waiting_on_user' &&
+        !ticket.slaPausedAt
+      ) {
+        await this.slaCalculator.pauseSLA(ticketId, 'waiting_on_user');
+        this.logger.log(`SLA paused for ticket ${ticketId} - waiting on user`);
+      }
+
+      // Auto-resume SLA when changing from waiting_on_user
+      if (
+        ticket.status === 'waiting_on_user' &&
+        newStatus !== 'waiting_on_user' &&
+        ticket.slaPausedAt
+      ) {
+        await this.slaCalculator.resumeSLA(ticketId);
+        this.logger.log(`SLA resumed for ticket ${ticketId}`);
+      }
+
+      // Update status if changed
+      if (newStatus !== ticket.status) {
         await tx.supportTicket.update({
           where: { id: ticketId },
-          data: { status: 'waiting_on_user' },
+          data: { status: newStatus },
         });
       }
 
