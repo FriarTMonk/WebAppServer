@@ -3,7 +3,7 @@ import { IsString, IsNotEmpty, MaxLength, MinLength, IsBoolean, IsOptional } fro
 export class ReplyToTicketDto {
   @IsString()
   @IsNotEmpty()
-  @MinLength(1)
+  @MinLength(10)
   @MaxLength(5000)
   content: string;
 

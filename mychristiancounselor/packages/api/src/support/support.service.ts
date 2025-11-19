@@ -264,6 +264,29 @@ export class SupportService {
   }
 
   async replyToTicket(ticketId: string, userId: string, dto: ReplyToTicketDto): Promise<any> {
+    // Fetch user once with all needed data to avoid duplicate queries
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        isPlatformAdmin: true,
+        organizationMemberships: {
+          select: {
+            organizationId: true,
+            role: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     // Get ticket with relations
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id: ticketId },
@@ -284,56 +307,62 @@ export class SupportService {
     }
 
     // Check if user can access this ticket
-    const canAccess = await this.canUserAccessTicket(userId, ticket);
+    const canAccess = this.canUserAccessTicket(user, ticket);
     if (!canAccess) {
       throw new ForbiddenException('You do not have permission to reply to this ticket');
     }
 
     // Determine author role based on user's relationship to the ticket
-    const authorRole = await this.determineAuthorRole(userId, ticket);
+    const authorRole = this.determineAuthorRole(user, ticket);
 
     // Only admins can create internal messages
     if (dto.isInternal && authorRole === 'user') {
       throw new ForbiddenException('Only administrators can create internal messages');
     }
 
-    // Create the message
-    const message = await this.prisma.ticketMessage.create({
-      data: {
-        ticketId: ticketId,
-        authorId: userId,
-        authorRole: authorRole,
-        content: dto.content,
-        isInternal: dto.isInternal || false,
-      },
-      include: {
-        author: {
-          select: { id: true, email: true, firstName: true, lastName: true },
+    // Create message and update ticket status in a transaction for data consistency
+    const message = await this.prisma.$transaction(async (tx) => {
+      // Create the message
+      const newMessage = await tx.ticketMessage.create({
+        data: {
+          ticketId: ticketId,
+          authorId: userId,
+          authorRole: authorRole,
+          content: dto.content,
+          isInternal: dto.isInternal || false,
         },
-        attachments: true,
-      },
-    });
+        include: {
+          author: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          attachments: true,
+        },
+      });
 
-    // Update ticket status based on who replied
-    if (ticket.status === 'open' && authorRole !== 'user') {
-      // Admin claimed the ticket by replying
-      await this.prisma.supportTicket.update({
-        where: { id: ticketId },
-        data: { status: 'in_progress' },
-      });
-    } else if (ticket.status === 'waiting_on_user' && authorRole === 'user') {
-      // User responded to admin's message
-      await this.prisma.supportTicket.update({
-        where: { id: ticketId },
-        data: { status: 'in_progress' },
-      });
-    } else if (ticket.status === 'in_progress' && authorRole !== 'user' && !dto.isInternal) {
-      // Admin replied to user, now waiting on user
-      await this.prisma.supportTicket.update({
-        where: { id: ticketId },
-        data: { status: 'waiting_on_user' },
-      });
-    }
+      // Update ticket status based on who replied
+      if (ticket.status === 'open' && authorRole !== 'user') {
+        // Admin claimed the ticket by replying
+        await tx.supportTicket.update({
+          where: { id: ticketId },
+          data: { status: 'in_progress' },
+        });
+      } else if (ticket.status === 'waiting_on_user' && authorRole === 'user') {
+        // User responded to admin's message
+        await tx.supportTicket.update({
+          where: { id: ticketId },
+          data: { status: 'in_progress' },
+        });
+      } else if (ticket.status === 'in_progress' && authorRole !== 'user' && !dto.isInternal) {
+        // Internal admin messages don't change ticket status - only public replies trigger status transitions
+        // Admin replied to user, now waiting on user
+        await tx.supportTicket.update({
+          where: { id: ticketId },
+          data: { status: 'waiting_on_user' },
+        });
+      }
+
+      return newMessage;
+    });
 
     this.logger.log(
       `Message created on ticket ${ticketId} by user ${userId} ` +
@@ -345,49 +374,26 @@ export class SupportService {
     return message;
   }
 
-  private async canUserAccessTicket(userId: string, ticket: any): Promise<boolean> {
-    // Get user with platform admin flag and org memberships
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        isPlatformAdmin: true,
-        organizationMemberships: {
-          select: {
-            organizationId: true,
-            role: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!user) {
-      return false;
-    }
-
+  private canUserAccessTicket(user: any, ticket: any): boolean {
     // Platform admins can access all tickets
     if (user.isPlatformAdmin) {
       return true;
     }
 
     // User created the ticket
-    if (ticket.createdById === userId) {
+    if (ticket.createdById === user.id) {
       return true;
     }
 
     // User is assigned to the ticket
-    if (ticket.assignedToId === userId) {
+    if (ticket.assignedToId === user.id) {
       return true;
     }
 
     // If ticket belongs to an organization, check if user is admin in that org
     if (ticket.organizationId) {
       const orgMembership = user.organizationMemberships.find(
-        m => m.organizationId === ticket.organizationId
+        (m: any) => m.organizationId === ticket.organizationId
       );
 
       if (orgMembership && ['Owner', 'Admin'].includes(orgMembership.role.name)) {
@@ -398,30 +404,7 @@ export class SupportService {
     return false;
   }
 
-  private async determineAuthorRole(userId: string, ticket: any): Promise<string> {
-    // Get user with platform admin flag and org memberships
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        isPlatformAdmin: true,
-        organizationMemberships: {
-          select: {
-            organizationId: true,
-            role: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!user) {
-      return 'user';
-    }
-
+  private determineAuthorRole(user: any, ticket: any): string {
     // Platform admin
     if (user.isPlatformAdmin) {
       return 'platform_admin';
@@ -430,7 +413,7 @@ export class SupportService {
     // Check if org admin
     if (ticket.organizationId) {
       const orgMembership = user.organizationMemberships.find(
-        m => m.organizationId === ticket.organizationId
+        (m: any) => m.organizationId === ticket.organizationId
       );
 
       if (orgMembership && ['Owner', 'Admin'].includes(orgMembership.role.name)) {
