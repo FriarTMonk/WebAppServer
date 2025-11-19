@@ -3,7 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../../contexts/AuthContext';
-import { apiGet, apiPost } from '../../../../lib/api';
+import { apiGet, apiPost, apiDelete } from '../../../../lib/api';
+import { Tabs, Tab } from '@/components/support/Tabs';
+import { SimilarityCard } from '@/components/support/SimilarityCard';
 
 interface Message {
   id: string;
@@ -30,6 +32,7 @@ interface Ticket {
   updatedAt: string;
   resolvedAt?: string;
   closedAt?: string;
+  aiDetectedPriority?: boolean;
   createdBy: {
     id: string;
     email: string;
@@ -47,6 +50,24 @@ interface Ticket {
     name: string;
   };
   messages: Message[];
+}
+
+interface SimilarityMatch {
+  id: string;
+  similarTicketId: string;
+  similarityScore: number;
+  matchType: 'active' | 'historical';
+  similarTicket: {
+    id: string;
+    title: string;
+    description: string;
+    status: string;
+    resolution?: string;
+    createdBy: {
+      firstName: string;
+      lastName: string;
+    };
+  };
 }
 
 export default function TicketDetailPage({ params }: { params: { id: string } }) {
@@ -67,6 +88,11 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
   const [resolving, setResolving] = useState(false);
   const [closing, setClosing] = useState(false);
 
+  // Similarity state
+  const [activeMatches, setActiveMatches] = useState<SimilarityMatch[]>([]);
+  const [historicalMatches, setHistoricalMatches] = useState<SimilarityMatch[]>([]);
+  const [loadingSimilarity, setLoadingSimilarity] = useState(false);
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push(`/login?redirect=/support/tickets/${params.id}`);
@@ -74,6 +100,8 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     }
     loadTicket();
     checkAdminStatus();
+    fetchSimilarTickets('active');
+    fetchSimilarTickets('historical');
   }, [isAuthenticated, params.id]);
 
   const checkAdminStatus = async () => {
@@ -213,6 +241,73 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     }
   };
 
+  const fetchSimilarTickets = async (type: 'active' | 'historical') => {
+    try {
+      setLoadingSimilarity(true);
+      const response = await apiGet(
+        `/support/tickets/${params.id}/similar?type=${type}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (type === 'active') {
+          setActiveMatches(data);
+        } else {
+          setHistoricalMatches(data);
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching ${type} similar tickets:`, error);
+    } finally {
+      setLoadingSimilarity(false);
+    }
+  };
+
+  const handleLinkTickets = async (
+    similarTicketId: string,
+    relationship: string
+  ) => {
+    try {
+      const response = await apiPost(`/support/tickets/${params.id}/link`, {
+        targetTicketId: similarTicketId,
+        relationship,
+      });
+
+      if (response.ok) {
+        // Refresh similarity to remove linked ticket from suggestions
+        fetchSimilarTickets('active');
+        fetchSimilarTickets('historical');
+        // Could show success toast here
+      } else {
+        const data = await response.json();
+        alert(`Failed to link tickets: ${data.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error linking tickets:', error);
+      alert('Failed to link tickets');
+    }
+  };
+
+  const handleDismissSuggestion = async (similarityId: string) => {
+    try {
+      const response = await apiDelete(`/support/similarity/${similarityId}`);
+
+      if (response.ok) {
+        // Remove from local state
+        setActiveMatches((prev) => prev.filter((m) => m.id !== similarityId));
+        setHistoricalMatches((prev) =>
+          prev.filter((m) => m.id !== similarityId)
+        );
+      } else {
+        const data = await response.json();
+        alert(`Failed to dismiss suggestion: ${data.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error dismissing suggestion:', error);
+      alert('Failed to dismiss suggestion');
+    }
+  };
+
   const getStatusBadgeColor = (status: string) => {
     const colors: Record<string, string> = {
       open: 'bg-blue-100 text-blue-800',
@@ -300,7 +395,6 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
   }
 
   const canReply = ticket.status !== 'closed' && ticket.status !== 'rejected';
-  const isTicketCreator = user?.id === ticket.createdBy.id;
   const isAssignedAdmin = user?.id === ticket.assignedTo?.id;
   const canPerformAdminActions = isAdmin && (isAssignedAdmin || !ticket.assignedTo);
 
@@ -329,9 +423,19 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
                   <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusBadgeColor(ticket.status)}`}>
                     {formatStatus(ticket.status)}
                   </span>
-                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${getPriorityBadgeColor(ticket.priority)}`}>
-                    {ticket.priority.toUpperCase()}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className={`px-3 py-1 text-sm font-medium rounded-full ${getPriorityBadgeColor(ticket.priority)}`}>
+                      {ticket.priority.toUpperCase()}
+                    </span>
+                    {ticket.aiDetectedPriority && (
+                      <span
+                        title="Priority detected by AI"
+                        className="text-xs text-gray-500"
+                      >
+                        AI
+                      </span>
+                    )}
+                  </div>
                   <span className="px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-800">
                     {formatCategory(ticket.category)}
                   </span>
@@ -411,6 +515,85 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
           <div className="prose max-w-none">
             <p className="whitespace-pre-wrap text-gray-700">{ticket.description}</p>
           </div>
+        </div>
+
+        {/* Similarity Tabs */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Similar Tickets</h2>
+          <Tabs defaultTab="active">
+            <Tab id="active" label="Similar Active Tickets" count={activeMatches.length}>
+              {loadingSimilarity && activeMatches.length === 0 ? (
+                <p className="text-gray-500 py-4">Loading similar tickets...</p>
+              ) : activeMatches.length === 0 ? (
+                <p className="text-gray-500 py-4">No similar active tickets found</p>
+              ) : (
+                activeMatches.map((match) => (
+                  <SimilarityCard
+                    key={match.id}
+                    ticket={match.similarTicket}
+                    score={match.similarityScore}
+                    badge={match.similarityScore >= 80 ? 'red' : 'yellow'}
+                    actions={
+                      <>
+                        <button
+                          onClick={() =>
+                            handleLinkTickets(match.similarTicketId, 'duplicate')
+                          }
+                          className="text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Link as Duplicate
+                        </button>
+                        <button
+                          onClick={() => handleDismissSuggestion(match.id)}
+                          className="text-gray-600 hover:text-gray-800"
+                        >
+                          Dismiss
+                        </button>
+                      </>
+                    }
+                  />
+                ))
+              )}
+            </Tab>
+
+            <Tab id="historical" label="Historical Solutions" count={historicalMatches.length}>
+              {loadingSimilarity && historicalMatches.length === 0 ? (
+                <p className="text-gray-500 py-4">Loading historical solutions...</p>
+              ) : historicalMatches.length === 0 ? (
+                <p className="text-gray-500 py-4">
+                  No similar resolved tickets found. Check back after Sunday&apos;s analysis.
+                </p>
+              ) : (
+                historicalMatches.map((match) => (
+                  <SimilarityCard
+                    key={match.id}
+                    ticket={match.similarTicket}
+                    score={match.similarityScore}
+                    resolution={match.similarTicket.resolution}
+                    badge="green"
+                    actions={
+                      <>
+                        <button
+                          onClick={() =>
+                            handleLinkTickets(match.similarTicketId, 'related')
+                          }
+                          className="text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Link as Reference
+                        </button>
+                        <button
+                          onClick={() => handleDismissSuggestion(match.id)}
+                          className="text-gray-600 hover:text-gray-800"
+                        >
+                          Dismiss
+                        </button>
+                      </>
+                    }
+                  />
+                ))
+              )}
+            </Tab>
+          </Tabs>
         </div>
 
         {/* Messages/Conversation */}
