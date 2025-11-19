@@ -1,0 +1,518 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User account
+model User {
+  id                     String    @id @default(uuid())
+  email                  String    @unique
+  passwordHash           String
+  firstName              String?
+  lastName               String?
+  emailVerified          Boolean   @default(false)
+  verificationToken      String?   @unique
+  resetToken             String?   @unique
+  resetTokenExpiry       DateTime?
+  isActive               Boolean   @default(true)
+  isPlatformAdmin        Boolean   @default(false) // Global platform admin access
+  accountType            String    @default("individual") // 'individual' or 'organization'
+  preferredTranslation   String?   @default("KJV") // User's preferred Bible translation
+  comparisonTranslations String[]  @default(["ESV", "NASB", "NIV", "NKJV"]) // For comparison mode
+
+  // Individual subscription fields (denormalized for fast access)
+  subscriptionStatus String    @default("none") // 'none' | 'active' | 'canceled' | 'past_due'
+  subscriptionTier   String? // 'basic' | 'premium'
+  subscriptionStart  DateTime? // When current subscription started
+  subscriptionEnd    DateTime? // When subscription ended (for canceled)
+  stripeCustomerId   String?   @unique // Stripe customer ID
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  refreshTokens           RefreshToken[]
+  sessions                Session[]
+  organizationMemberships OrganizationMember[]
+  invitationsCreated      OrganizationInvitation[] @relation("CreatedByUser")
+  invitationsReceived     OrganizationInvitation[] @relation("InvitedUser")
+  adminActionsGiven       AdminAuditLog[]          @relation("AdminActions")
+  adminActionsReceived    AdminAuditLog[]          @relation("ActionsReceived")
+  sessionNotesAuthored    SessionNote[]            @relation("SessionNotesAuthored")
+  subscriptions           Subscription[]
+
+  // New counselor relations
+  counselorAssignments    CounselorAssignment[]    @relation("CounselorAssignments")
+  memberAssignments       CounselorAssignment[]    @relation("MemberAssignments")
+  observationsAuthored    CounselorObservation[]   @relation("ObservationsAuthored")
+  observationsReceived    CounselorObservation[]   @relation("ObservationsReceived")
+  coverageGrantsGiven     CounselorCoverageGrant[] @relation("CoverageGrantsGiven")
+  coverageGrantsReceived  CounselorCoverageGrant[] @relation("CoverageGrantsReceived")
+  coverageGrantsForMember CounselorCoverageGrant[] @relation("CoverageGrantsForMember")
+  wellbeingStatus         MemberWellbeingStatus?
+  notificationsReceived   Notification[]           @relation("NotificationsReceived")
+  notificationsSent       Notification[]           @relation("NotificationsSent")
+
+  @@index([email])
+  @@index([verificationToken])
+  @@index([resetToken])
+  @@index([accountType])
+  @@index([isPlatformAdmin])
+  @@index([subscriptionStatus])
+}
+
+// JWT refresh tokens (server-side storage)
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+
+// Organization (church, ministry, counseling center)
+model Organization {
+  id                   String    @id @default(uuid())
+  name                 String
+  description          String?   @db.Text
+  licenseType          String? // 'Family', 'Small', 'Medium', 'Large'
+  licenseStatus        String    @default("trial") // 'trial', 'active', 'expired', 'cancelled', 'archived'
+  licenseExpiresAt     DateTime?
+  maxMembers           Int       @default(10)
+  isSystemOrganization Boolean   @default(false) // true for Platform Admin org
+  archivedAt           DateTime? // When the organization was archived
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // Relations
+  members              OrganizationMember[]
+  invitations          OrganizationInvitation[]
+  roles                OrganizationRole[]
+  auditLogs            AdminAuditLog[]
+  metricSnapshots      MetricSnapshot[]
+  counselorAssignments CounselorAssignment[]
+  contract             OrganizationContract?
+
+  @@index([licenseStatus])
+  @@index([licenseExpiresAt])
+  @@index([isSystemOrganization])
+}
+
+// User membership in organization
+model OrganizationMember {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  roleId         String
+  joinedAt       DateTime @default(now())
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         OrganizationRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+// Flexible role system
+model OrganizationRole {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String // 'Owner', 'Counselor', 'Member', or custom
+  description    String?
+  isSystemRole   Boolean  @default(false) // true for Owner, Counselor, Member
+  permissions    Json     @default("[]") // Array of permission strings
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      OrganizationMember[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+// Organization invitations
+model OrganizationInvitation {
+  id             String   @id @default(uuid())
+  organizationId String
+  email          String
+  roleId         String
+  invitedById    String
+  token          String   @unique
+  status         String   @default("pending") // 'pending', 'accepted', 'expired', 'cancelled'
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation("CreatedByUser", fields: [invitedById], references: [id], onDelete: Cascade)
+  acceptedBy   User?        @relation("InvitedUser", fields: [acceptedById], references: [id], onDelete: SetNull)
+  acceptedById String?
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+// Admin audit log for morphing and sensitive operations
+model AdminAuditLog {
+  id             String   @id @default(uuid())
+  adminUserId    String // The platform admin performing action
+  action         String // 'morph_start', 'morph_end', 'update_license', 'delete_user', etc.
+  targetUserId   String? // User being acted upon (if applicable)
+  targetOrgId    String? // Organization being acted upon (if applicable)
+  morphSessionId String? // Links all actions during a morph session
+  metadata       Json     @default("{}") // Additional context (IP, changes made, etc.)
+  createdAt      DateTime @default(now())
+
+  adminUser  User          @relation("AdminActions", fields: [adminUserId], references: [id])
+  targetUser User?         @relation("ActionsReceived", fields: [targetUserId], references: [id])
+  targetOrg  Organization? @relation(fields: [targetOrgId], references: [id])
+
+  @@index([adminUserId])
+  @@index([morphSessionId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// Pre-aggregated metrics (computed by background job)
+model MetricSnapshot {
+  id             String   @id @default(uuid())
+  snapshotType   String // 'daily', 'weekly', 'monthly'
+  snapshotDate   DateTime // Date this snapshot represents
+  organizationId String? // null for platform-wide metrics
+  metrics        Json // Flexible JSON containing all computed metrics
+  createdAt      DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@unique([snapshotType, snapshotDate, organizationId])
+  @@index([snapshotDate])
+  @@index([organizationId])
+}
+
+model Session {
+  id                   String         @id @default(uuid())
+  userId               String? // null for anonymous users
+  title                String
+  topics               Json           @default("[]") // Theological topics/themes discussed (array of strings)
+  status               String         @default("active") // 'active' | 'completed' | 'archived'
+  preferredTranslation String         @default("ASV") // Bible translation preference (KJV or ASV)
+  questionCount        Int            @default(0) // Number of clarifying questions asked
+  archivedAt           DateTime? // When session was archived
+  deletedAt            DateTime? // Scheduled deletion date (30 days after archive)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  messages             Message[]
+  notes                SessionNote[]
+  shares               SessionShare[]
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([status])
+}
+
+model Message {
+  id                       String   @id @default(uuid())
+  sessionId                String
+  role                     String // 'user' | 'assistant' | 'system'
+  content                  String   @db.Text
+  scriptureReferences      Json     @default("[]")
+  constitutionalReferences Json     @default("[]")
+  isClarifyingQuestion     Boolean  @default(false) // True if this assistant message was a clarifying question
+  timestamp                DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([timestamp])
+}
+
+// Session notes for collaborative journaling
+model SessionNote {
+  id         String    @id @default(uuid())
+  sessionId  String
+  authorId   String
+  authorName String // Cached for display (denormalized)
+  authorRole String // 'user' | 'counselor' | 'viewer'
+  content    String    @db.Text
+  isPrivate  Boolean   @default(false) // Private notes visible only to counselor
+  deletedAt  DateTime? // Soft delete - scheduled for permanent deletion 30 days after set
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  author  User    @relation("SessionNotesAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([authorId])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+// Bible Translation metadata
+model BibleTranslation {
+  code        String   @id @unique // 'KJV', 'ASV'
+  name        String // Short name
+  fullName    String // Full name
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  verses BibleVerse[]
+
+  @@index([isActive])
+}
+
+// Individual Bible verses across all translations
+model BibleVerse {
+  id              String @id @default(uuid())
+  translationCode String // Foreign key to BibleTranslation
+  book            String // e.g., 'John', 'Genesis'
+  chapter         Int
+  verse           Int
+  text            String @db.Text
+  strongs         Json?  @default("[]") // Array of Strong's number annotations
+
+  translation BibleTranslation @relation(fields: [translationCode], references: [code], onDelete: Cascade)
+
+  // Ensure no duplicate verses per translation
+  @@unique([translationCode, book, chapter, verse])
+  // Optimize verse lookups
+  @@index([translationCode, book, chapter, verse])
+  @@index([book])
+}
+
+// Individual user subscriptions (for billing history and audit trail)
+model Subscription {
+  id                   String    @id @default(uuid())
+  userId               String
+  status               String // 'active' | 'canceled' | 'past_due' | 'incomplete'
+  tier                 String    @default("basic") // 'basic' | 'premium'
+  startDate            DateTime  @default(now())
+  endDate              DateTime?
+  stripeSubscriptionId String?   @unique // Stripe subscription ID
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+// Session sharing for collaboration
+model SessionShare {
+  id               String    @id @default(uuid())
+  sessionId        String
+  shareToken       String    @unique
+  sharedBy         String // User ID who created the share
+  sharedWith       String? // Email or user ID of recipient
+  organizationId   String? // If shared within organization
+  allowNotesAccess Boolean   @default(false) // If true, recipients can add notes
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime?
+
+  session  Session              @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  accesses SessionShareAccess[]
+
+  @@index([sessionId])
+  @@index([shareToken])
+}
+
+// Track which users have accessed which shared sessions
+model SessionShareAccess {
+  id              String    @id @default(uuid())
+  shareId         String
+  userId          String
+  firstAccessedAt DateTime  @default(now())
+  lastAccessedAt  DateTime  @default(now())
+  isDismissed     Boolean   @default(false)
+  dismissedAt     DateTime?
+
+  share SessionShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
+
+  @@unique([shareId, userId])
+  @@index([userId])
+  @@index([shareId])
+  @@index([isDismissed])
+}
+
+// Counselor-member assignment for pastoral care relationships
+model CounselorAssignment {
+  id             String    @id @default(uuid())
+  counselorId    String // User with Counselor role
+  memberId       String // User being counseled
+  organizationId String
+  status         String    @default("active") // 'active' | 'inactive'
+  assignedBy     String // Admin who made assignment
+  assignedAt     DateTime  @default(now())
+  endedAt        DateTime?
+
+  counselor    User         @relation("CounselorAssignments", fields: [counselorId], references: [id], onDelete: Cascade)
+  member       User         @relation("MemberAssignments", fields: [memberId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([counselorId, memberId, organizationId])
+  @@index([counselorId, status])
+  @@index([memberId])
+  @@index([organizationId])
+}
+
+// Private counselor notes - only visible to authoring counselor
+model CounselorObservation {
+  id          String    @id @default(uuid())
+  counselorId String
+  memberId    String
+  content     String    @db.Text
+  deletedAt   DateTime? // Soft delete - scheduled for permanent deletion 30 days after set
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  counselor User @relation("ObservationsAuthored", fields: [counselorId], references: [id], onDelete: Cascade)
+  member    User @relation("ObservationsReceived", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([counselorId, memberId])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+// Temporary access permissions for workload sharing
+model CounselorCoverageGrant {
+  id                 String    @id @default(uuid())
+  primaryCounselorId String
+  backupCounselorId  String
+  memberId           String
+  grantedAt          DateTime  @default(now())
+  expiresAt          DateTime?
+  revokedAt          DateTime?
+
+  primaryCounselor User @relation("CoverageGrantsGiven", fields: [primaryCounselorId], references: [id], onDelete: Cascade)
+  backupCounselor  User @relation("CoverageGrantsReceived", fields: [backupCounselorId], references: [id], onDelete: Cascade)
+  member           User @relation("CoverageGrantsForMember", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([backupCounselorId, revokedAt])
+  @@index([primaryCounselorId])
+  @@index([memberId])
+}
+
+// AI-generated and counselor-overridden wellbeing status
+model MemberWellbeingStatus {
+  id                String   @id @default(uuid())
+  memberId          String   @unique
+  status            String // 'green' | 'yellow' | 'red'
+  aiSuggestedStatus String // What AI detected
+  overriddenBy      String? // Counselor who overrode
+  summary           String   @db.Text // AI-generated 7-day summary
+  lastAnalyzedAt    DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  member User @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([lastAnalyzedAt])
+}
+
+// Ticker-tape notifications and counselor-member messaging
+model Notification {
+  id          String    @id @default(uuid())
+  recipientId String
+  senderId    String? // Null for system notifications
+  type        String // 'system' | 'message' | 'alert'
+  category    String // 'assignment' | 'note_added' | 'status_change' | 'direct_message'
+  title       String // Brief header
+  message     String    @db.Text
+  linkTo      String? // Optional URL to navigate to
+  isRead      Boolean   @default(false)
+  isDismissed Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime? // Auto-dismiss after date
+
+  recipient User  @relation("NotificationsReceived", fields: [recipientId], references: [id], onDelete: Cascade)
+  sender    User? @relation("NotificationsSent", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, isRead, isDismissed])
+  @@index([createdAt])
+  @@index([recipientId, createdAt])
+}
+
+// Email activity log for tracking Postmark deliveries, opens, clicks, bounces
+model EmailLog {
+  id             String    @id @default(uuid())
+  userId         String?
+  recipientEmail String
+  emailType      String // 'verification' | 'password_reset' | 'session_share' | 'note_added' | 'counselor_assignment' | 'org_invite' | 'billing'
+  postmarkId     String?   @unique // Postmark message ID for webhook correlation
+  status         String // 'sent' | 'delivered' | 'bounced' | 'opened' | 'failed'
+  bounceReason   String?
+  metadata       Json      @default("{}") // Additional context (session ID, note ID, etc.)
+  sentAt         DateTime  @default(now())
+  deliveredAt    DateTime?
+  openedAt       DateTime?
+  clickedAt      DateTime?
+  bouncedAt      DateTime?
+
+  @@index([userId])
+  @@index([recipientEmail])
+  @@index([emailType])
+  @@index([status])
+  @@index([sentAt])
+  @@index([postmarkId])
+}
+
+// Rate limiting for email operations (prevents abuse)
+model EmailRateLimit {
+  id             String   @id @default(uuid())
+  identifier     String // email address or IP address
+  identifierType String // 'email' | 'ip'
+  operation      String // 'verification_resend' | 'password_reset'
+  attemptCount   Int      @default(1)
+  windowStart    DateTime @default(now())
+  expiresAt      DateTime
+
+  @@unique([identifier, identifierType, operation])
+  @@index([identifier, operation])
+  @@index([expiresAt])
+}
+
+// Organization contract tracking for billing reminders (sales-assisted)
+model OrganizationContract {
+  id               String    @id @default(uuid())
+  organizationId   String    @unique
+  contractStart    DateTime
+  contractEnd      DateTime
+  renewalDate      DateTime
+  amount           Decimal   @db.Decimal(10, 2)
+  paymentTerms     String?   @db.Text
+  status           String    @default("active") // 'active' | 'expired' | 'cancelled'
+  lastReminderSent DateTime?
+  lastInvoiceSent  DateTime?
+  notes            String?   @db.Text
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([renewalDate])
+  @@index([status])
+  @@index([organizationId])
+}
