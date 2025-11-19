@@ -7,14 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// SLA status tracking enum
-enum SLAStatus {
-  on_track
-  approaching
-  critical
-  breached
-}
-
 // User account
 model User {
   id                     String    @id @default(uuid())
@@ -64,18 +56,7 @@ model User {
   wellbeingStatus         MemberWellbeingStatus?
   notificationsReceived   Notification[]           @relation("NotificationsReceived")
   notificationsSent       Notification[]           @relation("NotificationsSent")
-
-  // Support ticket relations
-  ticketsCreated            SupportTicket[]    @relation("TicketsCreated")
-  ticketsAssigned           SupportTicket[]    @relation("TicketsAssigned")
-  ticketsResolved           SupportTicket[]    @relation("TicketsResolved")
-  ticketsClosed             SupportTicket[]    @relation("TicketsClosed")
-  ticketMessagesAuthored    TicketMessage[]    @relation("TicketMessagesAuthored")
-  ticketAttachmentsUploaded TicketAttachment[] @relation("TicketAttachmentsUploaded")
-  ticketLinksCreated        TicketLink[]       @relation("TicketLinksCreated")
-
-  // Holiday management
-  holidaysCreated Holiday[] @relation("HolidaysCreated")
+  holidaysCreated         Holiday[]                @relation("HolidaysCreated")
 
   @@index([email])
   @@index([verificationToken])
@@ -125,7 +106,6 @@ model Organization {
   metricSnapshots      MetricSnapshot[]
   counselorAssignments CounselorAssignment[]
   contract             OrganizationContract?
-  supportTickets       SupportTicket[]
 
   @@index([licenseStatus])
   @@index([licenseExpiresAt])
@@ -538,171 +518,17 @@ model OrganizationContract {
   @@index([organizationId])
 }
 
-// Holiday calendar for SLA calculations
+// Holiday tracking for SLA business hours calculation
 model Holiday {
   id          String   @id @default(uuid())
   name        String // "New Year's Day", "Christmas", etc.
   date        DateTime // The holiday date
   isRecurring Boolean  @default(false) // Annual holidays
-  createdById String?
+  createdById String
   createdAt   DateTime @default(now())
 
-  createdBy User? @relation("HolidaysCreated", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy User @relation("HolidaysCreated", fields: [createdById], references: [id], onDelete: Restrict)
 
+  @@unique([name, date])
   @@index([date])
-}
-
-// Support ticket for technical issues and feature requests
-model SupportTicket {
-  id             String  @id @default(uuid())
-  title          String
-  description    String  @db.Text
-  createdById    String
-  assignedToId   String? // Null until admin claims
-  organizationId String? // Null for individual users
-
-  category          String // Role-specific categories
-  status            String   @default("open") // open, in_progress, waiting_on_user, resolved, closed, rejected
-  priority          String   @default("medium") // urgent, high, medium, low, feature (manual in Phase 1)
-  workPriorityScore Float    @default(0) // Calculated: (priority × 10) + (age × 2) + (orgSize × 0.5)
-  tags              String[] @default([]) // Additional tagging
-
-  isEscalated               Boolean   @default(false)
-  escalatedAt               DateTime?
-  escalatedById             String?
-  escalatedFromOrgId        String? // Track which org it came from
-  escalationRejectedAt      DateTime? // When escalation was rejected
-  escalationRejectedById    String? // Platform admin who rejected escalation
-  escalationRejectionReason String? // Why escalation was rejected
-
-  slaDeadline        DateTime? // Based on priority (Phase 2)
-  resolvedAt         DateTime?
-  resolvedById       String? // Admin who resolved ticket
-  resolution         String?   @db.Text // Resolution description
-  closedAt           DateTime?
-  closedById         String? // Admin who closed/rejected
-  rejectionReason    String? // Why ticket was rejected
-  aiDetectedPriority Boolean   @default(false) // AI-detected priority flag (Phase 2A)
-
-  // SLA Deadlines
-  responseSLADeadline   DateTime? // When first response is due
-  resolutionSLADeadline DateTime? // When resolution is due
-
-  // SLA State
-  responseSLAStatus   SLAStatus  @default(on_track)
-  resolutionSLAStatus SLAStatus? @default(on_track)
-
-  // SLA Pause tracking
-  slaPausedAt       DateTime? // When SLA was paused
-  slaPausedReason   String? // "waiting_on_user"
-  totalPausedMinutes Int      @default(0) // Accumulated paused time across all pause/resume cycles
-
-  // SLA History (recorded when ticket resolved/closed)
-  actualResponseTime   Int? // Minutes from creation to first admin response
-  actualResolutionTime Int? // Minutes from creation to resolved (excluding paused time)
-  responseSLAMet       Boolean? // Was response SLA met?
-  resolutionSLAMet     Boolean? // Was resolution SLA met?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  createdBy        User               @relation("TicketsCreated", fields: [createdById], references: [id])
-  assignedTo       User?              @relation("TicketsAssigned", fields: [assignedToId], references: [id])
-  resolvedBy       User?              @relation("TicketsResolved", fields: [resolvedById], references: [id])
-  closedBy         User?              @relation("TicketsClosed", fields: [closedById], references: [id])
-  organization     Organization?      @relation(fields: [organizationId], references: [id])
-  messages         TicketMessage[]
-  attachments      TicketAttachment[]
-  linksFrom        TicketLink[]       @relation("SourceTicket")
-  linksTo          TicketLink[]       @relation("TargetTicket")
-  similaritySource TicketSimilarity[] @relation("SimilaritySource")
-  similarityTarget TicketSimilarity[] @relation("SimilarityTarget")
-
-  @@index([workPriorityScore])
-  @@index([status])
-  @@index([createdAt])
-  @@index([assignedToId])
-  @@index([organizationId])
-  @@index([priority])
-  @@index([responseSLADeadline])
-  @@index([resolutionSLADeadline])
-  @@index([responseSLAStatus])
-  @@index([resolutionSLAStatus])
-}
-
-// Messages and responses on support tickets
-model TicketMessage {
-  id         String   @id @default(uuid())
-  ticketId   String
-  authorId   String
-  authorRole String // 'user', 'org_admin', 'platform_admin'
-  content    String   @db.Text
-  isInternal Boolean  @default(false) // Internal admin notes
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  ticket      SupportTicket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  author      User               @relation("TicketMessagesAuthored", fields: [authorId], references: [id])
-  attachments TicketAttachment[]
-
-  @@index([ticketId])
-  @@index([createdAt])
-}
-
-// File attachments for tickets (images only in Phase 1)
-model TicketAttachment {
-  id           String   @id @default(uuid())
-  ticketId     String
-  messageId    String? // Attached to specific message or ticket itself
-  fileName     String
-  filePath     String
-  fileSize     Int // Bytes
-  mimeType     String // image/png, image/jpeg, image/gif
-  uploadedById String
-  createdAt    DateTime @default(now())
-
-  ticket     SupportTicket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  message    TicketMessage? @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  uploadedBy User           @relation("TicketAttachmentsUploaded", fields: [uploadedById], references: [id])
-
-  @@index([ticketId])
-  @@index([messageId])
-}
-
-// Relationships between tickets (manual linking in Phase 1, AI suggestions in Phase 2)
-model TicketLink {
-  id             String   @id @default(uuid())
-  sourceTicketId String
-  targetTicketId String
-  relationship   String // 'duplicate_of', 'related_to', 'blocks', 'blocked_by'
-  aiSuggested    Boolean  @default(false) // True if AI suggested this link (Phase 2)
-  createdById    String
-  createdAt      DateTime @default(now())
-
-  sourceTicket SupportTicket @relation("SourceTicket", fields: [sourceTicketId], references: [id], onDelete: Cascade)
-  targetTicket SupportTicket @relation("TargetTicket", fields: [targetTicketId], references: [id], onDelete: Cascade)
-  createdBy    User          @relation("TicketLinksCreated", fields: [createdById], references: [id])
-
-  @@unique([sourceTicketId, targetTicketId, relationship])
-  @@index([sourceTicketId])
-  @@index([targetTicketId])
-}
-
-// AI-computed similarity scores between tickets (Phase 2A)
-model TicketSimilarity {
-  id              String   @id @default(uuid())
-  sourceTicketId  String
-  similarTicketId String // Renamed from targetTicketId for consistency
-  similarityScore Float // 0.0 to 1.0, cosine similarity of embeddings
-  matchType       String // "active" or "historical"
-  analyzedAt      DateTime @default(now()) // Renamed from computedAt for consistency
-  expiresAt       DateTime // For cache TTL management
-
-  sourceTicket  SupportTicket @relation("SimilaritySource", fields: [sourceTicketId], references: [id], onDelete: Cascade)
-  similarTicket SupportTicket @relation("SimilarityTarget", fields: [similarTicketId], references: [id], onDelete: Cascade)
-
-  @@unique([sourceTicketId, similarTicketId, matchType])
-  @@index([sourceTicketId, matchType, expiresAt])
-  @@index([expiresAt])
 }
