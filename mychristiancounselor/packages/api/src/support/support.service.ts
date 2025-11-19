@@ -94,24 +94,35 @@ export class SupportService {
     const workPriorityScore = (priorityScore * 10) + (ageInDays * 2) + (orgSize * 0.5);
 
     // Calculate SLA deadlines based on priority
-    const responseHours = this.slaCalculator.getSLAHours(priority as any, 'response');
-    const resolutionHours = this.slaCalculator.getSLAHours(priority as any, 'resolution');
+    let responseSLADeadline: Date | null = null;
+    let resolutionSLADeadline: Date | null = null;
 
-    const responseSLADeadline = await this.slaCalculator.calculateDeadline(
-      new Date(),
-      responseHours,
-    );
+    try {
+      const responseHours = this.slaCalculator.getSLAHours(priority as any, 'response');
+      const resolutionHours = this.slaCalculator.getSLAHours(priority as any, 'resolution');
 
-    const resolutionSLADeadline = await this.slaCalculator.calculateDeadline(
-      new Date(),
-      resolutionHours,
-    );
+      responseSLADeadline = await this.slaCalculator.calculateDeadline(
+        new Date(),
+        responseHours,
+      );
 
-    this.logger.log(
-      `SLA deadlines calculated for priority ${priority}: ` +
-      `response=${responseSLADeadline?.toISOString() || 'null'}, ` +
-      `resolution=${resolutionSLADeadline?.toISOString() || 'null'}`
-    );
+      resolutionSLADeadline = await this.slaCalculator.calculateDeadline(
+        new Date(),
+        resolutionHours,
+      );
+
+      this.logger.log(
+        `SLA deadlines calculated for priority ${priority}: ` +
+        `response=${responseSLADeadline?.toISOString() || 'null'}, ` +
+        `resolution=${resolutionSLADeadline?.toISOString() || 'null'}`
+      );
+    } catch (error) {
+      this.logger.error('SLA deadline calculation failed', {
+        error: error.message,
+        priority,
+      });
+      // Continue with null deadlines - SLA tracking will be disabled for this ticket
+    }
 
     // Determine assignedToId for auto-assignment (org tickets → org admin)
     let assignedToId: string | null = null;
@@ -160,7 +171,7 @@ export class SupportService {
           responseSLADeadline,
           resolutionSLADeadline,
           responseSLAStatus: 'on_track',
-          resolutionSLAStatus: 'on_track',
+          resolutionSLAStatus: resolutionSLADeadline ? 'on_track' : null,
         },
         include: {
           createdBy: {
