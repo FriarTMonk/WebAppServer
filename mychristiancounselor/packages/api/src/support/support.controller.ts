@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Body, Param, Request, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Request, UseGuards, Query, Delete } from '@nestjs/common';
 import { SupportService } from './support.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { ReplyToTicketDto } from './dto/reply-to-ticket.dto';
 import { AssignTicketDto } from './dto/assign-ticket.dto';
+import { LinkTicketsDto } from './dto/link-tickets.dto';
 
 @Controller('support')
 export class SupportController {
@@ -111,5 +112,49 @@ export class SupportController {
     @Param('ticketId') ticketId: string,
   ) {
     return this.supportService.closeTicket(ticketId, req.user.id);
+  }
+
+  /**
+   * Get similar tickets (active or historical)
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('tickets/:ticketId/similar')
+  async getSimilarTickets(
+    @Param('ticketId') ticketId: string,
+    @Query('type') type: string,
+    @Request() req
+  ) {
+    const matchType = type === 'historical' ? 'historical' : 'active';
+    return this.supportService.getSimilarTickets(
+      ticketId,
+      req.user.id,
+      matchType
+    );
+  }
+
+  /**
+   * Link two tickets together
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post('tickets/:ticketId/link')
+  async linkTickets(
+    @Param('ticketId') ticketId: string,
+    @Body() dto: LinkTicketsDto,
+    @Request() req
+  ) {
+    return this.supportService.linkTickets(ticketId, dto, req.user.id);
+  }
+
+  /**
+   * Dismiss a similarity suggestion
+   */
+  @UseGuards(JwtAuthGuard)
+  @Delete('similarity/:similarityId')
+  async dismissSuggestion(
+    @Param('similarityId') similarityId: string,
+    @Request() req
+  ) {
+    await this.supportService.dismissSuggestion(similarityId, req.user.id);
+    return { message: 'Suggestion dismissed' };
   }
 }
