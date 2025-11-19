@@ -3,6 +3,22 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { SlaCalculatorService } from './sla-calculator.service';
 
+// Constants for time calculations
+const MINUTES_PER_HOUR = 60;
+const MINUTES_PER_DAY = 1440;
+
+// Type for ticket data used in SLA calculations
+type TicketForSLAUpdate = {
+  id: string;
+  createdAt: Date;
+  responseSLADeadline: Date;
+  resolutionSLADeadline: Date;
+  responseSLAStatus: string;
+  resolutionSLAStatus: string;
+  slaPausedAt: Date | null;
+  totalPausedMinutes: number;
+};
+
 @Injectable()
 export class SlaScheduler {
   private readonly logger = new Logger(SlaScheduler.name);
@@ -37,6 +53,7 @@ export class SlaScheduler {
           responseSLAStatus: true,
           resolutionSLAStatus: true,
           slaPausedAt: true,
+          totalPausedMinutes: true,
         },
       });
 
@@ -45,13 +62,16 @@ export class SlaScheduler {
 
       for (const ticket of activeTickets) {
         try {
-          // Calculate pause duration if paused
-          const pausedMinutes = ticket.slaPausedAt
-            ? await this.slaCalculator.calculateBusinessMinutes(
-                ticket.slaPausedAt,
-                new Date(),
-              )
-            : 0;
+          // Use total accumulated paused minutes from database
+          // If currently paused, add current pause duration to total
+          let pausedMinutes = ticket.totalPausedMinutes;
+          if (ticket.slaPausedAt) {
+            const currentPauseDuration = await this.slaCalculator.calculateBusinessMinutes(
+              ticket.slaPausedAt,
+              new Date(),
+            );
+            pausedMinutes += currentPauseDuration;
+          }
 
           // Calculate current response SLA status
           const newResponseStatus = await this.slaCalculator.calculateSLAStatus(
@@ -135,7 +155,7 @@ export class SlaScheduler {
    * Send SLA notification to assigned admin or all platform admins
    */
   private async sendSLANotification(
-    ticket: any,
+    ticket: TicketForSLAUpdate,
     responseSLAStatus: string,
     resolutionSLAStatus: string,
   ) {
@@ -191,19 +211,18 @@ export class SlaScheduler {
       recipientIds = platformAdmins.map((admin) => admin.id);
     }
 
-    // Create notifications
-    for (const recipientId of recipientIds) {
-      await this.prisma.notification.create({
-        data: {
-          recipientId,
-          senderId: null,
-          category: 'sla_warning',
-          title: `SLA ${statusLabel}`,
-          message: `Ticket #${ticketDetails.id.substring(0, 8)}: "${ticketDetails.title}" - ${mostUrgentSLA === 'response' ? 'Response' : 'Resolution'} SLA ${timeText}`,
-          linkTo: `/support/tickets/${ticketDetails.id}`,
-        },
-      });
-    }
+    // Create notifications using createMany for efficiency
+    await this.prisma.notification.createMany({
+      data: recipientIds.map((recipientId) => ({
+        recipientId,
+        senderId: null,
+        type: 'alert',
+        category: 'sla_warning',
+        title: `SLA ${statusLabel}`,
+        message: `Ticket #${ticketDetails.id.substring(0, 8)}: "${ticketDetails.title}" - ${mostUrgentSLA === 'response' ? 'Response' : 'Resolution'} SLA ${timeText}`,
+        linkTo: `/support/tickets/${ticketDetails.id}`,
+      })),
+    });
 
     this.logger.log(
       `SLA notification sent for ticket ${ticket.id} to ${recipientIds.length} recipient(s)`,
@@ -214,15 +233,15 @@ export class SlaScheduler {
    * Format minutes into human-readable time
    */
   private formatMinutes(minutes: number): string {
-    if (minutes < 60) {
+    if (minutes < MINUTES_PER_HOUR) {
       return `${minutes}m`;
-    } else if (minutes < 1440) {
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
+    } else if (minutes < MINUTES_PER_DAY) {
+      const hours = Math.floor(minutes / MINUTES_PER_HOUR);
+      const mins = minutes % MINUTES_PER_HOUR;
       return `${hours}h ${mins}m`;
     } else {
-      const days = Math.floor(minutes / 1440);
-      const hours = Math.floor((minutes % 1440) / 60);
+      const days = Math.floor(minutes / MINUTES_PER_DAY);
+      const hours = Math.floor((minutes % MINUTES_PER_DAY) / MINUTES_PER_HOUR);
       return `${days}d ${hours}h`;
     }
   }
