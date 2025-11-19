@@ -238,8 +238,10 @@ export class SlaCalculatorService {
   /**
    * Pause SLA for a ticket
    */
-  async pauseSLA(ticketId: string, reason: string): Promise<void> {
-    await this.prisma.supportTicket.update({
+  async pauseSLA(ticketId: string, reason: string, tx?: any): Promise<void> {
+    const client = tx || this.prisma;
+
+    await client.supportTicket.update({
       where: { id: ticketId },
       data: {
         slaPausedAt: new Date(),
@@ -253,8 +255,10 @@ export class SlaCalculatorService {
   /**
    * Resume SLA for a ticket
    */
-  async resumeSLA(ticketId: string): Promise<void> {
-    const ticket = await this.prisma.supportTicket.findUnique({
+  async resumeSLA(ticketId: string, tx?: any): Promise<void> {
+    const client = tx || this.prisma;
+
+    const ticket = await client.supportTicket.findUnique({
       where: { id: ticketId },
     });
 
@@ -277,7 +281,7 @@ export class SlaCalculatorService {
       ? addMinutes(ticket.resolutionSLADeadline, pauseDuration)
       : null;
 
-    await this.prisma.supportTicket.update({
+    await client.supportTicket.update({
       where: { id: ticketId },
       data: {
         responseSLADeadline: newResponseDeadline,
