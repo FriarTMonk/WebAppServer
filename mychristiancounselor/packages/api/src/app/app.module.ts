@@ -10,6 +10,9 @@ import { AdminModule } from '../admin/admin.module';
 import { OrgAdminModule } from '../org-admin/org-admin.module';
 import { ProfileModule } from '../profile/profile.module';
 import { ShareModule } from '../share/share.module';
+import { SupportModule } from '../support/support.module';
+import { AiModule } from '../ai/ai.module';
+import { SlaModule } from '../sla/sla.module';
 import { HolidayModule } from '../holiday/holiday.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -27,6 +30,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
     OrgAdminModule,
     ProfileModule,
     ShareModule,
+    SupportModule,
+    AiModule,
+    SlaModule,
     HolidayModule,
   ],
   providers: [
