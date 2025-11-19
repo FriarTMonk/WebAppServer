@@ -463,18 +463,18 @@ export class SupportService {
       throw new NotFoundException('User not found');
     }
 
-    // Check if user is an admin (platform or org)
-    const isOrgAdmin = user.organizationMemberships.some(
+    // Filter admin memberships first to ensure proper permission checks
+    const adminMemberships = user.organizationMemberships.filter(
       (m) => m.role.name === 'Owner' || m.role.name === 'Admin'
     );
 
-    if (!user.isPlatformAdmin && !isOrgAdmin) {
+    if (!user.isPlatformAdmin && adminMemberships.length === 0) {
       throw new ForbiddenException('Only administrators can access the admin queue');
     }
 
     // Build where clause based on user role
     const where: any = {
-      status: { notIn: ['closed', 'rejected'] }, // Unresolved tickets only
+      status: { notIn: ['closed', 'rejected'] }, // Unresolved tickets only by default
     };
 
     // Apply role-based visibility
@@ -482,15 +482,16 @@ export class SupportService {
       // Platform admins see ALL unresolved tickets in the system
       // (no additional filters needed)
     } else {
-      // Org admins see only their org's unresolved tickets
-      const orgIds = user.organizationMemberships
-        .filter((m) => m.role.name === 'Owner' || m.role.name === 'Admin')
-        .map((m) => m.organizationId);
+      // Org admins see only tickets from organizations where they are admin
+      // This prevents users who are Admin in Org A but Member in Org B from seeing Org B tickets
+      const orgIds = adminMemberships.map((m) => m.organizationId);
 
       where.organizationId = { in: orgIds };
     }
 
-    // Apply status filter (if provided, overrides default)
+    // Apply status filter (if provided, overrides default unresolved-only behavior)
+    // This allows admins to explicitly query for closed/rejected tickets if needed,
+    // which is useful for reviewing recently resolved tickets
     if (options?.status?.length) {
       where.status = { in: options.status };
     }
