@@ -13,6 +13,7 @@ import { ShareModule } from '../share/share.module';
 import { SupportModule } from '../support/support.module';
 import { AiModule } from '../ai/ai.module';
 import { SlaModule } from '../sla/sla.module';
+import { HolidayModule } from '../holiday/holiday.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Module({
@@ -32,6 +33,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
     SupportModule,
     AiModule,
     SlaModule,
+    HolidayModule,
   ],
   providers: [
     {
