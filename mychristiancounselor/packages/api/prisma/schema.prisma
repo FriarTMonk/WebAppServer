@@ -7,6 +7,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// SLA status tracking enum
+enum SLAStatus {
+  on_track
+  approaching
+  critical
+  breached
+}
+
 // User account
 model User {
   id                     String    @id @default(uuid())
@@ -473,10 +481,10 @@ model Holiday {
   name        String   // "New Year's Day", "Christmas", etc.
   date        DateTime // The holiday date
   isRecurring Boolean  @default(false) // Annual holidays
-  createdById String
+  createdById String?
   createdAt   DateTime @default(now())
 
-  createdBy User @relation("HolidaysCreated", fields: [createdById], references: [id])
+  createdBy User? @relation("HolidaysCreated", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([date])
 }
@@ -518,8 +526,8 @@ model SupportTicket {
   resolutionSLADeadline DateTime? // When resolution is due
 
   // SLA State
-  responseSLAStatus     String    @default("on_track") // on_track, approaching, critical, breached
-  resolutionSLAStatus   String    @default("on_track")
+  responseSLAStatus     SLAStatus @default(on_track)
+  resolutionSLAStatus   SLAStatus @default(on_track)
 
   // SLA Pause tracking
   slaPausedAt           DateTime? // When SLA was paused
