@@ -56,6 +56,7 @@ model User {
   wellbeingStatus         MemberWellbeingStatus?
   notificationsReceived   Notification[]           @relation("NotificationsReceived")
   notificationsSent       Notification[]           @relation("NotificationsSent")
+  holidaysCreated         Holiday[]                @relation("HolidaysCreated")
 
   @@index([email])
   @@index([verificationToken])
@@ -515,4 +516,19 @@ model OrganizationContract {
   @@index([renewalDate])
   @@index([status])
   @@index([organizationId])
+}
+
+// Holiday tracking for SLA business hours calculation
+model Holiday {
+  id          String   @id @default(uuid())
+  name        String // "New Year's Day", "Christmas", etc.
+  date        DateTime // The holiday date
+  isRecurring Boolean  @default(false) // Annual holidays
+  createdById String
+  createdAt   DateTime @default(now())
+
+  createdBy User @relation("HolidaysCreated", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([name, date])
+  @@index([date])
 }
