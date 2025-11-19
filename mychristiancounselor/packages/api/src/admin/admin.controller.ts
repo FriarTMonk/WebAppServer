@@ -5,13 +5,17 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminResetPasswordDto, UpdateMemberRoleRequest } from '@mychristiancounselor/shared';
+import { EmailMetricsService } from '../email/email-metrics.service';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, IsPlatformAdminGuard)
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);
 
-  constructor(private adminService: AdminService) {}
+  constructor(
+    private adminService: AdminService,
+    private emailMetricsService: EmailMetricsService,
+  ) {}
 
   @Get('audit-log')
   async getAuditLog(
@@ -257,5 +261,73 @@ export class AdminController {
     @Param('id') organizationId: string,
   ) {
     return this.adminService.unarchiveOrganization(user.id, organizationId);
+  }
+
+  /**
+   * Get platform-wide email metrics (Platform Admin only)
+   * GET /admin/email-metrics
+   */
+  @Get('email-metrics')
+  async getEmailMetrics(
+    @CurrentUser() user: User,
+    @Query('daysAgo') daysAgo?: string,
+  ) {
+    await this.adminService.logAdminAction(
+      user.id,
+      'view_email_metrics',
+      { daysAgo },
+    );
+
+    const days = daysAgo ? parseInt(daysAgo, 10) : 30;
+    return this.emailMetricsService.getPlatformMetrics(days);
+  }
+
+  /**
+   * Get email metrics for all organizations (Platform Admin only)
+   * Returns individual metrics for each organization
+   * GET /admin/email-metrics/organizations
+   */
+  @Get('email-metrics/organizations')
+  async getOrganizationEmailMetrics(
+    @CurrentUser() user: User,
+    @Query('daysAgo') daysAgo?: string,
+  ) {
+    await this.adminService.logAdminAction(
+      user.id,
+      'view_organization_email_metrics',
+      { daysAgo },
+    );
+
+    const days = daysAgo ? parseInt(daysAgo, 10) : 30;
+    return this.emailMetricsService.getAllOrganizationMetrics(days);
+  }
+
+  /**
+   * Get detailed email logs for platform (Platform Admin only)
+   * Supports pagination and filtering
+   * GET /admin/email-logs
+   */
+  @Get('email-logs')
+  async getEmailLogs(
+    @CurrentUser() user: User,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('emailType') emailType?: string,
+    @Query('status') status?: string,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    await this.adminService.logAdminAction(
+      user.id,
+      'view_email_logs',
+      { limit, offset, emailType, status, organizationId },
+    );
+
+    return this.emailMetricsService.getPlatformEmailLogs({
+      limit: limit ? parseInt(limit, 10) : undefined,
+      offset: offset ? parseInt(offset, 10) : undefined,
+      emailType,
+      status,
+      organizationId,
+    });
   }
 }

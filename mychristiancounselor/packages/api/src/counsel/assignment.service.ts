@@ -5,10 +5,14 @@ import {
   CreateCounselorAssignmentDto,
   CounselorMemberSummary,
 } from '@mychristiancounselor/shared';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AssignmentService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService,
+  ) {}
 
   /**
    * Get all members assigned to a counselor
@@ -197,10 +201,54 @@ export class AssignmentService {
             email: true,
           },
         },
+        organization: {
+          select: {
+            name: true,
+          },
+        },
       },
     });
 
+    // Send email notifications (async, don't block assignment creation)
+    this.sendAssignmentNotifications(assignment).catch(err => {
+      console.error('Failed to send counselor assignment notifications:', err);
+    });
+
     return assignment as any;
+  }
+
+  /**
+   * Send email notifications for counselor assignment
+   * Sends two emails: one to member, one to counselor
+   */
+  private async sendAssignmentNotifications(assignment: any): Promise<void> {
+    const counselorName = `${assignment.counselor.firstName || ''} ${assignment.counselor.lastName || ''}`.trim() || assignment.counselor.email;
+    const memberName = `${assignment.member.firstName || ''} ${assignment.member.lastName || ''}`.trim() || assignment.member.email;
+    const organizationName = assignment.organization.name;
+
+    // 1. Send email to member
+    await this.emailService.sendCounselorAssignmentEmail(
+      assignment.member.email,
+      {
+        recipientName: assignment.member.firstName || memberName,
+        counselorName,
+        organizationName,
+        isForMember: true,
+      },
+      assignment.member.id,
+    );
+
+    // 2. Send email to counselor
+    await this.emailService.sendCounselorAssignmentEmail(
+      assignment.counselor.email,
+      {
+        recipientName: assignment.counselor.firstName || counselorName,
+        memberName,
+        organizationName,
+        isForMember: false,
+      },
+      assignment.counselor.id,
+    );
   }
 
   /**

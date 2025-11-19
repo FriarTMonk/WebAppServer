@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 import { PlatformMetrics } from './types/platform-metrics.interface';
 import { GetOrganizationMembersResponse, MorphStartResponse, MorphEndResponse, AdminResetPasswordResponse, UpdateMemberRoleResponse, OrganizationMember, OrgMetrics } from '@mychristiancounselor/shared';
 import { randomBytes } from 'crypto';
@@ -13,6 +14,7 @@ export class AdminService {
   constructor(
     private prisma: PrismaService,
     private authService: AuthService,
+    private subscriptionService: SubscriptionService,
   ) {}
 
   async isPlatformAdmin(userId: string): Promise<boolean> {
@@ -666,6 +668,20 @@ export class AdminService {
     await this.prisma.organizationMember.delete({
       where: { id: membership.id },
     });
+
+    // Check if user has any remaining organization memberships
+    const remainingMemberships = await this.prisma.organizationMember.count({
+      where: { userId },
+    });
+
+    // If this was their last organization, reactivate their suspended subscription
+    if (remainingMemberships === 0) {
+      this.logger.log(`[releaseMember] User ${userId} left their last organization, attempting to reactivate subscription`);
+      await this.subscriptionService.reactivateSubscription(userId).catch(err => {
+        this.logger.error(`Failed to reactivate subscription for user ${userId}:`, err);
+        // Don't block member release if reactivation fails
+      });
+    }
 
     // Update user's accountType to 'individual' if it was 'organization'
     await this.prisma.user.update({

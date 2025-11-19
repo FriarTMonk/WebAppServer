@@ -66,6 +66,7 @@ ${currentQuestionCount >= maxClarifyingQuestions
           { role: 'system', content: enhancedSystemPrompt },
           { role: 'user', content: userPrompt },
         ],
+        response_format: { type: 'json_object' },
         temperature: 0.7,
         max_tokens: 800,
       });
@@ -157,21 +158,30 @@ ${currentQuestionCount >= maxClarifyingQuestions
     try {
       const prompt = `As a Christian counselor with theological training, analyze this message for genuine crisis indicators requiring immediate professional intervention.
 
+IMPORTANT CONTEXT: This is a Christian counseling platform where users ask spiritual questions and seek Biblical guidance. Questions directed TO God or ABOUT God are normal spiritual inquiries, not crisis situations.
+
 Message: "${message}"
 
-Criteria for TRUE crisis:
-- Active suicidal ideation with intent or plan
-- Immediate self-harm intent
-- Active abuse or violence happening now
-- Active addiction requiring immediate intervention
-- Severe mental health emergency
+Criteria for TRUE crisis (requiring immediate intervention):
+- Active suicidal ideation with specific intent or plan
+- Immediate self-harm intent with imminent danger
+- Active abuse or violence happening right now
+- Life-threatening addiction requiring emergency intervention
+- Severe mental health emergency with immediate danger
 
 Do NOT flag as crisis:
-- Past struggles now resolved
+- Questions directed to God ("God, are you listening?", "Where are you God?", "Why God?")
+- Questions about God's existence, nature, or will
+- Spiritual seeking or feeling distant from God
+- Past struggles that are now resolved
 - Hypothetical questions about theology of suffering
 - Academic or theological discussions
 - Historical references to past pain
 - Metaphorical language ("dying inside", "killing me")
+- Expressions of spiritual doubt or questioning faith
+- Prayers for help or guidance
+
+KEY DISTINCTION: Spiritual desperation (seeking God in hard times) is NOT a crisis. Only flag messages indicating IMMINENT physical danger or severe psychological emergency requiring professional intervention.
 
 Respond with ONLY "true" or "false" and nothing else.`;
 
@@ -183,6 +193,9 @@ Respond with ONLY "true" or "false" and nothing else.`;
       });
 
       const response = completion.choices[0].message.content?.trim().toLowerCase();
+      console.log('[CRISIS DETECTION] Message:', message.substring(0, 100));
+      console.log('[CRISIS DETECTION] AI Response:', response);
+      console.log('[CRISIS DETECTION] Result:', response === 'true');
       return response === 'true';
     } catch (error) {
       console.error('AI crisis detection error:', error);
@@ -197,26 +210,39 @@ Respond with ONLY "true" or "false" and nothing else.`;
    */
   async detectGriefContextual(message: string): Promise<boolean> {
     try {
-      const prompt = `As a Christian counselor with theological training, analyze this message for genuine grief and loss indicators.
+      const prompt = `As a Christian counselor, determine if this message indicates ACTIVE GRIEF from a RECENT ACTUAL LOSS that requires specialized grief resources.
+
+CRITICAL CONTEXT: This is a Christian counseling platform. Spiritual questions, feeling distant from God, or seeking God during hard times are NORMAL and NOT grief situations.
 
 Message: "${message}"
 
-Criteria for TRUE grief:
-- Recent death of loved one
-- Terminal illness of self or loved one
-- Current mourning or bereavement
-- Processing loss and seeking comfort
-- Spiritual questions about death and afterlife
-- High anxiety or severe anxiety disorders
-- Current bullying or harassment
+ONLY flag as TRUE grief if the message EXPLICITLY mentions:
+- Death of a loved one (recent, within the past year) AND emotional distress about it
+- Terminal diagnosis AND active emotional processing of impending death
+- Current acute bereavement with explicit mention of who died
 
-Do NOT flag as grief:
-- Theoretical questions about death
-- General suffering without loss
-- Past grief that's fully resolved
-- Academic theological discussions
-- Metaphorical references
-- Mild everyday stress
+NEVER flag as grief:
+- Questions to God or about God ("God, are you listening?", "Where are you God?", "Why God?")
+- Feeling spiritually distant or abandoned
+- Seeking God's help or guidance
+- Questioning faith or God's presence
+- General suffering or hard times without explicit death/loss
+- Anxiety, worry, or stress (unless explicitly about recent death)
+- Theological questions about death, suffering, or the afterlife
+- Past loss that's been processed
+- Metaphorical language about death or dying
+
+EXAMPLE - NOT GRIEF:
+- "God, are you listening?" = spiritual seeking, NOT grief
+- "I feel so alone" = loneliness, NOT grief (unless they mention who died)
+- "Why is God silent?" = spiritual doubt, NOT grief
+- "I'm going through a hard time" = general struggle, NOT grief
+
+EXAMPLE - IS GRIEF:
+- "My mother died last month and I can't cope" = grief
+- "Just lost my husband, how do I go on?" = grief
+
+Be VERY conservative. When in doubt, respond "false". Only respond "true" if there is EXPLICIT mention of a RECENT death causing CURRENT distress.
 
 Respond with ONLY "true" or "false" and nothing else.`;
 
@@ -228,6 +254,9 @@ Respond with ONLY "true" or "false" and nothing else.`;
       });
 
       const response = completion.choices[0].message.content?.trim().toLowerCase();
+      console.log('[GRIEF DETECTION] Message:', message.substring(0, 100));
+      console.log('[GRIEF DETECTION] AI Response:', response);
+      console.log('[GRIEF DETECTION] Result:', response === 'true');
       return response === 'true';
     } catch (error) {
       console.error('AI grief detection error:', error);

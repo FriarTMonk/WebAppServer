@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -12,16 +12,22 @@ import {
   User,
   AuthTokens
 } from '@mychristiancounselor/shared';
+import { EmailService } from '../email/email.service';
+import { EmailRateLimitService } from '../email/email-rate-limit.service';
 
 @Injectable()
 export class AuthService {
   private readonly SALT_ROUNDS = 12;
   private readonly REFRESH_TOKEN_EXPIRY_DAYS = 30;
+  private readonly VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
+  private readonly PASSWORD_RESET_TOKEN_EXPIRY_HOURS = 1;
 
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private emailService: EmailService,
+    private emailRateLimit: EmailRateLimitService,
   ) {}
 
   // ===== PASSWORD METHODS =====
@@ -78,7 +84,7 @@ export class AuthService {
 
   // ===== REGISTRATION & LOGIN =====
 
-  async register(dto: RegisterDto): Promise<AuthResponse> {
+  async register(dto: RegisterDto, bypassEmailVerification = false): Promise<AuthResponse> {
     // Check if user already exists
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
@@ -91,8 +97,8 @@ export class AuthService {
     // Hash password
     const passwordHash = await this.hashPassword(dto.password);
 
-    // Generate email verification token
-    const verificationToken = randomBytes(32).toString('hex');
+    // Generate email verification token (unless bypassing)
+    const verificationToken = bypassEmailVerification ? null : randomBytes(32).toString('hex');
 
     // Create user
     const user = await this.prisma.user.create({
@@ -102,13 +108,22 @@ export class AuthService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         verificationToken,
+        emailVerified: bypassEmailVerification, // Auto-verify if from org invite
       },
     });
 
     // Generate tokens
     const tokens = await this.generateTokens(this.sanitizeUser(user));
 
-    // TODO: Send verification email (Task for later)
+    // Send verification email (unless bypassing - e.g., org invitation)
+    if (!bypassEmailVerification && verificationToken) {
+      await this.emailService.sendVerificationEmail(
+        user.email,
+        user.firstName || undefined,
+        verificationToken,
+        user.id,
+      );
+    }
 
     return {
       user: this.sanitizeUser(user),
@@ -208,5 +223,163 @@ export class AuthService {
     }
 
     return this.sanitizeUser(user);
+  }
+
+  // ===== EMAIL VERIFICATION =====
+
+  /**
+   * Verify user's email address using verification token
+   */
+  async verifyEmail(token: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { verificationToken: token },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Invalid or expired verification token');
+    }
+
+    // Update user to mark email as verified
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        verificationToken: null, // Clear token after use
+      },
+    });
+  }
+
+  /**
+   * Resend verification email (with rate limiting)
+   */
+  async resendVerificationEmail(email: string, ipAddress: string): Promise<void> {
+    // Check rate limit (1 per hour per email + IP)
+    const rateLimitCheck = await this.emailRateLimit.checkRateLimit(
+      email,
+      ipAddress,
+      'verification_resend',
+    );
+
+    if (!rateLimitCheck.allowed) {
+      throw new BadRequestException(
+        `Too many verification emails sent. Please try again in ${rateLimitCheck.retryAfter} seconds.`,
+      );
+    }
+
+    // Find user
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    // For security, don't reveal if email exists or not
+    // But only send email if user exists and is not verified
+    if (user && !user.emailVerified) {
+      // Generate new verification token
+      const verificationToken = randomBytes(32).toString('hex');
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { verificationToken },
+      });
+
+      // Send verification email
+      await this.emailService.sendVerificationEmail(
+        user.email,
+        user.firstName || undefined,
+        verificationToken,
+        user.id,
+      );
+
+      // Increment rate limit counter
+      await this.emailRateLimit.incrementRateLimit(email, ipAddress, 'verification_resend');
+    }
+
+    // Always return success (don't reveal if email exists)
+  }
+
+  // ===== PASSWORD RESET =====
+
+  /**
+   * Initiate password reset (with rate limiting)
+   */
+  async forgotPassword(email: string, ipAddress: string): Promise<void> {
+    // Check rate limit (3 per hour per email + IP)
+    const rateLimitCheck = await this.emailRateLimit.checkRateLimit(email, ipAddress, 'password_reset');
+
+    if (!rateLimitCheck.allowed) {
+      throw new BadRequestException(
+        `Too many password reset requests. Please try again in ${rateLimitCheck.retryAfter} seconds.`,
+      );
+    }
+
+    // Find user
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    // For security, don't reveal if email exists or not
+    // But only send email if user exists
+    if (user) {
+      // Generate reset token
+      const resetToken = randomBytes(32).toString('hex');
+      const resetTokenExpiry = new Date();
+      resetTokenExpiry.setHours(resetTokenExpiry.getHours() + this.PASSWORD_RESET_TOKEN_EXPIRY_HOURS);
+
+      // Invalidate any existing reset tokens
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetToken,
+          resetTokenExpiry,
+        },
+      });
+
+      // Send password reset email
+      await this.emailService.sendPasswordResetEmail(
+        user.email,
+        user.firstName || undefined,
+        resetToken,
+        user.id,
+      );
+
+      // Increment rate limit counter
+      await this.emailRateLimit.incrementRateLimit(email, ipAddress, 'password_reset');
+    }
+
+    // Always return success (don't reveal if email exists)
+  }
+
+  /**
+   * Reset password using reset token
+   */
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { resetToken: token },
+    });
+
+    if (!user || !user.resetTokenExpiry) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    // Check if token has expired
+    if (user.resetTokenExpiry < new Date()) {
+      throw new BadRequestException('Reset token has expired');
+    }
+
+    // Hash new password
+    const passwordHash = await this.hashPassword(newPassword);
+
+    // Update password and clear reset token
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        resetToken: null,
+        resetTokenExpiry: null,
+      },
+    });
+
+    // Logout all sessions for security
+    await this.logoutAll(user.id);
   }
 }

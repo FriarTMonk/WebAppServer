@@ -6,6 +6,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminResetPasswordDto, UpdateMemberRoleRequest, CreateCounselorAssignmentDto } from '@mychristiancounselor/shared';
+import { EmailMetricsService } from '../email/email-metrics.service';
 
 /**
  * Controller for organization admin operations.
@@ -19,6 +20,7 @@ export class OrgAdminController {
   constructor(
     private adminService: AdminService,
     private orgAdminService: OrgAdminService,
+    private emailMetricsService: EmailMetricsService,
   ) {}
 
   /**
@@ -269,5 +271,62 @@ export class OrgAdminController {
     @Query('organizationId') organizationId: string,
   ) {
     return this.orgAdminService.getCounselorWorkloads(user.id, organizationId);
+  }
+
+  /**
+   * Get email metrics for the organization (Org Admin only)
+   * Only shows metrics for emails sent to members of this organization
+   * GET /org-admin/email-metrics
+   */
+  @Get('email-metrics')
+  async getEmailMetrics(
+    @CurrentUser() user: User,
+    @Request() req: any,
+    @Query('daysAgo') daysAgo?: string,
+  ) {
+    const organizationId = req.userOrganization.id;
+
+    await this.adminService.logAdminAction(
+      user.id,
+      'org_admin_view_email_metrics',
+      { organizationId, daysAgo },
+      undefined,
+      organizationId,
+    );
+
+    const days = daysAgo ? parseInt(daysAgo, 10) : 30;
+    return this.emailMetricsService.getOrganizationMetrics(organizationId, days);
+  }
+
+  /**
+   * Get detailed email logs for the organization (Org Admin only)
+   * Supports pagination and filtering
+   * GET /org-admin/email-logs
+   */
+  @Get('email-logs')
+  async getEmailLogs(
+    @CurrentUser() user: User,
+    @Request() req: any,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('emailType') emailType?: string,
+    @Query('status') status?: string,
+  ) {
+    const organizationId = req.userOrganization.id;
+
+    await this.adminService.logAdminAction(
+      user.id,
+      'org_admin_view_email_logs',
+      { organizationId, limit, offset, emailType, status },
+      undefined,
+      organizationId,
+    );
+
+    return this.emailMetricsService.getOrganizationEmailLogs(organizationId, {
+      limit: limit ? parseInt(limit, 10) : undefined,
+      offset: offset ? parseInt(offset, 10) : undefined,
+      emailType,
+      status,
+    });
   }
 }

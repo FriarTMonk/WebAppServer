@@ -6,6 +6,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
 import { OrganizationModule } from '../organization/organization.module';
 import { CounselModule } from '../counsel/counsel.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CounselModule } from '../counsel/counsel.module';
     AuthModule,
     OrganizationModule,
     CounselModule,
+    EmailModule,
   ],
   controllers: [OrgAdminController],
   providers: [OrgAdminService],

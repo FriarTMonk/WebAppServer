@@ -104,6 +104,7 @@ model Organization {
   auditLogs            AdminAuditLog[]
   metricSnapshots      MetricSnapshot[]
   counselorAssignments CounselorAssignment[]
+  contract             OrganizationContract?
 
   @@index([licenseStatus])
   @@index([licenseExpiresAt])
@@ -237,6 +238,7 @@ model Message {
   content                  String   @db.Text
   scriptureReferences      Json     @default("[]")
   constitutionalReferences Json     @default("[]")
+  isClarifyingQuestion     Boolean  @default(false) // True if this assistant message was a clarifying question
   timestamp                DateTime @default(now())
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -451,4 +453,66 @@ model Notification {
   @@index([recipientId, isRead, isDismissed])
   @@index([createdAt])
   @@index([recipientId, createdAt])
+}
+
+// Email activity log for tracking Postmark deliveries, opens, clicks, bounces
+model EmailLog {
+  id             String    @id @default(uuid())
+  userId         String?
+  recipientEmail String
+  emailType      String // 'verification' | 'password_reset' | 'session_share' | 'note_added' | 'counselor_assignment' | 'org_invite' | 'billing'
+  postmarkId     String?   @unique // Postmark message ID for webhook correlation
+  status         String // 'sent' | 'delivered' | 'bounced' | 'opened' | 'failed'
+  bounceReason   String?
+  metadata       Json      @default("{}") // Additional context (session ID, note ID, etc.)
+  sentAt         DateTime  @default(now())
+  deliveredAt    DateTime?
+  openedAt       DateTime?
+  clickedAt      DateTime?
+  bouncedAt      DateTime?
+
+  @@index([userId])
+  @@index([recipientEmail])
+  @@index([emailType])
+  @@index([status])
+  @@index([sentAt])
+  @@index([postmarkId])
+}
+
+// Rate limiting for email operations (prevents abuse)
+model EmailRateLimit {
+  id             String   @id @default(uuid())
+  identifier     String // email address or IP address
+  identifierType String // 'email' | 'ip'
+  operation      String // 'verification_resend' | 'password_reset'
+  attemptCount   Int      @default(1)
+  windowStart    DateTime @default(now())
+  expiresAt      DateTime
+
+  @@unique([identifier, identifierType, operation])
+  @@index([identifier, operation])
+  @@index([expiresAt])
+}
+
+// Organization contract tracking for billing reminders (sales-assisted)
+model OrganizationContract {
+  id               String    @id @default(uuid())
+  organizationId   String    @unique
+  contractStart    DateTime
+  contractEnd      DateTime
+  renewalDate      DateTime
+  amount           Decimal   @db.Decimal(10, 2)
+  paymentTerms     String?   @db.Text
+  status           String    @default("active") // 'active' | 'expired' | 'cancelled'
+  lastReminderSent DateTime?
+  lastInvoiceSent  DateTime?
+  notes            String?   @db.Text
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([renewalDate])
+  @@index([status])
+  @@index([organizationId])
 }

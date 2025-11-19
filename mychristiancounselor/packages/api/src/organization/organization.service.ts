@@ -13,13 +13,19 @@ import {
   OrganizationInvitation,
 } from '@mychristiancounselor/shared';
 import { randomBytes } from 'crypto';
+import { EmailService } from '../email/email.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 
 @Injectable()
 export class OrganizationService {
   private readonly INVITATION_EXPIRY_DAYS = 7;
   private readonly SYSTEM_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService,
+    private subscriptionService: SubscriptionService,
+  ) {}
 
   // ===== PLATFORM ROLE HELPERS =====
 
@@ -377,10 +383,26 @@ export class OrganizationService {
       include: {
         organization: true,
         invitedBy: true,
+        role: true,
       },
     });
 
-    // TODO: Send invitation email (Task for later)
+    // Send invitation email
+    const inviterName = invitation.invitedBy
+      ? `${invitation.invitedBy.firstName || ''} ${invitation.invitedBy.lastName || ''}`.trim() || invitation.invitedBy.email
+      : 'Someone';
+
+    await this.emailService.sendOrgInvitationEmail(
+      invitation.email,
+      {
+        recipientName: undefined, // We don't know their name yet
+        inviterName,
+        organizationName: invitation.organization.name,
+        roleName: (invitation as any).role.name,
+        inviteToken: invitation.token,
+        expiresAt: invitation.expiresAt,
+      },
+    );
 
     return invitation as any;
   }
@@ -438,6 +460,20 @@ export class OrganizationService {
         role: true,
       },
     });
+
+    // Check if this is the user's FIRST organization
+    // If so, suspend their individual subscription (org membership replaces individual sub)
+    const membershipCount = await this.prisma.organizationMember.count({
+      where: { userId },
+    });
+
+    if (membershipCount === 1) {
+      // This is their first org - suspend individual subscription if they have one
+      await this.subscriptionService.suspendSubscription(userId, 'joined_first_organization').catch(err => {
+        console.error(`Failed to suspend subscription for user ${userId}:`, err);
+        // Don't block org join if subscription suspension fails
+      });
+    }
 
     // Mark invitation as accepted
     await this.prisma.organizationInvitation.update({

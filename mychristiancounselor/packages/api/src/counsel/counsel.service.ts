@@ -5,6 +5,7 @@ import { ScriptureService } from '../scripture/scripture.service';
 import { SafetyService } from '../safety/safety.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { TranslationService } from '../scripture/translation.service';
+import { EmailService } from '../email/email.service';
 import { CounselResponse, BibleTranslation } from '@mychristiancounselor/shared';
 import { randomUUID } from 'crypto';
 import { CreateNoteDto } from './dto/create-note.dto';
@@ -18,7 +19,8 @@ export class CounselService {
     private scriptureService: ScriptureService,
     private safetyService: SafetyService,
     private subscriptionService: SubscriptionService,
-    private translationService: TranslationService
+    private translationService: TranslationService,
+    private emailService: EmailService,
   ) {}
 
   async processQuestion(
@@ -138,7 +140,7 @@ export class CounselService {
 
     // 5. Count clarifying questions so far
     const clarificationCount = session.messages.filter(
-      (m) => m.role === 'assistant' && m.content.includes('?')
+      (m) => m.role === 'assistant' && m.isClarifyingQuestion === true
     ).length;
 
     // 6. Retrieve relevant scriptures with themes (single translation or multiple for comparison)
@@ -190,6 +192,7 @@ export class CounselService {
           role: 'assistant',
           content: aiResponse.content,
           scriptureReferences: JSON.parse(JSON.stringify(scriptures)),
+          isClarifyingQuestion: aiResponse.requiresClarification,
           timestamp: new Date(),
         },
       });
@@ -201,11 +204,17 @@ export class CounselService {
         role: 'assistant' as const,
         content: aiResponse.content,
         scriptureReferences: JSON.parse(JSON.stringify(scriptures)),
+        isClarifyingQuestion: aiResponse.requiresClarification,
         timestamp: new Date(),
       };
     }
 
-    // 12. Return response with grief detection flag if applicable
+    // 12. Calculate current question count AFTER this response
+    // Count all assistant messages that were clarifying questions (requiresClarification: true)
+    // Since we just added the new message, if it's a clarifying question, it will be included
+    const updatedQuestionCount = clarificationCount + (aiResponse.requiresClarification ? 1 : 0);
+
+    // 13. Return response with grief detection flag and question count
     return {
       sessionId: session.id,
       message: {
@@ -220,6 +229,7 @@ export class CounselService {
       isCrisisDetected: false,
       isGriefDetected: isGrief,
       griefResources: isGrief ? this.safetyService.getGriefResources() : undefined,
+      currentSessionQuestionCount: updatedQuestionCount,
     };
   }
 
@@ -240,13 +250,7 @@ export class CounselService {
     organizationId: string,
     createNoteDto: CreateNoteDto
   ) {
-    // 0. Check subscription status - only subscribed users can create notes
-    const subscriptionStatus = await this.subscriptionService.getSubscriptionStatus(authorId);
-    if (!subscriptionStatus.hasHistoryAccess) {
-      throw new ForbiddenException('Session notes are only available to subscribed users');
-    }
-
-    // 1. Verify session exists
+    // 0. Verify session exists first
     const session = await this.prisma.session.findUnique({
       where: { id: sessionId },
       include: { user: true },
@@ -254,6 +258,48 @@ export class CounselService {
 
     if (!session) {
       throw new NotFoundException('Session not found');
+    }
+
+    // 1. Check if user owns the session - if so, require subscription
+    const isOwner = session.userId === authorId;
+
+    if (isOwner) {
+      // Session owner must have subscription to create notes
+      const subscriptionStatus = await this.subscriptionService.getSubscriptionStatus(authorId);
+      if (!subscriptionStatus.hasHistoryAccess) {
+        throw new ForbiddenException('Session notes are only available to subscribed users');
+      }
+    } else {
+      // Non-owner: Check if they have write access via a share with allowNotesAccess
+      const validShare = await this.prisma.sessionShare.findFirst({
+        where: {
+          sessionId,
+          allowNotesAccess: true, // Must allow note creation
+          AND: [
+            {
+              OR: [
+                { sharedWith: authorId },
+                { sharedWith: null }, // Share is open to anyone with the link
+              ],
+            },
+            {
+              OR: [
+                { expiresAt: null },
+                { expiresAt: { gt: new Date() } },
+              ],
+            },
+          ],
+        },
+      });
+
+      if (!validShare) {
+        // Not owner and no valid share with write access - require subscription
+        const subscriptionStatus = await this.subscriptionService.getSubscriptionStatus(authorId);
+        if (!subscriptionStatus.hasHistoryAccess) {
+          throw new ForbiddenException('Session notes are only available to subscribed users or via shared access with note permissions');
+        }
+      }
+      // If they have a valid share with allowNotesAccess, allow creation regardless of subscription
     }
 
     // 2. Get author info
@@ -316,7 +362,7 @@ export class CounselService {
       .join(' ') || 'Anonymous';
 
     // 5. Create note
-    return this.prisma.sessionNote.create({
+    const note = await this.prisma.sessionNote.create({
       data: {
         sessionId,
         authorId,
@@ -326,6 +372,100 @@ export class CounselService {
         isPrivate: createNoteDto.isPrivate || false,
       },
     });
+
+    // 6. Send email notifications (async, don't block note creation)
+    this.sendNoteAddedNotifications(sessionId, authorId, authorName, note.isPrivate, session, organizationId).catch(err => {
+      console.error('Failed to send note added notifications:', err);
+    });
+
+    return note;
+  }
+
+  /**
+   * Send email notifications when a note is added
+   * Notification rules:
+   * - Owner: notified when anyone else adds a note (private or not)
+   * - Counselor: notified ONLY when owner adds a note (private or not)
+   * - Shared members: notified when anyone else adds NON-PRIVATE notes
+   */
+  private async sendNoteAddedNotifications(
+    sessionId: string,
+    authorId: string,
+    authorName: string,
+    isPrivate: boolean,
+    session: any,
+    organizationId: string,
+  ): Promise<void> {
+    const recipientIds = new Set<string>();
+
+    // 1. Notify owner (unless they're the author)
+    if (session.userId && session.userId !== authorId) {
+      recipientIds.add(session.userId);
+    }
+
+    // 2. Notify counselors (only if owner is the author)
+    if (session.userId === authorId) {
+      const counselorAssignments = await this.prisma.counselorAssignment.findMany({
+        where: {
+          memberId: session.userId,
+          organizationId,
+          status: 'active',
+        },
+        select: { counselorId: true },
+      });
+
+      for (const assignment of counselorAssignments) {
+        if (assignment.counselorId !== authorId) {
+          recipientIds.add(assignment.counselorId);
+        }
+      }
+    }
+
+    // 3. Notify shared members (only if NOT private, and not the author)
+    if (!isPrivate) {
+      const activeShares = await this.prisma.sessionShare.findMany({
+        where: {
+          sessionId,
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gt: new Date() } },
+          ],
+        },
+        include: {
+          accesses: {
+            where: {
+              userId: { not: authorId }, // Exclude author
+            },
+            select: { userId: true },
+          },
+        },
+      });
+
+      for (const share of activeShares) {
+        for (const access of share.accesses) {
+          recipientIds.add(access.userId);
+        }
+      }
+    }
+
+    // 4. Send emails to all recipients
+    const recipients = await this.prisma.user.findMany({
+      where: { id: { in: Array.from(recipientIds) } },
+      select: { id: true, email: true, firstName: true },
+    });
+
+    for (const recipient of recipients) {
+      await this.emailService.sendNoteAddedEmail(
+        recipient.email,
+        {
+          recipientName: recipient.firstName || undefined,
+          authorName,
+          sessionTitle: session.title,
+          sessionId,
+        },
+        recipient.id,
+      );
+    }
   }
 
   async getNotesForSession(
@@ -333,19 +473,54 @@ export class CounselService {
     requestingUserId: string,
     organizationId: string
   ) {
-    // 0. Check subscription status - only subscribed users can access notes
-    const subscriptionStatus = await this.subscriptionService.getSubscriptionStatus(requestingUserId);
-    if (!subscriptionStatus.hasHistoryAccess) {
-      throw new ForbiddenException('Session notes are only available to subscribed users');
-    }
-
-    // 1. Verify session exists and user has access
+    // 0. Verify session exists first
     const session = await this.prisma.session.findUnique({
       where: { id: sessionId },
     });
 
     if (!session) {
       throw new NotFoundException('Session not found');
+    }
+
+    // 1. Check if user owns the session - if so, require subscription
+    const isOwner = session.userId === requestingUserId;
+
+    if (isOwner) {
+      // Session owner must have subscription to access notes
+      const subscriptionStatus = await this.subscriptionService.getSubscriptionStatus(requestingUserId);
+      if (!subscriptionStatus.hasHistoryAccess) {
+        throw new ForbiddenException('Session notes are only available to subscribed users');
+      }
+    } else {
+      // Non-owner: Check if they have access via a valid share link
+      const validShare = await this.prisma.sessionShare.findFirst({
+        where: {
+          sessionId,
+          AND: [
+            {
+              OR: [
+                { sharedWith: requestingUserId },
+                { sharedWith: null }, // Share is open to anyone with the link
+              ],
+            },
+            {
+              OR: [
+                { expiresAt: null },
+                { expiresAt: { gt: new Date() } },
+              ],
+            },
+          ],
+        },
+      });
+
+      if (!validShare) {
+        // Not owner and no valid share - require subscription
+        const subscriptionStatus = await this.subscriptionService.getSubscriptionStatus(requestingUserId);
+        if (!subscriptionStatus.hasHistoryAccess) {
+          throw new ForbiddenException('Session notes are only available to subscribed users or via shared access');
+        }
+      }
+      // If they have a valid share, allow access regardless of subscription
     }
 
     // 2. Check if requesting user is coverage counselor

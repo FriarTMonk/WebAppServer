@@ -11,6 +11,7 @@ import { AiModule } from '../ai/ai.module';
 import { ScriptureModule } from '../scripture/scripture.module';
 import { SafetyModule } from '../safety/safety.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { SubscriptionModule } from '../subscription/subscription.module';
     ScriptureModule,
     SafetyModule,
     SubscriptionModule,
+    EmailModule,
   ],
   controllers: [CounselController],
   providers: [

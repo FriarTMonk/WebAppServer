@@ -2,10 +2,14 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateShareRequest } from '@mychristiancounselor/shared';
 import { randomBytes } from 'crypto';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class ShareService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService,
+  ) {}
 
   /**
    * Create a share link for a session
@@ -16,6 +20,15 @@ export class ShareService {
     // Verify session exists and user owns it
     const session = await this.prisma.session.findUnique({
       where: { id: sessionId },
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
     });
 
     if (!session) {
@@ -24,6 +37,28 @@ export class ShareService {
 
     if (session.userId !== userId) {
       throw new ForbiddenException('You can only share your own conversations');
+    }
+
+    // If sharedWith is specified, check if recipient is registered
+    if (sharedWith) {
+      const recipient = await this.prisma.user.findUnique({
+        where: { email: sharedWith.toLowerCase() },
+        select: { id: true, email: true, firstName: true, emailVerified: true },
+      });
+
+      if (!recipient) {
+        // User not registered - throw error with invitation URL
+        const invitationUrl = `${process.env.WEB_APP_URL || 'http://localhost:3699'}/register?source=invitation`;
+        throw new BadRequestException({
+          message: 'This person is not registered yet. Please invite them to register first.',
+          invitationUrl,
+          recipientEmail: sharedWith,
+        });
+      }
+
+      if (!recipient.emailVerified) {
+        throw new BadRequestException('This user has not verified their email yet. Please ask them to verify their email first.');
+      }
     }
 
     // Generate unique share token
@@ -42,7 +77,7 @@ export class ShareService {
         sessionId,
         shareToken,
         sharedBy: userId,
-        sharedWith: sharedWith || null,
+        sharedWith: sharedWith ? sharedWith.toLowerCase() : null,
         allowNotesAccess: allowNotesAccess || false,
         expiresAt,
       },
@@ -50,6 +85,36 @@ export class ShareService {
 
     // Generate share URL (will be completed by frontend)
     const shareUrl = `/shared/${shareToken}`;
+
+    // Send email notification if sharedWith is specified
+    if (sharedWith) {
+      const recipient = await this.prisma.user.findUnique({
+        where: { email: sharedWith.toLowerCase() },
+        select: { id: true, email: true, firstName: true },
+      });
+
+      if (recipient) {
+        const senderName = session.user
+          ? `${session.user.firstName || ''} ${session.user.lastName || ''}`.trim() || session.user.email
+          : 'Someone';
+
+        // Extract topics from session (from JSON field)
+        const topics = Array.isArray(session.topics) ? session.topics : [];
+
+        await this.emailService.sendSessionShareEmail(
+          recipient.email,
+          {
+            recipientName: recipient.firstName || undefined,
+            senderName,
+            sessionTitle: session.title,
+            sessionTopics: topics as string[],
+            shareToken,
+            expiresAt: expiresAt || undefined,
+          },
+          recipient.id,
+        );
+      }
+    }
 
     return {
       share,
