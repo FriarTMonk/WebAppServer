@@ -5,6 +5,7 @@ import { CreateTicketDto } from './dto/create-ticket.dto';
 import { ReplyToTicketDto } from './dto/reply-to-ticket.dto';
 import { AssignTicketDto } from './dto/assign-ticket.dto';
 import { LinkTicketsDto } from './dto/link-tickets.dto';
+import { ResolveTicketDto } from './dto/resolve-ticket.dto';
 
 @Controller('support')
 export class SupportController {
@@ -101,8 +102,9 @@ export class SupportController {
   async resolveTicket(
     @Request() req,
     @Param('ticketId') ticketId: string,
+    @Body() dto: ResolveTicketDto,
   ) {
-    return this.supportService.resolveTicket(ticketId, req.user.id);
+    return this.supportService.resolveTicket(ticketId, req.user.id, dto);
   }
 
   @UseGuards(JwtAuthGuard)

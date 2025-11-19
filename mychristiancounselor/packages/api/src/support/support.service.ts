@@ -4,6 +4,7 @@ import { CreateTicketDto } from './dto/create-ticket.dto';
 import { ReplyToTicketDto } from './dto/reply-to-ticket.dto';
 import { AssignTicketDto } from './dto/assign-ticket.dto';
 import { LinkTicketsDto } from './dto/link-tickets.dto';
+import { ResolveTicketDto } from './dto/resolve-ticket.dto';
 import { AiService } from '../ai/ai.service';
 
 @Injectable()
@@ -719,7 +720,7 @@ export class SupportService {
     return updated;
   }
 
-  async resolveTicket(ticketId: string, adminId: string): Promise<any> {
+  async resolveTicket(ticketId: string, adminId: string, dto: ResolveTicketDto): Promise<any> {
     // Get ticket
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id: ticketId },
@@ -751,18 +752,23 @@ export class SupportService {
       throw new ForbiddenException('You do not have permission to resolve this ticket');
     }
 
-    // Update ticket
+    // Update ticket with resolution and resolvedById
     const updated = await this.prisma.supportTicket.update({
       where: { id: ticketId },
       data: {
         status: 'resolved',
         resolvedAt: new Date(),
+        resolution: dto.resolution,
+        resolvedById: adminId,
       },
       include: {
         createdBy: {
           select: { id: true, email: true, firstName: true, lastName: true },
         },
         assignedTo: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        resolvedBy: {
           select: { id: true, email: true, firstName: true, lastName: true },
         },
         organization: {
@@ -772,7 +778,7 @@ export class SupportService {
     });
 
     this.logger.log(
-      `Ticket ${ticketId} resolved by admin ${adminId}`
+      `Ticket ${ticketId} resolved by admin ${adminId} with resolution: ${dto.resolution.substring(0, 50)}...`
     );
 
     // Note: Email notifications skipped - EmailModule doesn't exist yet
