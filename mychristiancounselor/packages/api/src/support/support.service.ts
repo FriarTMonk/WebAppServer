@@ -432,7 +432,7 @@ export class SupportService {
         ticket.status !== 'waiting_on_user' &&
         !ticket.slaPausedAt
       ) {
-        await this.slaCalculator.pauseSLA(ticketId, 'waiting_on_user');
+        await this.slaCalculator.pauseSLA(ticketId, 'waiting_on_user', tx);
         this.logger.log(`SLA paused for ticket ${ticketId} - waiting on user`);
       }
 
@@ -442,7 +442,7 @@ export class SupportService {
         newStatus !== 'waiting_on_user' &&
         ticket.slaPausedAt
       ) {
-        await this.slaCalculator.resumeSLA(ticketId);
+        await this.slaCalculator.resumeSLA(ticketId, tx);
         this.logger.log(`SLA resumed for ticket ${ticketId}`);
       }
 
@@ -755,24 +755,39 @@ export class SupportService {
       );
     }
 
-    // Update ticket
-    const updated = await this.prisma.supportTicket.update({
-      where: { id: ticketId },
-      data: {
-        assignedToId: dto.assignedToId,
-        status: ticket.status === 'open' ? 'in_progress' : ticket.status,
-      },
-      include: {
-        createdBy: {
-          select: { id: true, email: true, firstName: true, lastName: true },
+    // Determine new status
+    const newStatus = ticket.status === 'open' ? 'in_progress' : ticket.status;
+
+    // Update ticket in a transaction to handle SLA changes
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Auto-resume SLA when changing from waiting_on_user
+      if (
+        ticket.status === 'waiting_on_user' &&
+        newStatus !== 'waiting_on_user' &&
+        ticket.slaPausedAt
+      ) {
+        await this.slaCalculator.resumeSLA(ticketId, tx);
+        this.logger.log(`SLA resumed for ticket ${ticketId} (assigned)`);
+      }
+
+      return await tx.supportTicket.update({
+        where: { id: ticketId },
+        data: {
+          assignedToId: dto.assignedToId,
+          status: newStatus,
         },
-        assignedTo: {
-          select: { id: true, email: true, firstName: true, lastName: true },
+        include: {
+          createdBy: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          assignedTo: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          organization: {
+            select: { id: true, name: true },
+          },
         },
-        organization: {
-          select: { id: true, name: true },
-        },
-      },
+      });
     });
 
     this.logger.log(
@@ -814,29 +829,37 @@ export class SupportService {
       throw new ForbiddenException('You do not have permission to resolve this ticket');
     }
 
-    // Update ticket with resolution and resolvedById
-    const updated = await this.prisma.supportTicket.update({
-      where: { id: ticketId },
-      data: {
-        status: 'resolved',
-        resolvedAt: new Date(),
-        resolution: dto.resolution,
-        resolvedById: adminId,
-      },
-      include: {
-        createdBy: {
-          select: { id: true, email: true, firstName: true, lastName: true },
+    // Update ticket with resolution and resolvedById in a transaction to handle SLA changes
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Auto-resume SLA when changing from waiting_on_user
+      if (ticket.status === 'waiting_on_user' && ticket.slaPausedAt) {
+        await this.slaCalculator.resumeSLA(ticketId, tx);
+        this.logger.log(`SLA resumed for ticket ${ticketId} (resolved)`);
+      }
+
+      return await tx.supportTicket.update({
+        where: { id: ticketId },
+        data: {
+          status: 'resolved',
+          resolvedAt: new Date(),
+          resolution: dto.resolution,
+          resolvedById: adminId,
         },
-        assignedTo: {
-          select: { id: true, email: true, firstName: true, lastName: true },
+        include: {
+          createdBy: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          assignedTo: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          resolvedBy: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          organization: {
+            select: { id: true, name: true },
+          },
         },
-        resolvedBy: {
-          select: { id: true, email: true, firstName: true, lastName: true },
-        },
-        organization: {
-          select: { id: true, name: true },
-        },
-      },
+      });
     });
 
     this.logger.log(
@@ -876,28 +899,36 @@ export class SupportService {
       throw new ForbiddenException('You do not have permission to close this ticket');
     }
 
-    // Update ticket
-    const updated = await this.prisma.supportTicket.update({
-      where: { id: ticketId },
-      data: {
-        status: 'closed',
-        closedAt: new Date(),
-        closedById: userId,
-      },
-      include: {
-        createdBy: {
-          select: { id: true, email: true, firstName: true, lastName: true },
+    // Update ticket in a transaction to handle SLA changes
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Auto-resume SLA when changing from waiting_on_user
+      if (ticket.status === 'waiting_on_user' && ticket.slaPausedAt) {
+        await this.slaCalculator.resumeSLA(ticketId, tx);
+        this.logger.log(`SLA resumed for ticket ${ticketId} (closed)`);
+      }
+
+      return await tx.supportTicket.update({
+        where: { id: ticketId },
+        data: {
+          status: 'closed',
+          closedAt: new Date(),
+          closedById: userId,
         },
-        assignedTo: {
-          select: { id: true, email: true, firstName: true, lastName: true },
+        include: {
+          createdBy: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          assignedTo: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          closedBy: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          organization: {
+            select: { id: true, name: true },
+          },
         },
-        closedBy: {
-          select: { id: true, email: true, firstName: true, lastName: true },
-        },
-        organization: {
-          select: { id: true, name: true },
-        },
-      },
+      });
     });
 
     this.logger.log(
