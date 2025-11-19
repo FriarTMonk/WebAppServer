@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { ReplyToTicketDto } from './dto/reply-to-ticket.dto';
 import { AssignTicketDto } from './dto/assign-ticket.dto';
+import { LinkTicketsDto } from './dto/link-tickets.dto';
 import { AiService } from '../ai/ai.service';
 
 @Injectable()
@@ -836,5 +837,215 @@ export class SupportService {
     );
 
     return updated;
+  }
+
+  /**
+   * Get similar tickets (active or historical) for a given ticket
+   * @param ticketId Source ticket ID
+   * @param userId User requesting the data
+   * @param matchType 'active' or 'historical'
+   * @returns Similar tickets with full details
+   */
+  async getSimilarTickets(
+    ticketId: string,
+    userId: string,
+    matchType: 'active' | 'historical'
+  ): Promise<any[]> {
+    // Verify user has access to the source ticket
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id: ticketId },
+      select: { id: true, createdById: true, organizationId: true },
+    });
+
+    if (!ticket) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    // Check access
+    const user = await this.getUserWithPermissions(userId);
+    const canAccess = this.canUserAccessTicket(user, ticket);
+
+    if (!canAccess) {
+      throw new ForbiddenException(
+        'You do not have permission to view this ticket'
+      );
+    }
+
+    // Get similarity results from AI service
+    let similarityResults: any[];
+
+    if (matchType === 'active') {
+      similarityResults = await this.aiService.findSimilarActiveTickets(ticketId);
+    } else {
+      similarityResults = await this.aiService.getCachedHistoricalMatches(
+        ticketId
+      );
+    }
+
+    // Fetch full ticket details for similar tickets
+    const similarTicketIds = similarityResults.map((r) => r.similarTicketId);
+
+    if (similarTicketIds.length === 0) {
+      return [];
+    }
+
+    const similarTickets = await this.prisma.supportTicket.findMany({
+      where: {
+        id: { in: similarTicketIds },
+      },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        organization: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            messages: true,
+          },
+        },
+      },
+    });
+
+    // Combine similarity scores with ticket details
+    const results = similarityResults.map((sr) => {
+      const ticket = similarTickets.find((t) => t.id === sr.similarTicketId);
+      if (!ticket) return null;
+
+      return {
+        id: `${ticketId}-${ticket.id}-${matchType}`, // Unique ID for frontend
+        sourceTicketId: ticketId,
+        similarTicketId: ticket.id,
+        similarityScore: sr.score,
+        matchType,
+        similarTicket: {
+          ...ticket,
+          messageCount: ticket._count.messages,
+          _count: undefined,
+        },
+      };
+    });
+
+    return results.filter((r) => r !== null);
+  }
+
+  /**
+   * Link two tickets together
+   * @param sourceTicketId Source ticket ID
+   * @param dto Link details (target ticket ID and relationship)
+   * @param userId User performing the action
+   * @returns Created ticket link
+   */
+  async linkTickets(
+    sourceTicketId: string,
+    dto: LinkTicketsDto,
+    userId: string
+  ): Promise<any> {
+    // Verify user is admin
+    const user = await this.getUserWithPermissions(userId);
+
+    if (!user.isPlatformAdmin) {
+      // Check if org admin
+      const isOrgAdmin = user.organizationMemberships.some(
+        (m: any) => m.role.name === 'Owner' || m.role.name === 'Admin'
+      );
+
+      if (!isOrgAdmin) {
+        throw new ForbiddenException('Only admins can link tickets');
+      }
+    }
+
+    // Verify both tickets exist
+    const [sourceTicket, targetTicket] = await Promise.all([
+      this.prisma.supportTicket.findUnique({
+        where: { id: sourceTicketId },
+        select: { id: true },
+      }),
+      this.prisma.supportTicket.findUnique({
+        where: { id: dto.targetTicketId },
+        select: { id: true },
+      }),
+    ]);
+
+    if (!sourceTicket || !targetTicket) {
+      throw new NotFoundException('One or both tickets not found');
+    }
+
+    // Create the link
+    const link = await this.prisma.ticketLink.create({
+      data: {
+        sourceTicketId,
+        targetTicketId: dto.targetTicketId,
+        relationship: dto.relationship,
+        aiSuggested: false,
+        createdById: userId,
+      },
+    });
+
+    this.logger.log(
+      `Tickets linked: ${sourceTicketId} -> ${dto.targetTicketId} ` +
+        `(${dto.relationship}) by user ${userId}`
+    );
+
+    return link;
+  }
+
+  /**
+   * Dismiss an AI similarity suggestion
+   * @param similarityId Similarity cache record ID
+   * @param userId User dismissing the suggestion
+   */
+  async dismissSuggestion(similarityId: string, userId: string): Promise<void> {
+    // Parse the similarity ID (format: sourceTicketId-similarTicketId-matchType)
+    const parts = similarityId.split('-');
+    if (parts.length < 3) {
+      throw new BadRequestException('Invalid similarity ID format');
+    }
+
+    const sourceTicketId = parts[0];
+    const similarTicketId = parts[1];
+    const matchType = parts[2];
+
+    // Verify user has access to source ticket
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id: sourceTicketId },
+      select: { id: true, createdById: true, organizationId: true },
+    });
+
+    if (!ticket) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    const user = await this.getUserWithPermissions(userId);
+    const canAccess = this.canUserAccessTicket(user, ticket);
+
+    if (!canAccess) {
+      throw new ForbiddenException(
+        'You do not have permission to dismiss this suggestion'
+      );
+    }
+
+    // Delete the similarity record
+    await this.prisma.ticketSimilarity.deleteMany({
+      where: {
+        sourceTicketId,
+        similarTicketId,
+        matchType,
+      },
+    });
+
+    this.logger.log(
+      `Similarity suggestion dismissed: ${sourceTicketId} -> ${similarTicketId} ` +
+        `(${matchType}) by user ${userId}`
+    );
   }
 }
