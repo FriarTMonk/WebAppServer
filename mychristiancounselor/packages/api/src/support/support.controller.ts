@@ -19,17 +19,26 @@ export class SupportController {
     @Request() req,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('priority') priority?: string,
+    @Query('category') category?: string,
   ) {
-    // Parse pagination parameters
-    const pageNum = page ? parseInt(page, 10) : 1;
-    const limitNum = limit ? parseInt(limit, 10) : 50;
-
-    // Calculate skip based on page number
+    // Validate and sanitize pagination
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
     const skip = (pageNum - 1) * limitNum;
+
+    // Parse filter parameters
+    const statusFilter = status?.split(',').filter(Boolean) || [];
+    const priorityFilter = priority?.split(',').filter(Boolean) || [];
+    const categoryFilter = category?.split(',').filter(Boolean) || [];
 
     return this.supportService.getUserTickets(req.user.id, {
       skip,
       take: limitNum,
+      status: statusFilter.length > 0 ? statusFilter : undefined,
+      priority: priorityFilter.length > 0 ? priorityFilter : undefined,
+      category: categoryFilter.length > 0 ? categoryFilter : undefined,
     });
   }
 }
