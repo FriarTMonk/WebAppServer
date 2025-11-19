@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, Logger, BadRequestEx
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { ReplyToTicketDto } from './dto/reply-to-ticket.dto';
+import { AssignTicketDto } from './dto/assign-ticket.dto';
 
 @Injectable()
 export class SupportService {
@@ -551,5 +552,241 @@ export class SupportService {
       page: Math.floor((options?.skip || 0) / (options?.take || 50)) + 1,
       limit: options?.take || 50,
     };
+  }
+
+  async assignTicket(ticketId: string, adminId: string, dto: AssignTicketDto): Promise<any> {
+    // Get ticket
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id: ticketId },
+      include: {
+        organization: true,
+      },
+    });
+
+    if (!ticket) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    // Verify admin can access this ticket
+    const user = await this.prisma.user.findUnique({
+      where: { id: adminId },
+      select: {
+        id: true,
+        isPlatformAdmin: true,
+        organizationMemberships: {
+          include: {
+            role: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Check if admin has permission to assign this ticket
+    const canAccess = this.canUserAccessTicket(user, ticket);
+    if (!canAccess) {
+      throw new ForbiddenException('You do not have permission to assign this ticket');
+    }
+
+    // Verify that the assignee exists
+    const assignee = await this.prisma.user.findUnique({
+      where: { id: dto.assignedToId },
+      select: { id: true, email: true, firstName: true, lastName: true },
+    });
+
+    if (!assignee) {
+      throw new NotFoundException('Assignee user not found');
+    }
+
+    // Update ticket
+    const updated = await this.prisma.supportTicket.update({
+      where: { id: ticketId },
+      data: {
+        assignedToId: dto.assignedToId,
+        status: ticket.status === 'open' ? 'in_progress' : ticket.status,
+      },
+      include: {
+        createdBy: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        assignedTo: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        organization: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    this.logger.log(
+      `Ticket ${ticketId} assigned to user ${dto.assignedToId} by admin ${adminId}`
+    );
+
+    return updated;
+  }
+
+  async resolveTicket(ticketId: string, adminId: string): Promise<any> {
+    // Get ticket
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id: ticketId },
+      include: {
+        createdBy: true,
+        organization: true,
+      },
+    });
+
+    if (!ticket) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    // Check if ticket is already resolved or closed
+    if (ticket.status === 'resolved') {
+      throw new BadRequestException('Ticket is already resolved');
+    }
+
+    if (ticket.status === 'closed' || ticket.status === 'rejected') {
+      throw new BadRequestException('Cannot resolve a closed or rejected ticket');
+    }
+
+    // Verify admin can access this ticket
+    const user = await this.prisma.user.findUnique({
+      where: { id: adminId },
+      select: {
+        id: true,
+        isPlatformAdmin: true,
+        organizationMemberships: {
+          include: {
+            role: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Check if admin has permission to resolve this ticket
+    const canAccess = this.canUserAccessTicket(user, ticket);
+    if (!canAccess) {
+      throw new ForbiddenException('You do not have permission to resolve this ticket');
+    }
+
+    // Update ticket
+    const updated = await this.prisma.supportTicket.update({
+      where: { id: ticketId },
+      data: {
+        status: 'resolved',
+        resolvedAt: new Date(),
+      },
+      include: {
+        createdBy: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        assignedTo: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        organization: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    this.logger.log(
+      `Ticket ${ticketId} resolved by admin ${adminId}`
+    );
+
+    // Note: Email notifications skipped - EmailModule doesn't exist yet
+
+    return updated;
+  }
+
+  async closeTicket(ticketId: string, userId: string): Promise<any> {
+    // Get ticket
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id: ticketId },
+      include: {
+        createdBy: true,
+        organization: true,
+      },
+    });
+
+    if (!ticket) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    // Check if ticket is already closed
+    if (ticket.status === 'closed' || ticket.status === 'rejected') {
+      throw new BadRequestException('Ticket is already closed or rejected');
+    }
+
+    // Get user info
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        isPlatformAdmin: true,
+        organizationMemberships: {
+          include: {
+            role: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Check if user can close this ticket (must be creator or admin)
+    const canAccess = this.canUserAccessTicket(user, ticket);
+    if (!canAccess) {
+      throw new ForbiddenException('You do not have permission to close this ticket');
+    }
+
+    // Update ticket
+    const updated = await this.prisma.supportTicket.update({
+      where: { id: ticketId },
+      data: {
+        status: 'closed',
+        closedAt: new Date(),
+        closedById: userId,
+      },
+      include: {
+        createdBy: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        assignedTo: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        closedBy: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        organization: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    this.logger.log(
+      `Ticket ${ticketId} closed by user ${userId}`
+    );
+
+    return updated;
   }
 }
