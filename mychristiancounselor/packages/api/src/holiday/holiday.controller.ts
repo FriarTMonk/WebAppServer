@@ -10,10 +10,15 @@ import {
   Request,
   ForbiddenException,
 } from '@nestjs/common';
+import { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { HolidayService } from './holiday.service';
 import { CreateHolidayDto } from './dto/create-holiday.dto';
 import { UpdateHolidayDto } from './dto/update-holiday.dto';
+
+interface RequestWithUser extends Request {
+  user: User;
+}
 
 @Controller('admin/holidays')
 @UseGuards(JwtAuthGuard)
@@ -41,7 +46,7 @@ export class HolidayController {
    * Create a new holiday (platform admin only)
    */
   @Post()
-  async create(@Body() dto: CreateHolidayDto, @Request() req) {
+  async create(@Body() dto: CreateHolidayDto, @Request() req: RequestWithUser) {
     this.ensurePlatformAdmin(req.user);
     return this.holidayService.create(dto, req.user.id);
   }
@@ -53,7 +58,7 @@ export class HolidayController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateHolidayDto,
-    @Request() req,
+    @Request() req: RequestWithUser,
   ) {
     this.ensurePlatformAdmin(req.user);
     return this.holidayService.update(id, dto);
@@ -63,7 +68,7 @@ export class HolidayController {
    * Delete a holiday (platform admin only)
    */
   @Delete(':id')
-  async remove(@Param('id') id: string, @Request() req) {
+  async remove(@Param('id') id: string, @Request() req: RequestWithUser) {
     this.ensurePlatformAdmin(req.user);
     return this.holidayService.remove(id);
   }
@@ -71,7 +76,7 @@ export class HolidayController {
   /**
    * Helper to ensure user is platform admin
    */
-  private ensurePlatformAdmin(user: any) {
+  private ensurePlatformAdmin(user: User) {
     if (!user.isPlatformAdmin) {
       throw new ForbiddenException(
         'Only platform administrators can manage holidays',
