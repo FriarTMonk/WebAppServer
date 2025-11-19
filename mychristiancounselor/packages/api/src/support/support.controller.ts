@@ -52,4 +52,35 @@ export class SupportController {
   ) {
     return this.supportService.replyToTicket(ticketId, req.user.id, dto);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('admin/queue')
+  async getAdminQueue(
+    @Request() req,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('priority') priority?: string,
+    @Query('category') category?: string,
+    @Query('assignedToId') assignedToId?: string,
+  ) {
+    // Validate and sanitize pagination
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+    const skip = (pageNum - 1) * limitNum;
+
+    // Parse filter parameters
+    const statusFilter = status?.split(',').filter(Boolean) || [];
+    const priorityFilter = priority?.split(',').filter(Boolean) || [];
+    const categoryFilter = category?.split(',').filter(Boolean) || [];
+
+    return this.supportService.getAdminQueue(req.user.id, {
+      skip,
+      take: limitNum,
+      status: statusFilter.length > 0 ? statusFilter : undefined,
+      priority: priorityFilter.length > 0 ? priorityFilter : undefined,
+      category: categoryFilter.length > 0 ? categoryFilter : undefined,
+      assignedToId: assignedToId || undefined,
+    });
+  }
 }

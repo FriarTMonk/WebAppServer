@@ -429,4 +429,126 @@ export class SupportService {
     // Regular user
     return 'user';
   }
+
+  async getAdminQueue(
+    userId: string,
+    options?: {
+      skip?: number;
+      take?: number;
+      status?: string[];
+      priority?: string[];
+      category?: string[];
+      assignedToId?: string;
+    }
+  ): Promise<{ tickets: any[]; total: number; page: number; limit: number }> {
+    // Get user with platform admin flag and org memberships
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        isPlatformAdmin: true,
+        organizationMemberships: {
+          include: {
+            role: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Check if user is an admin (platform or org)
+    const isOrgAdmin = user.organizationMemberships.some(
+      (m) => m.role.name === 'Owner' || m.role.name === 'Admin'
+    );
+
+    if (!user.isPlatformAdmin && !isOrgAdmin) {
+      throw new ForbiddenException('Only administrators can access the admin queue');
+    }
+
+    // Build where clause based on user role
+    const where: any = {
+      status: { notIn: ['closed', 'rejected'] }, // Unresolved tickets only
+    };
+
+    // Apply role-based visibility
+    if (user.isPlatformAdmin) {
+      // Platform admins see ALL unresolved tickets in the system
+      // (no additional filters needed)
+    } else {
+      // Org admins see only their org's unresolved tickets
+      const orgIds = user.organizationMemberships
+        .filter((m) => m.role.name === 'Owner' || m.role.name === 'Admin')
+        .map((m) => m.organizationId);
+
+      where.organizationId = { in: orgIds };
+    }
+
+    // Apply status filter (if provided, overrides default)
+    if (options?.status?.length) {
+      where.status = { in: options.status };
+    }
+
+    // Apply priority filter
+    if (options?.priority?.length) {
+      where.priority = { in: options.priority };
+    }
+
+    // Apply category filter
+    if (options?.category?.length) {
+      where.category = { in: options.category };
+    }
+
+    // Apply assignedToId filter
+    if (options?.assignedToId) {
+      where.assignedToId = options.assignedToId;
+    }
+
+    // Fetch tickets and total count in parallel
+    const [ticketsRaw, total] = await Promise.all([
+      this.prisma.supportTicket.findMany({
+        where,
+        include: {
+          createdBy: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          assignedTo: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+          organization: {
+            select: { id: true, name: true },
+          },
+          _count: {
+            select: {
+              messages: true,
+            },
+          },
+        },
+        orderBy: { workPriorityScore: 'desc' }, // Highest priority first
+        skip: options?.skip || 0,
+        take: options?.take || 50, // Default limit of 50
+      }),
+      this.prisma.supportTicket.count({ where }),
+    ]);
+
+    // Transform to include messageCount in the response
+    const tickets = ticketsRaw.map((ticket) => ({
+      ...ticket,
+      messageCount: ticket._count.messages,
+      _count: undefined, // Remove _count from response
+    }));
+
+    return {
+      tickets,
+      total,
+      page: Math.floor((options?.skip || 0) / (options?.take || 50)) + 1,
+      limit: options?.take || 50,
+    };
+  }
 }
