@@ -60,6 +60,7 @@ model User {
   // Support ticket relations
   ticketsCreated       SupportTicket[]       @relation("TicketsCreated")
   ticketsAssigned      SupportTicket[]       @relation("TicketsAssigned")
+  ticketsResolved      SupportTicket[]       @relation("TicketsResolved")
   ticketsClosed        SupportTicket[]       @relation("TicketsClosed")
   ticketMessagesAuthored TicketMessage[]     @relation("TicketMessagesAuthored")
   ticketAttachmentsUploaded TicketAttachment[] @relation("TicketAttachmentsUploaded")
@@ -488,9 +489,12 @@ model SupportTicket {
 
   slaDeadline              DateTime? // Based on priority (Phase 2)
   resolvedAt               DateTime?
+  resolvedById             String?   // Admin who resolved ticket
+  resolution               String?   @db.Text // Resolution description
   closedAt                 DateTime?
   closedById               String?   // Admin who closed/rejected
   rejectionReason          String?   // Why ticket was rejected
+  aiDetectedPriority       String?   // AI-detected priority (Phase 2A)
 
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
@@ -498,12 +502,15 @@ model SupportTicket {
   // Relations
   createdBy                User              @relation("TicketsCreated", fields: [createdById], references: [id])
   assignedTo               User?             @relation("TicketsAssigned", fields: [assignedToId], references: [id])
+  resolvedBy               User?             @relation("TicketsResolved", fields: [resolvedById], references: [id])
   closedBy                 User?             @relation("TicketsClosed", fields: [closedById], references: [id])
   organization             Organization?     @relation(fields: [organizationId], references: [id])
   messages                 TicketMessage[]
   attachments              TicketAttachment[]
   linksFrom                TicketLink[]      @relation("SourceTicket")
   linksTo                  TicketLink[]      @relation("TargetTicket")
+  similaritySource         TicketSimilarity[] @relation("SimilaritySource")
+  similarityTarget         TicketSimilarity[] @relation("SimilarityTarget")
 
   @@index([workPriorityScore])
   @@index([status])
@@ -569,4 +576,20 @@ model TicketLink {
   @@unique([sourceTicketId, targetTicketId, relationship])
   @@index([sourceTicketId])
   @@index([targetTicketId])
+}
+
+// AI-computed similarity scores between tickets (Phase 2A)
+model TicketSimilarity {
+  id              String   @id @default(uuid())
+  sourceTicketId  String
+  targetTicketId  String
+  similarityScore Float    // 0.0 to 1.0, cosine similarity of embeddings
+  computedAt      DateTime @default(now())
+
+  sourceTicket    SupportTicket @relation("SimilaritySource", fields: [sourceTicketId], references: [id], onDelete: Cascade)
+  targetTicket    SupportTicket @relation("SimilarityTarget", fields: [targetTicketId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceTicketId, targetTicketId])
+  @@index([sourceTicketId, similarityScore])
+  @@index([targetTicketId, similarityScore])
 }
