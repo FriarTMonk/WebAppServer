@@ -10,6 +10,7 @@ import { AdminModule } from '../admin/admin.module';
 import { OrgAdminModule } from '../org-admin/org-admin.module';
 import { ProfileModule } from '../profile/profile.module';
 import { ShareModule } from '../share/share.module';
+import { HolidayModule } from '../holiday/holiday.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Module({
@@ -26,6 +27,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
     OrgAdminModule,
     ProfileModule,
     ShareModule,
+    HolidayModule,
   ],
   providers: [
     {
