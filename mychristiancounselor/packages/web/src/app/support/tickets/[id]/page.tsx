@@ -85,8 +85,13 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
 
   // Admin action states
   const [assigning, setAssigning] = useState(false);
-  const [resolving, setResolving] = useState(false);
   const [closing, setClosing] = useState(false);
+
+  // Resolution modal state
+  const [showResolveModal, setShowResolveModal] = useState(false);
+  const [resolution, setResolution] = useState('');
+  const [resolutionError, setResolutionError] = useState('');
+  const [resolvingTicket, setResolvingTicket] = useState(false);
 
   // Similarity state
   const [activeMatches, setActiveMatches] = useState<SimilarityMatch[]>([]);
@@ -194,26 +199,38 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
   };
 
   const handleResolve = async () => {
-    if (!ticket) return;
+    // Validate resolution
+    const trimmedResolution = resolution.trim();
+    if (trimmedResolution.length < 20) {
+      setResolutionError('Resolution must be at least 20 characters');
+      return;
+    }
+    if (trimmedResolution.length > 2000) {
+      setResolutionError('Resolution must not exceed 2000 characters');
+      return;
+    }
 
-    if (!confirm('Mark this ticket as resolved?')) return;
+    setResolvingTicket(true);
+    setResolutionError('');
 
-    setResolving(true);
     try {
-      const response = await apiPost(`/support/admin/tickets/${ticket.id}/resolve`);
+      const response = await apiPost(`/support/tickets/${ticket?.id}/resolve`, {
+        resolution: trimmedResolution,
+      });
 
       if (response.ok) {
-        await loadTicket(); // Reload to show resolved status
+        setShowResolveModal(false);
+        setResolution('');
+        await loadTicket(); // Refresh ticket data
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        alert(errorData.message || 'Failed to resolve ticket');
+        const data = await response.json();
+        setResolutionError(data.message || 'Failed to resolve ticket');
       }
-    } catch (err: unknown) {
-      console.error('Error resolving ticket:', err);
-      const message = err instanceof Error ? err.message : 'Failed to resolve ticket';
-      alert(message);
+    } catch (error) {
+      console.error('Error resolving ticket:', error);
+      setResolutionError('Failed to resolve ticket. Please try again.');
     } finally {
-      setResolving(false);
+      setResolvingTicket(false);
     }
   };
 
@@ -488,11 +505,11 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
                 )}
                 {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
                   <button
-                    onClick={handleResolve}
-                    disabled={resolving}
+                    onClick={() => setShowResolveModal(true)}
+                    disabled={resolvingTicket}
                     className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
                   >
-                    {resolving ? 'Resolving...' : 'Mark as Resolved'}
+                    Mark as Resolved
                   </button>
                 )}
                 {ticket.status !== 'closed' && (
@@ -709,6 +726,107 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
             <p className="text-gray-800">
               This ticket has been closed and is no longer accepting replies.
             </p>
+          </div>
+        )}
+
+        {/* Resolution Modal */}
+        {showResolveModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <h2 className="text-2xl font-bold mb-4">Resolve Ticket</h2>
+
+                <p className="text-gray-600 mb-4">
+                  Please provide a summary of how this issue was resolved. This will help
+                  with future similar tickets.
+                </p>
+
+                {/* Resolution Textarea */}
+                <div className="mb-4">
+                  <label
+                    htmlFor="resolution"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Resolution Summary <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    id="resolution"
+                    value={resolution}
+                    onChange={(e) => {
+                      setResolution(e.target.value);
+                      setResolutionError(''); // Clear error on change
+                    }}
+                    placeholder="Describe the solution or steps taken to resolve this issue..."
+                    className={`w-full border rounded p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      resolutionError ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    rows={6}
+                    minLength={20}
+                    maxLength={2000}
+                    disabled={resolvingTicket}
+                  />
+
+                  {/* Character Counter */}
+                  <div className="flex justify-between items-center mt-2">
+                    <p
+                      className={`text-sm ${
+                        resolution.trim().length < 20
+                          ? 'text-red-600'
+                          : resolution.trim().length > 2000
+                          ? 'text-red-600'
+                          : 'text-gray-500'
+                      }`}
+                    >
+                      {resolution.trim().length}/2000 characters
+                      {resolution.trim().length < 20 &&
+                        ` (minimum 20 required)`}
+                    </p>
+                  </div>
+
+                  {/* Error Message */}
+                  {resolutionError && (
+                    <p className="text-sm text-red-600 mt-2">{resolutionError}</p>
+                  )}
+                </div>
+
+                {/* Tips */}
+                <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
+                  <p className="text-sm text-blue-800 font-semibold mb-1">
+                    Tips for a good resolution:
+                  </p>
+                  <ul className="text-sm text-blue-900 list-disc list-inside space-y-1">
+                    <li>Describe what was wrong and what fixed it</li>
+                    <li>Include any configuration changes made</li>
+                    <li>Note if this was a bug, user error, or feature limitation</li>
+                    <li>Mention if this solution applies to similar issues</li>
+                  </ul>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleResolve}
+                    disabled={
+                      resolvingTicket || resolution.trim().length < 20 || resolution.trim().length > 2000
+                    }
+                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  >
+                    {resolvingTicket ? 'Resolving...' : 'Confirm Resolution'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowResolveModal(false);
+                      setResolution('');
+                      setResolutionError('');
+                    }}
+                    disabled={resolvingTicket}
+                    className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
