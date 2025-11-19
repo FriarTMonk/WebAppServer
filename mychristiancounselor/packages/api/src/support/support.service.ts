@@ -365,7 +365,7 @@ export class SupportService {
         assignedTo: true,
         organization: true,
         messages: {
-          select: { authorRole: true },
+          select: { authorRole: true, isInternal: true },
         },
       },
     });
@@ -393,10 +393,10 @@ export class SupportService {
       throw new ForbiddenException('Only administrators can create internal messages');
     }
 
-    // Check if this is the first admin response
+    // Check if this is the first admin response (excluding internal messages)
     const isFirstAdminResponse =
       authorRole !== 'user' &&
-      !ticket.messages.some((m) => m.authorRole.includes('admin'));
+      !ticket.messages.some((m) => m.authorRole.includes('admin') && !m.isInternal);
 
     // Create message and update ticket status in a transaction for data consistency
     const message = await this.prisma.$transaction(async (tx) => {
@@ -419,29 +419,37 @@ export class SupportService {
 
       // If first admin response, record response time and SLA met status
       if (isFirstAdminResponse && !dto.isInternal) {
-        const responseTime = await this.slaCalculator.calculateBusinessMinutes(
-          ticket.createdAt,
-          new Date(),
-        );
+        try {
+          const responseTime = await this.slaCalculator.calculateBusinessMinutes(
+            ticket.createdAt,
+            new Date(),
+          );
 
-        const responseHours = this.slaCalculator.getSLAHours(
-          ticket.priority as any,
-          'response',
-        );
-        const responseSLAMinutes = responseHours ? responseHours * 60 : null;
+          const responseHours = this.slaCalculator.getSLAHours(
+            ticket.priority as any,
+            'response',
+          );
+          const responseSLAMinutes = responseHours ? responseHours * 60 : null;
 
-        await tx.supportTicket.update({
-          where: { id: ticketId },
-          data: {
-            actualResponseTime: responseTime,
-            responseSLAMet: responseSLAMinutes ? responseTime <= responseSLAMinutes : null,
-          },
-        });
+          await tx.supportTicket.update({
+            where: { id: ticketId },
+            data: {
+              actualResponseTime: responseTime,
+              responseSLAMet: responseSLAMinutes ? responseTime <= responseSLAMinutes : null,
+            },
+          });
 
-        this.logger.log(
-          `First admin response for ticket ${ticketId}: ${responseTime} minutes ` +
-          `(SLA: ${responseSLAMinutes} minutes, Met: ${responseSLAMinutes ? responseTime <= responseSLAMinutes : 'N/A'})`,
-        );
+          this.logger.log(
+            `First admin response for ticket ${ticketId}: ${responseTime} minutes ` +
+            `(SLA: ${responseSLAMinutes} minutes, Met: ${responseSLAMinutes ? responseTime <= responseSLAMinutes : 'N/A'})`,
+          );
+        } catch (error) {
+          this.logger.error('Failed to calculate response time SLA', {
+            error: error.message,
+            ticketId,
+          });
+          // Continue without recording response time - message will still be created
+        }
       }
 
       // Determine the new status based on who replied
@@ -866,38 +874,51 @@ export class SupportService {
 
     // Update ticket with resolution and resolvedById in a transaction to handle SLA changes
     const updated = await this.prisma.$transaction(async (tx) => {
-      // Calculate pause duration if currently paused
-      const pausedMinutes = ticket.slaPausedAt
-        ? await this.slaCalculator.calculateBusinessMinutes(
-            ticket.slaPausedAt,
-            new Date(),
-          )
-        : 0;
+      let actualResolutionTime: number | null = null;
+      let resolutionSLAMet: boolean | null = null;
 
-      // Calculate total resolution time
-      const totalResolutionTime = await this.slaCalculator.calculateBusinessMinutes(
-        ticket.createdAt,
-        new Date(),
-      );
+      try {
+        // Calculate current pause duration if ticket is paused
+        const currentPauseDuration = ticket.slaPausedAt
+          ? await this.slaCalculator.calculateBusinessMinutes(
+              ticket.slaPausedAt,
+              new Date(),
+            )
+          : 0;
 
-      // Subtract paused time to get actual resolution time
-      const actualResolutionTime = totalResolutionTime - pausedMinutes;
+        // Add current pause duration to totalPausedMinutes to get total paused time
+        const totalPausedMinutes = (ticket.totalPausedMinutes || 0) + currentPauseDuration;
 
-      // Check if resolution SLA was met
-      const resolutionHours = this.slaCalculator.getSLAHours(
-        ticket.priority as any,
-        'resolution',
-      );
-      const resolutionSLAMinutes = resolutionHours ? resolutionHours * 60 : null;
+        // Calculate total resolution time
+        const totalResolutionTime = await this.slaCalculator.calculateBusinessMinutes(
+          ticket.createdAt,
+          new Date(),
+        );
 
-      const resolutionSLAMet = resolutionSLAMinutes
-        ? actualResolutionTime <= resolutionSLAMinutes
-        : null;
+        // Subtract total paused time to get actual resolution time
+        actualResolutionTime = totalResolutionTime - totalPausedMinutes;
 
-      // Auto-resume SLA when changing from waiting_on_user
-      if (ticket.status === 'waiting_on_user' && ticket.slaPausedAt) {
-        await this.slaCalculator.resumeSLA(ticketId, tx);
-        this.logger.log(`SLA resumed for ticket ${ticketId} (resolved)`);
+        // Check if resolution SLA was met
+        const resolutionHours = this.slaCalculator.getSLAHours(
+          ticket.priority as any,
+          'resolution',
+        );
+        const resolutionSLAMinutes = resolutionHours ? resolutionHours * 60 : null;
+
+        resolutionSLAMet = resolutionSLAMinutes
+          ? actualResolutionTime <= resolutionSLAMinutes
+          : null;
+
+        this.logger.log(
+          `Ticket ${ticketId} resolution SLA calculated: ${actualResolutionTime} minutes ` +
+          `(SLA: ${resolutionSLAMinutes} minutes, Met: ${resolutionSLAMet !== null ? resolutionSLAMet : 'N/A'})`,
+        );
+      } catch (error) {
+        this.logger.error('Failed to calculate SLA metrics for ticket resolution', {
+          error: error.message,
+          ticketId,
+        });
+        // Continue with null values - ticket can still be resolved
       }
 
       const resolved = await tx.supportTicket.update({
@@ -909,6 +930,9 @@ export class SupportService {
           resolvedById: adminId,
           actualResolutionTime,
           resolutionSLAMet,
+          // Clear pause state if paused
+          slaPausedAt: null,
+          slaPausedReason: null,
         },
         include: {
           createdBy: {
@@ -925,11 +949,6 @@ export class SupportService {
           },
         },
       });
-
-      this.logger.log(
-        `Ticket ${ticketId} resolved: ${actualResolutionTime} minutes ` +
-        `(SLA: ${resolutionSLAMinutes} minutes, Met: ${resolutionSLAMet !== null ? resolutionSLAMet : 'N/A'})`,
-      );
 
       return resolved;
     });

@@ -272,6 +272,9 @@ export class SlaCalculatorService {
       new Date(),
     );
 
+    // Add to existing totalPausedMinutes
+    const newTotalPausedMinutes = (ticket.totalPausedMinutes || 0) + pauseDuration;
+
     // Extend deadlines by pause duration
     const newResponseDeadline = ticket.responseSLADeadline
       ? addMinutes(ticket.responseSLADeadline, pauseDuration)
@@ -286,13 +289,14 @@ export class SlaCalculatorService {
       data: {
         responseSLADeadline: newResponseDeadline,
         resolutionSLADeadline: newResolutionDeadline,
+        totalPausedMinutes: newTotalPausedMinutes,
         slaPausedAt: null,
         slaPausedReason: null,
       },
     });
 
     this.logger.log(
-      `SLA resumed for ticket ${ticketId}, extended by ${pauseDuration} minutes`,
+      `SLA resumed for ticket ${ticketId}, extended by ${pauseDuration} minutes (total paused: ${newTotalPausedMinutes} minutes)`,
     );
   }
 
