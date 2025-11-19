@@ -6,6 +6,7 @@ import { AssignTicketDto } from './dto/assign-ticket.dto';
 import { LinkTicketsDto } from './dto/link-tickets.dto';
 import { ResolveTicketDto } from './dto/resolve-ticket.dto';
 import { AiService } from '../ai/ai.service';
+import { SlaCalculatorService } from '../sla/sla-calculator.service';
 
 @Injectable()
 export class SupportService {
@@ -14,6 +15,7 @@ export class SupportService {
   constructor(
     private prisma: PrismaService,
     private aiService: AiService,
+    private slaCalculator: SlaCalculatorService,
   ) {}
 
   async createTicket(userId: string, dto: CreateTicketDto): Promise<any> {
@@ -91,6 +93,26 @@ export class SupportService {
     const ageInDays = 0; // Just created
     const workPriorityScore = (priorityScore * 10) + (ageInDays * 2) + (orgSize * 0.5);
 
+    // Calculate SLA deadlines based on priority
+    const responseHours = this.slaCalculator.getSLAHours(priority as any, 'response');
+    const resolutionHours = this.slaCalculator.getSLAHours(priority as any, 'resolution');
+
+    const responseSLADeadline = await this.slaCalculator.calculateDeadline(
+      new Date(),
+      responseHours,
+    );
+
+    const resolutionSLADeadline = await this.slaCalculator.calculateDeadline(
+      new Date(),
+      resolutionHours,
+    );
+
+    this.logger.log(
+      `SLA deadlines calculated for priority ${priority}: ` +
+      `response=${responseSLADeadline?.toISOString() || 'null'}, ` +
+      `resolution=${resolutionSLADeadline?.toISOString() || 'null'}`
+    );
+
     // Determine assignedToId for auto-assignment (org tickets → org admin)
     let assignedToId: string | null = null;
 
@@ -133,6 +155,12 @@ export class SupportService {
           organizationId: organizationId,
           assignedToId: assignedToId,
           status: assignedToId ? 'in_progress' : 'open', // Auto-assigned tickets start in_progress
+
+          // SLA fields
+          responseSLADeadline,
+          resolutionSLADeadline,
+          responseSLAStatus: 'on_track',
+          resolutionSLAStatus: 'on_track',
         },
         include: {
           createdBy: {
