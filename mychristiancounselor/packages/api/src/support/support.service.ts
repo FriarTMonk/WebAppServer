@@ -375,6 +375,31 @@ export class SupportService {
     return message;
   }
 
+  private async getUserWithPermissions(userId: string): Promise<any> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        isPlatformAdmin: true,
+        organizationMemberships: {
+          include: {
+            role: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
+
   private canUserAccessTicket(user: any, ticket: any): boolean {
     // Platform admins can access all tickets
     if (user.isPlatformAdmin) {
@@ -388,6 +413,31 @@ export class SupportService {
 
     // User is assigned to the ticket
     if (ticket.assignedToId === user.id) {
+      return true;
+    }
+
+    // If ticket belongs to an organization, check if user is admin in that org
+    if (ticket.organizationId) {
+      const orgMembership = user.organizationMemberships.find(
+        (m: any) => m.organizationId === ticket.organizationId
+      );
+
+      if (orgMembership && ['Owner', 'Admin'].includes(orgMembership.role.name)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private canUserCloseTicket(user: any, ticket: any): boolean {
+    // Platform admins can close all tickets
+    if (user.isPlatformAdmin) {
+      return true;
+    }
+
+    // User created the ticket
+    if (ticket.createdById === user.id) {
       return true;
     }
 
@@ -568,26 +618,7 @@ export class SupportService {
     }
 
     // Verify admin can access this ticket
-    const user = await this.prisma.user.findUnique({
-      where: { id: adminId },
-      select: {
-        id: true,
-        isPlatformAdmin: true,
-        organizationMemberships: {
-          include: {
-            role: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    const user = await this.getUserWithPermissions(adminId);
 
     // Check if admin has permission to assign this ticket
     const canAccess = this.canUserAccessTicket(user, ticket);
@@ -595,14 +626,41 @@ export class SupportService {
       throw new ForbiddenException('You do not have permission to assign this ticket');
     }
 
-    // Verify that the assignee exists
+    // Verify that the assignee exists and fetch with permissions
     const assignee = await this.prisma.user.findUnique({
       where: { id: dto.assignedToId },
-      select: { id: true, email: true, firstName: true, lastName: true },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        isPlatformAdmin: true,
+        organizationMemberships: {
+          include: {
+            role: {
+              select: { name: true },
+            },
+          },
+        },
+      },
     });
 
     if (!assignee) {
       throw new NotFoundException('Assignee user not found');
+    }
+
+    // Verify assignee has admin permissions for this ticket
+    const isValidAssignee = assignee.isPlatformAdmin ||
+      (ticket.organizationId &&
+       assignee.organizationMemberships.some((m: any) =>
+         m.organizationId === ticket.organizationId &&
+         ['Owner', 'Admin'].includes(m.role.name)
+       ));
+
+    if (!isValidAssignee) {
+      throw new ForbiddenException(
+        'Cannot assign ticket to user without admin permissions for this organization'
+      );
     }
 
     // Update ticket
@@ -656,26 +714,7 @@ export class SupportService {
     }
 
     // Verify admin can access this ticket
-    const user = await this.prisma.user.findUnique({
-      where: { id: adminId },
-      select: {
-        id: true,
-        isPlatformAdmin: true,
-        organizationMemberships: {
-          include: {
-            role: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    const user = await this.getUserWithPermissions(adminId);
 
     // Check if admin has permission to resolve this ticket
     const canAccess = this.canUserAccessTicket(user, ticket);
@@ -732,30 +771,11 @@ export class SupportService {
     }
 
     // Get user info
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        isPlatformAdmin: true,
-        organizationMemberships: {
-          include: {
-            role: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    const user = await this.getUserWithPermissions(userId);
 
     // Check if user can close this ticket (must be creator or admin)
-    const canAccess = this.canUserAccessTicket(user, ticket);
-    if (!canAccess) {
+    const canClose = this.canUserCloseTicket(user, ticket);
+    if (!canClose) {
       throw new ForbiddenException('You do not have permission to close this ticket');
     }
 
