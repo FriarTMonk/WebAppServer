@@ -31,15 +31,24 @@ export class SupportService {
       : null;
 
     // Get org size for work priority calculation
-    const orgSize = organizationId
-      ? await this.prisma.organizationMember.count({ where: { organizationId } })
-      : 0;
+    let orgSize = 0;
+    if (organizationId) {
+      try {
+        orgSize = await this.prisma.organizationMember.count({ where: { organizationId } });
+      } catch (error) {
+        this.logger.warn(
+          `Failed to get org size for ${organizationId}: ${error.message}`
+        );
+        // Continue with orgSize = 0
+      }
+    }
 
     // Map priority to numeric value
     const priorityValues = {
       urgent: 11,
       high: 9,
       medium: 6,
+      none: 3,
       low: 2,
       feature: 1,
     };
@@ -56,23 +65,25 @@ export class SupportService {
 
     if (organizationId) {
       // For org users: find org admin to auto-assign
-      const orgAdmin = await this.prisma.organizationMember.findFirst({
+      // Try to find an Owner first (preferred)
+      let orgAdmin = await this.prisma.organizationMember.findFirst({
         where: {
           organizationId: organizationId,
-          role: {
-            name: { in: ['Owner', 'Admin'] },
-          },
-        },
-        orderBy: {
-          role: {
-            name: 'asc', // Prefer Owner over Admin
-          },
+          role: { name: 'Owner' },
         },
       });
 
-      if (orgAdmin) {
-        assignedToId = orgAdmin.userId;
+      // If no Owner, fall back to Admin
+      if (!orgAdmin) {
+        orgAdmin = await this.prisma.organizationMember.findFirst({
+          where: {
+            organizationId: organizationId,
+            role: { name: 'Admin' },
+          },
+        });
       }
+
+      assignedToId = orgAdmin?.userId || null;
     }
     // For individual users: tickets go to platform admin (no auto-assignment, assignedToId stays null)
 

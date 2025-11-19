@@ -20,6 +20,6 @@ export class CreateTicketDto {
 
   @IsOptional()
   @IsString()
-  @IsEnum(['urgent', 'high', 'medium', 'low', 'feature'])
+  @IsEnum(['urgent', 'high', 'medium', 'none', 'low', 'feature'])
   priority?: string; // Manual priority in Phase 1
 }
