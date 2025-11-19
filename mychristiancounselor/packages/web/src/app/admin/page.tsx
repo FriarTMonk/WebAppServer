@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { AdminLayout } from '../../components/AdminLayout';
 
 interface PlatformMetrics {
@@ -16,6 +17,17 @@ interface PlatformMetrics {
     trial: number;
     active: number;
     expired: number;
+  };
+  slaHealth?: {
+    breachedResponse: number;
+    breachedResolution: number;
+    criticalResponse: number;
+    criticalResolution: number;
+    complianceRate: {
+      overall: number;
+      response: number;
+      resolution: number;
+    };
   };
   timestamp: string;
 }
@@ -124,6 +136,95 @@ export default function AdminOverviewPage() {
               >
                 Refresh
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* SLA Health Section */}
+        {metrics && metrics.slaHealth && (
+          <div className="mt-6 bg-white p-6 rounded-lg shadow">
+            <h2 className="text-xl font-semibold mb-4">SLA Health</h2>
+
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* Breached SLAs */}
+              <div className="p-4 bg-red-50 border border-red-200 rounded">
+                <p className="text-sm text-red-600 font-semibold">Breached</p>
+                <p className="text-2xl font-bold text-red-800">
+                  {metrics.slaHealth.breachedResponse + metrics.slaHealth.breachedResolution}
+                </p>
+                <p className="text-xs text-red-600">
+                  {metrics.slaHealth.breachedResponse} response, {metrics.slaHealth.breachedResolution} resolution
+                </p>
+              </div>
+
+              {/* Critical SLAs */}
+              <div className="p-4 bg-orange-50 border border-orange-200 rounded">
+                <p className="text-sm text-orange-600 font-semibold">Critical</p>
+                <p className="text-2xl font-bold text-orange-800">
+                  {metrics.slaHealth.criticalResponse + metrics.slaHealth.criticalResolution}
+                </p>
+                <p className="text-xs text-orange-600">
+                  {metrics.slaHealth.criticalResponse} response, {metrics.slaHealth.criticalResolution} resolution
+                </p>
+              </div>
+            </div>
+
+            {/* Compliance Rates */}
+            <div className="border-t border-gray-200 pt-4">
+              <p className="text-sm text-gray-600 font-semibold mb-3">
+                SLA Compliance (Last 30 Days)
+              </p>
+
+              <div className="space-y-2">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-600">Overall</span>
+                    <span className="font-semibold">{metrics.slaHealth.complianceRate.overall}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-green-600 h-2 rounded-full"
+                      style={{ width: `${metrics.slaHealth.complianceRate.overall}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-600">Response SLA</span>
+                    <span className="font-semibold">{metrics.slaHealth.complianceRate.response}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full"
+                      style={{ width: `${metrics.slaHealth.complianceRate.response}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-600">Resolution SLA</span>
+                    <span className="font-semibold">{metrics.slaHealth.complianceRate.resolution}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-purple-600 h-2 rounded-full"
+                      style={{ width: `${metrics.slaHealth.complianceRate.resolution}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Link to tickets */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <Link
+                href="/admin/support?slaFilter=breached"
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                View breached tickets →
+              </Link>
             </div>
           </div>
         )}
