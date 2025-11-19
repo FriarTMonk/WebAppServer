@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { ReplyToTicketDto } from './dto/reply-to-ticket.dto';
 import { AssignTicketDto } from './dto/assign-ticket.dto';
+import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class SupportService {
@@ -10,6 +11,7 @@ export class SupportService {
 
   constructor(
     private prisma: PrismaService,
+    private aiService: AiService,
   ) {}
 
   async createTicket(userId: string, dto: CreateTicketDto): Promise<any> {
@@ -45,6 +47,32 @@ export class SupportService {
       }
     }
 
+    // AI Priority Detection
+    let priority = dto.priority || 'medium';
+    let aiDetectedPriority = false;
+
+    // Only use AI if user didn't explicitly set priority OR set it to default 'medium'
+    if (!dto.priority || dto.priority === 'medium') {
+      try {
+        const aiPriority = await this.aiService.detectPriority(
+          dto.title,
+          dto.description
+        );
+        priority = aiPriority;
+        aiDetectedPriority = true;
+        this.logger.log(
+          `AI detected priority: ${aiPriority} for ticket "${dto.title}"`
+        );
+      } catch (error) {
+        this.logger.error('AI priority detection failed', {
+          error: error.message,
+          title: dto.title,
+        });
+        // Keep fallback priority 'medium'
+        aiDetectedPriority = false;
+      }
+    }
+
     // Map priority to numeric value
     const priorityValues = {
       urgent: 11,
@@ -54,7 +82,6 @@ export class SupportService {
       low: 2,
       feature: 1,
     };
-    const priority = dto.priority || 'medium';
     const priorityScore = priorityValues[priority] || 6;
 
     // Calculate initial work priority score
@@ -99,6 +126,7 @@ export class SupportService {
           category: dto.category,
           priority: priority,
           workPriorityScore: workPriorityScore,
+          aiDetectedPriority: aiDetectedPriority,
           createdById: userId,
           organizationId: organizationId,
           assignedToId: assignedToId,
@@ -135,7 +163,7 @@ export class SupportService {
     this.logger.log(
       `Ticket created: ${ticket.id} by user ${userId} ` +
       `(org: ${organizationId || 'individual'}, ` +
-      `priority: ${priority}, ` +
+      `priority: ${priority}${aiDetectedPriority ? ' [AI]' : ''}, ` +
       `assigned: ${assignedToId ? 'yes' : 'no'})`
     );
 

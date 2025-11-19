@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, MaxLength, MinLength, IsEnum, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, MaxLength, MinLength, IsEnum, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateTicketDto {
   @IsString()
@@ -22,4 +22,8 @@ export class CreateTicketDto {
   @IsString()
   @IsEnum(['urgent', 'high', 'medium', 'none', 'low', 'feature'])
   priority?: string; // Manual priority in Phase 1
+
+  @IsOptional()
+  @IsBoolean()
+  aiDetectedPriority?: boolean;
 }
