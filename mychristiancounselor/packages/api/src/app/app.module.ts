@@ -12,6 +12,7 @@ import { ProfileModule } from '../profile/profile.module';
 import { ShareModule } from '../share/share.module';
 import { SupportModule } from '../support/support.module';
 import { AiModule } from '../ai/ai.module';
+import { SlaModule } from '../sla/sla.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Module({
@@ -30,6 +31,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
     ShareModule,
     SupportModule,
     AiModule,
+    SlaModule,
   ],
   providers: [
     {
