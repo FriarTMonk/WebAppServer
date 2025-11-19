@@ -357,13 +357,16 @@ export class SupportService {
       throw new NotFoundException('User not found');
     }
 
-    // Get ticket with relations
+    // Get ticket with relations and messages
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id: ticketId },
       include: {
         createdBy: true,
         assignedTo: true,
         organization: true,
+        messages: {
+          select: { authorRole: true },
+        },
       },
     });
 
@@ -390,6 +393,11 @@ export class SupportService {
       throw new ForbiddenException('Only administrators can create internal messages');
     }
 
+    // Check if this is the first admin response
+    const isFirstAdminResponse =
+      authorRole !== 'user' &&
+      !ticket.messages.some((m) => m.authorRole.includes('admin'));
+
     // Create message and update ticket status in a transaction for data consistency
     const message = await this.prisma.$transaction(async (tx) => {
       // Create the message
@@ -408,6 +416,33 @@ export class SupportService {
           attachments: true,
         },
       });
+
+      // If first admin response, record response time and SLA met status
+      if (isFirstAdminResponse && !dto.isInternal) {
+        const responseTime = await this.slaCalculator.calculateBusinessMinutes(
+          ticket.createdAt,
+          new Date(),
+        );
+
+        const responseHours = this.slaCalculator.getSLAHours(
+          ticket.priority as any,
+          'response',
+        );
+        const responseSLAMinutes = responseHours ? responseHours * 60 : null;
+
+        await tx.supportTicket.update({
+          where: { id: ticketId },
+          data: {
+            actualResponseTime: responseTime,
+            responseSLAMet: responseSLAMinutes ? responseTime <= responseSLAMinutes : null,
+          },
+        });
+
+        this.logger.log(
+          `First admin response for ticket ${ticketId}: ${responseTime} minutes ` +
+          `(SLA: ${responseSLAMinutes} minutes, Met: ${responseSLAMinutes ? responseTime <= responseSLAMinutes : 'N/A'})`,
+        );
+      }
 
       // Determine the new status based on who replied
       let newStatus = ticket.status;
@@ -831,19 +866,49 @@ export class SupportService {
 
     // Update ticket with resolution and resolvedById in a transaction to handle SLA changes
     const updated = await this.prisma.$transaction(async (tx) => {
+      // Calculate pause duration if currently paused
+      const pausedMinutes = ticket.slaPausedAt
+        ? await this.slaCalculator.calculateBusinessMinutes(
+            ticket.slaPausedAt,
+            new Date(),
+          )
+        : 0;
+
+      // Calculate total resolution time
+      const totalResolutionTime = await this.slaCalculator.calculateBusinessMinutes(
+        ticket.createdAt,
+        new Date(),
+      );
+
+      // Subtract paused time to get actual resolution time
+      const actualResolutionTime = totalResolutionTime - pausedMinutes;
+
+      // Check if resolution SLA was met
+      const resolutionHours = this.slaCalculator.getSLAHours(
+        ticket.priority as any,
+        'resolution',
+      );
+      const resolutionSLAMinutes = resolutionHours ? resolutionHours * 60 : null;
+
+      const resolutionSLAMet = resolutionSLAMinutes
+        ? actualResolutionTime <= resolutionSLAMinutes
+        : null;
+
       // Auto-resume SLA when changing from waiting_on_user
       if (ticket.status === 'waiting_on_user' && ticket.slaPausedAt) {
         await this.slaCalculator.resumeSLA(ticketId, tx);
         this.logger.log(`SLA resumed for ticket ${ticketId} (resolved)`);
       }
 
-      return await tx.supportTicket.update({
+      const resolved = await tx.supportTicket.update({
         where: { id: ticketId },
         data: {
           status: 'resolved',
           resolvedAt: new Date(),
           resolution: dto.resolution,
           resolvedById: adminId,
+          actualResolutionTime,
+          resolutionSLAMet,
         },
         include: {
           createdBy: {
@@ -860,6 +925,13 @@ export class SupportService {
           },
         },
       });
+
+      this.logger.log(
+        `Ticket ${ticketId} resolved: ${actualResolutionTime} minutes ` +
+        `(SLA: ${resolutionSLAMinutes} minutes, Met: ${resolutionSLAMet !== null ? resolutionSLAMet : 'N/A'})`,
+      );
+
+      return resolved;
     });
 
     this.logger.log(
