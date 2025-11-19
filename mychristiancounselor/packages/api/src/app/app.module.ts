@@ -11,6 +11,7 @@ import { OrgAdminModule } from '../org-admin/org-admin.module';
 import { ProfileModule } from '../profile/profile.module';
 import { ShareModule } from '../share/share.module';
 import { SupportModule } from '../support/support.module';
+import { AiModule } from '../ai/ai.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Module({
@@ -28,6 +29,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
     ProfileModule,
     ShareModule,
     SupportModule,
+    AiModule,
   ],
   providers: [
     {
