@@ -56,6 +56,7 @@ export interface ScriptureReference {
   text: string;
   strongs?: StrongsNumber[]; // Strong's concordance numbers
   theme?: string; // Theological theme or concept (e.g., "faith", "forgiveness", "grace")
+  source?: 'ai-cited' | 'related' | 'theme'; // Source of the scripture: AI-cited, related verse, or theme-based
 }
 
 export interface CounselRequest {

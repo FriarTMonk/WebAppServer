@@ -266,6 +266,91 @@ export class ScriptureService {
   }
 
   /**
+   * Get related verses for a given scripture reference
+   * Returns verses nearby in the same chapter (contextual relevance)
+   */
+  async getRelatedVerses(
+    book: string,
+    chapter: number,
+    verse: number,
+    translation: BibleTranslation = DEFAULT_TRANSLATION,
+    count: number = 3
+  ): Promise<ScriptureReference[]> {
+    // Validate translation
+    const validTranslation = await this.translationService.validateTranslation(translation);
+
+    // Check if translation has verse data in database
+    const hasData = await this.translationService.hasVerseData(validTranslation);
+
+    const relatedVerses: ScriptureReference[] = [];
+
+    if (hasData) {
+      // Get verses from database around the target verse
+      // Strategy: Get verses before and after the reference verse
+      const versesToFetch = Math.ceil(count / 2);
+
+      // Get verses before (but not including the reference verse)
+      const beforeVerses = await this.prisma.bibleVerse.findMany({
+        where: {
+          translationCode: validTranslation,
+          book,
+          chapter,
+          verse: {
+            lt: verse,
+            gte: Math.max(1, verse - versesToFetch),
+          },
+        },
+        orderBy: { verse: 'desc' },
+        take: versesToFetch,
+      });
+
+      // Get verses after (but not including the reference verse)
+      const afterVerses = await this.prisma.bibleVerse.findMany({
+        where: {
+          translationCode: validTranslation,
+          book,
+          chapter,
+          verse: {
+            gt: verse,
+          },
+        },
+        orderBy: { verse: 'asc' },
+        take: count - beforeVerses.length,
+      });
+
+      // Combine and convert to ScriptureReference format
+      [...beforeVerses.reverse(), ...afterVerses].forEach((v) => {
+        relatedVerses.push({
+          book: v.book,
+          chapter: v.chapter,
+          verseStart: v.verse,
+          translation: v.translationCode as BibleTranslation,
+          text: v.text,
+          strongs: v.strongs as any[],
+        });
+      });
+    } else {
+      // Fallback to in-memory verses
+      const nearby = this.fallbackVerses
+        .filter(
+          (v) =>
+            v.book.toLowerCase() === book.toLowerCase() &&
+            v.chapter === chapter &&
+            v.verse !== verse &&
+            Math.abs(v.verse - verse) <= count
+        )
+        .sort((a, b) => Math.abs(a.verse - verse) - Math.abs(b.verse - verse))
+        .slice(0, count);
+
+      nearby.forEach((v) => {
+        relatedVerses.push(this.toScriptureReference(v));
+      });
+    }
+
+    return relatedVerses;
+  }
+
+  /**
    * Get a verse in multiple translations
    * Returns a map of translation code to verse text
    */
