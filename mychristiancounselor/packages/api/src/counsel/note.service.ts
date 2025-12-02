@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { SubscriptionService } from '../subscription/subscription.service';
+import { PermissionService } from './permission.service';
 import { EmailService } from '../email/email.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 
 /**
  * Handles all note-related operations for counseling sessions
- * Implements complex access control logic for note CRUD operations
+ * Now uses PermissionService for centralized access control
  * Separated from CounselService to follow Single Responsibility Principle
  */
 @Injectable()
@@ -16,7 +16,7 @@ export class NoteService {
 
   constructor(
     private prisma: PrismaService,
-    private subscriptionService: SubscriptionService,
+    private permissionService: PermissionService,
     private emailService: EmailService,
   ) {}
 
