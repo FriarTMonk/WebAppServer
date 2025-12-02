@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -17,6 +17,7 @@ import { EmailRateLimitService } from '../email/email-rate-limit.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly SALT_ROUNDS = 12;
   private readonly REFRESH_TOKEN_EXPIRY_DAYS = 30;
   private readonly VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
@@ -43,12 +44,12 @@ export class AuthService {
   // ===== TOKEN GENERATION =====
 
   async generateAccessToken(payload: JwtPayload): Promise<string> {
-    console.log('[AUTH] Generating JWT with payload:', JSON.stringify(payload, null, 2));
+    this.logger.debug(`[AUTH] Generating JWT with payload: ${JSON.stringify(payload, null, 2)}`);
     const token = await this.jwtService.signAsync(payload, {
       secret: this.configService.get('JWT_SECRET'),
       expiresIn: this.configService.get('JWT_ACCESS_EXPIRATION') || '15m',
     });
-    console.log('[AUTH] Generated JWT token (first 50 chars):', token.substring(0, 50));
+    this.logger.debug(`[AUTH] Generated JWT token (first 50 chars): ${token.substring(0, 50)}`);
     return token;
   }
 

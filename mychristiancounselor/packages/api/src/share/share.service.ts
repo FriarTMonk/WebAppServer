@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateShareRequest } from '@mychristiancounselor/shared';
 import { randomBytes } from 'crypto';
@@ -6,10 +7,15 @@ import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class ShareService {
+  private readonly webAppUrl: string;
+
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
-  ) {}
+    private configService: ConfigService,
+  ) {
+    this.webAppUrl = this.configService.get('WEB_APP_URL', 'http://localhost:3699');
+  }
 
   /**
    * Create a share link for a session
@@ -48,7 +54,7 @@ export class ShareService {
 
       if (!recipient) {
         // User not registered - throw error with invitation URL
-        const invitationUrl = `${process.env.WEB_APP_URL || 'http://localhost:3699'}/register?source=invitation`;
+        const invitationUrl = `${this.webAppUrl}/register?source=invitation`;
         throw new BadRequestException({
           message: 'This person is not registered yet. Please invite them to register first.',
           invitationUrl,

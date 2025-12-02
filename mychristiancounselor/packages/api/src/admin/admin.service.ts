@@ -547,9 +547,9 @@ export class AdminService {
       morphSessionId,
     };
 
-    console.log('[ADMIN] Creating morph payload:', JSON.stringify(morphPayload, null, 2));
+    this.logger.debug(`[ADMIN] Creating morph payload: ${JSON.stringify(morphPayload, null, 2)}`);
     const accessToken = await this.authService.generateAccessToken(morphPayload);
-    console.log('[ADMIN] Received access token from auth service');
+    this.logger.debug('[ADMIN] Received access token from auth service');
 
     return {
       accessToken,

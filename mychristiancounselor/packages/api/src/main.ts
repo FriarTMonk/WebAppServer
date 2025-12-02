@@ -3,10 +3,11 @@ import * as cryptoModule from 'crypto';
 (global as any).crypto = cryptoModule;
 
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app/app.module';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
   // Enable CORS - only allow web app on port 3699
@@ -27,7 +28,7 @@ async function bootstrap() {
   const port = process.env.PORT || 3697;
   await app.listen(port);
 
-  console.log(`🚀 API server running on http://localhost:${port}`);
+  logger.log(`🚀 API server running on http://localhost:${port}`);
 }
 
 bootstrap();

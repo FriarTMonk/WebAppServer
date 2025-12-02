@@ -416,7 +416,7 @@ export class CounselService {
 
     // 6. Send email notifications (async, don't block note creation)
     this.sendNoteAddedNotifications(sessionId, authorId, authorName, note.isPrivate, session, organizationId).catch(err => {
-      console.error('Failed to send note added notifications:', err);
+      this.logger.error('Failed to send note added notifications:', err);
     });
 
     return note;

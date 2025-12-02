@@ -1,10 +1,12 @@
-import { Controller, Post, Get, Request, UseGuards, Body, RawBodyRequest, Req, Headers, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Request, UseGuards, Body, RawBodyRequest, Req, Headers, BadRequestException, Logger } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('subscriptions')
 export class SubscriptionController {
+  private readonly logger = new Logger(SubscriptionController.name);
+
   constructor(private subscriptionService: SubscriptionService) {}
 
   @UseGuards(JwtAuthGuard)
@@ -101,7 +103,7 @@ export class SubscriptionController {
       await this.subscriptionService.handleStripeWebhook(rawBody, signature);
       return { received: true };
     } catch (error) {
-      console.error('Webhook error:', error);
+      this.logger.error('Webhook error:', error);
       throw new BadRequestException(`Webhook Error: ${error.message}`);
     }
   }
