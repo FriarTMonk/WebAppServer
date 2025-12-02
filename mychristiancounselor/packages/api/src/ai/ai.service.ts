@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { PrismaService } from '../prisma/prisma.service';
+import { withRetry } from '../common/utils/retry.util';
 import { SYSTEM_PROMPT, USER_PROMPT_TEMPLATE } from './prompts/system-prompt';
 import { ScriptureReference } from '@mychristiancounselor/shared';
 
@@ -120,16 +121,20 @@ ${currentQuestionCount >= maxClarifyingQuestions
 
     const enhancedSystemPrompt = SYSTEM_PROMPT + questionLimitGuidance;
 
-    const completion = await this.openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        { role: 'system', content: enhancedSystemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.7,
-      max_tokens: 800,
-    });
+    const completion = await withRetry(
+      () => this.openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: enhancedSystemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.7,
+        max_tokens: 800,
+      }),
+      { maxAttempts: 3, initialDelayMs: 1000 },
+      this.logger
+    );
 
     const response = completion.choices[0].message.content;
     if (!response) {
