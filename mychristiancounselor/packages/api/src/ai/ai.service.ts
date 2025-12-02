@@ -56,15 +56,19 @@ export class AiService {
     private prisma: PrismaService
   ) {
     // Initialize OpenAI for counseling features
-    const openaiKey = this.configService?.get<string>('OPENAI_API_KEY') || process.env.OPENAI_API_KEY;
+    const openaiKey = this.configService.get<string>('OPENAI_API_KEY');
     if (!openaiKey) {
       throw new Error('OPENAI_API_KEY is not configured');
     }
     this.openai = new OpenAI({ apiKey: openaiKey });
 
     // Initialize Anthropic for support ticket features
+    const anthropicKey = this.configService.get<string>('ANTHROPIC_API_KEY');
+    if (!anthropicKey) {
+      throw new Error('ANTHROPIC_API_KEY is not configured');
+    }
     this.anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
+      apiKey: anthropicKey,
     });
     this.rateLimiter = new RateLimiter(10); // 10 calls per minute
   }
@@ -262,12 +266,12 @@ Respond with ONLY "true" or "false" and nothing else.`;
       });
 
       const response = completion.choices[0].message.content?.trim().toLowerCase();
-      console.log('[CRISIS DETECTION] Message:', message.substring(0, 100));
-      console.log('[CRISIS DETECTION] AI Response:', response);
-      console.log('[CRISIS DETECTION] Result:', response === 'true');
+      this.logger.debug(`[CRISIS DETECTION] Message: ${message.substring(0, 100)}`);
+      this.logger.debug(`[CRISIS DETECTION] AI Response: ${response}`);
+      this.logger.debug(`[CRISIS DETECTION] Result: ${response === 'true'}`);
       return response === 'true';
     } catch (error) {
-      console.error('AI crisis detection error:', error);
+      this.logger.error('AI crisis detection error:', error);
       // Fall back to false to avoid false positives
       return false;
     }
@@ -323,12 +327,12 @@ Respond with ONLY "true" or "false" and nothing else.`;
       });
 
       const response = completion.choices[0].message.content?.trim().toLowerCase();
-      console.log('[GRIEF DETECTION] Message:', message.substring(0, 100));
-      console.log('[GRIEF DETECTION] AI Response:', response);
-      console.log('[GRIEF DETECTION] Result:', response === 'true');
+      this.logger.debug(`[GRIEF DETECTION] Message: ${message.substring(0, 100)}`);
+      this.logger.debug(`[GRIEF DETECTION] AI Response: ${response}`);
+      this.logger.debug(`[GRIEF DETECTION] Result: ${response === 'true'}`);
       return response === 'true';
     } catch (error) {
-      console.error('AI grief detection error:', error);
+      this.logger.error('AI grief detection error:', error);
       return false;
     }
   }

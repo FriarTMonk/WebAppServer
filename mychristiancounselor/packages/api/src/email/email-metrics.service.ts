@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -58,6 +58,8 @@ export interface PlatformEmailMetrics {
  */
 @Injectable()
 export class EmailMetricsService {
+  private readonly logger = new Logger(EmailMetricsService.name);
+
   constructor(private prisma: PrismaService) {}
 
   /**
@@ -176,7 +178,7 @@ export class EmailMetricsService {
     const metrics = await Promise.all(
       organizations.map((org) =>
         this.getOrganizationMetrics(org.id, daysAgo).catch((error) => {
-          console.error(`Error getting metrics for org ${org.id}:`, error);
+          this.logger.error(`Error getting metrics for org ${org.id}:`, error);
           return null;
         })
       )

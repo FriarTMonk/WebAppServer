@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CounselorAssignment,
@@ -9,6 +9,8 @@ import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AssignmentService {
+  private readonly logger = new Logger(AssignmentService.name);
+
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
@@ -211,7 +213,7 @@ export class AssignmentService {
 
     // Send email notifications (async, don't block assignment creation)
     this.sendAssignmentNotifications(assignment).catch(err => {
-      console.error('Failed to send counselor assignment notifications:', err);
+      this.logger.error('Failed to send counselor assignment notifications:', err);
     });
 
     return assignment as any;

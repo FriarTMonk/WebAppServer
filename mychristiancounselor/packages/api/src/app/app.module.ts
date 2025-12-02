@@ -15,11 +15,17 @@ import { AiModule } from '../ai/ai.module';
 import { SlaModule } from '../sla/sla.module';
 import { HolidayModule } from '../holiday/holiday.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { configValidationSchema } from '../config/config.validation';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validationSchema: configValidationSchema,
+      validationOptions: {
+        allowUnknown: true,
+        abortEarly: false,
+      },
     }),
     ScheduleModule.forRoot(),
     PrismaModule,
