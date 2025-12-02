@@ -69,6 +69,22 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   Audit Log
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/admin/support"
+                  className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/support')}`}
+                >
+                  Support
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/admin/holidays"
+                  className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/holidays')}`}
+                >
+                  Holidays
+                </Link>
+              </li>
             </ul>
           </nav>
         </aside>
