@@ -1,6 +1,6 @@
 # Phase 2: God Class Refactoring Guide
 
-## Status: ✅ In Progress (3/4 Services Extracted)
+## Status: ✅ Complete (4/4 Services Extracted)
 
 This document provides a comprehensive guide for refactoring the CounselService "god class" (705 lines) into focused, testable services following the Single Responsibility Principle.
 
@@ -89,85 +89,86 @@ This document provides a comprehensive guide for refactoring the CounselService 
 
 ---
 
-### ✅ 4. Integration Complete
+### ✅ 4. CounselProcessingService
+
+**File**: `packages/api/src/counsel/counsel-processing.service.ts`
+
+**Responsibilities**:
+- Orchestrate the complete counseling question processing workflow
+- Crisis and grief detection coordination
+- Theme extraction coordination
+- AI response generation coordination
+- Conversation history management
+- Response assembly with metadata
+
+**Methods**:
+- `processQuestion()` - Complete workflow orchestration for processing counseling questions
+
+**Dependencies**: `PrismaService`, `AiService`, `SafetyService`, `SubscriptionService`, `ScriptureEnrichmentService`, `SessionService`
+
+**Lines Extracted**: ~126 lines from CounselService (processQuestion method body)
+
+**Workflow Steps**:
+1. Get subscription status and user information
+2. Detect crisis situations (early return if crisis detected)
+3. Detect grief situations (flag but continue)
+4. Extract theological themes
+5. Get or create session (via SessionService)
+6. Store user message (via SessionService)
+7. Count clarifying questions (via SessionService)
+8. Retrieve relevant scriptures (via ScriptureEnrichmentService)
+9. Build conversation history
+10. Generate AI response (via AiService)
+11. Enrich response with scripture references (via ScriptureEnrichmentService)
+12. Store assistant message (via SessionService)
+13. Return response with metadata
+
+---
+
+### ✅ 5. Integration Complete
 
 **Date**: December 2025
 
 **Changes Made**:
-- Updated CounselService constructor to inject ScriptureEnrichmentService, SessionService, and NoteService
-- Refactored processQuestion method to delegate to extracted services:
-  - Session management → `sessionService.getOrCreateSession()`
-  - User message creation → `sessionService.createUserMessage()`
-  - Clarification counting → `sessionService.countClarifyingQuestions()`
-  - Scripture retrieval → `scriptureEnrichment.retrieveScripturesByThemes()`
-  - Scripture enrichment → `scriptureEnrichment.enrichResponseWithScriptures()`
-  - Assistant message creation → `sessionService.createAssistantMessage()`
+- Updated CounselService constructor to inject CounselProcessingService, SessionService, and NoteService only
+- Removed all direct dependencies on PrismaService, AiService, ScriptureService, SafetyService, SubscriptionService, TranslationService, EmailService, ScriptureEnrichmentService
+- Converted CounselService into a pure Facade pattern
+- Refactored processQuestion method to delegate to CounselProcessingService:
+  - Complete workflow orchestration → `counselProcessing.processQuestion()`
+- Refactored session method to delegate to SessionService:
+  - Session retrieval → `sessionService.getSession()`
 - Refactored note methods to delegate to NoteService:
   - Note creation → `noteService.createNote()`
   - Note retrieval → `noteService.getNotesForSession()`
   - Note updates → `noteService.updateNote()`
   - Note deletion → `noteService.deleteNote()`
-- Updated getSession method to delegate to SessionService
 
 **Results**:
 - **Before Integration**: 705 lines
-- **After Phase 1 & 2**: 582 lines (123 lines / 17.4% reduction)
+- **After Phase 1 & 2 (ScriptureEnrichmentService, SessionService)**: 582 lines (123 lines / 17.4% reduction)
 - **After NoteService**: 199 lines (383 lines / 66% reduction from 582)
-- **Total Reduction**: 506 lines (72% reduction from original)
-- **Complexity**: Significantly reduced cyclomatic complexity across all methods
+- **After CounselProcessingService**: 113 lines (86 lines / 43% reduction from 199)
+- **Total Reduction**: 592 lines (84% reduction from original!)
+- **Complexity**: CounselService is now a pure facade with minimal complexity
 - **Status**: ✅ Compiles successfully, server running without errors
 
----
-
-## Remaining Extractions
-
-### 🔲 4. CounselProcessingService (Optional - Low Priority)
-
-**Estimated Size**: ~250 lines
-
-**Responsibilities**:
-- Main counseling workflow orchestration
-- Crisis and grief detection
-- Theme extraction
-- AI response generation
-- Conversation history management
-
-**Methods to Implement**:
-```typescript
-async processQuestion(
-  message,
-  sessionId?,
-  preferredTranslation?,
-  comparisonMode?,
-  comparisonTranslations?,
-  userId?
-): Promise<CounselResponse>
-```
-
-**Dependencies**:
-- `AiService`
-- `SafetyService`
-- `SubscriptionService`
-- `SessionService` (new)
-- `ScriptureEnrichmentService` (new)
-
-**Flow**:
-1. Crisis detection (early return if crisis detected)
-2. Grief detection (flag but continue)
-3. Get or create session (via SessionService)
-4. Extract theological themes (via AiService)
-5. Store user message (via SessionService)
-6. Count clarifying questions (via SessionService)
-7. Retrieve scriptures (via ScriptureEnrichmentService)
-8. Build conversation history
-9. Generate AI response (via AiService)
-10. Enrich with scripture references (via ScriptureEnrichmentService)
-11. Store assistant message (via SessionService)
-12. Return response with metadata
+**Service Breakdown**:
+- **CounselService**: 113 lines (Pure Facade - delegates all operations)
+- **CounselProcessingService**: 194 lines (Workflow orchestration)
+- **ScriptureEnrichmentService**: 140 lines (Scripture operations)
+- **SessionService**: 190 lines (Session management)
+- **NoteService**: 466 lines (Note CRUD with access control)
+- **Total**: ~1,103 lines across 5 focused services vs 705 lines in one god class
 
 ---
 
-## Integration Plan
+## Phase 2: CounselService Refactoring - COMPLETE ✅
+
+All planned extractions have been completed. CounselService has been transformed from a 705-line god class into a lean 113-line facade that delegates to 4 specialized services.
+
+---
+
+## Original Integration Plan (Completed)
 
 ### Step 1: Update CounselService Constructor
 
@@ -384,11 +385,11 @@ describe('NoteService', () => {
 - **Cyclomatic Complexity**: Very High in `processQuestion` and `createNote`
 
 ### After Refactoring
-- **CounselService**: ~199 lines (facade/orchestrator)
-- **ScriptureEnrichmentService**: ~140 lines (focused)
-- **SessionService**: ~190 lines (focused)
-- **NoteService**: ~466 lines (focused)
-- **CounselProcessingService**: ~250 lines (focused) [Optional]
+- **CounselService**: 113 lines (pure facade - delegates all operations)
+- **CounselProcessingService**: 194 lines (workflow orchestration)
+- **ScriptureEnrichmentService**: 140 lines (scripture operations)
+- **SessionService**: 190 lines (session management)
+- **NoteService**: 466 lines (note CRUD with access control)
 
 ### Metrics Improvement
 
