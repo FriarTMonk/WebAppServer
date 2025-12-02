@@ -96,6 +96,21 @@ export async function apiPost(endpoint: string, data?: any, options: FetchOption
 }
 
 /**
+ * Convenience method for PUT requests
+ */
+export async function apiPut(endpoint: string, data?: any, options: FetchOptions = {}) {
+  return apiFetch(endpoint, {
+    ...options,
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+    body: data ? JSON.stringify(data) : undefined,
+  });
+}
+
+/**
  * Convenience method for PATCH requests
  */
 export async function apiPatch(endpoint: string, data?: any, options: FetchOptions = {}) {
@@ -127,6 +142,10 @@ export const api = {
   },
   post: async (endpoint: string, data?: any, options: FetchOptions = {}) => {
     const response = await apiPost(endpoint, data, options);
+    return { data: await response.json() };
+  },
+  put: async (endpoint: string, data?: any, options: FetchOptions = {}) => {
+    const response = await apiPut(endpoint, data, options);
     return { data: await response.json() };
   },
   patch: async (endpoint: string, data?: any, options: FetchOptions = {}) => {
