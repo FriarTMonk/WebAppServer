@@ -1,3 +1,7 @@
+// Polyfill crypto for @nestjs/schedule
+import * as cryptoModule from 'crypto';
+(global as any).crypto = cryptoModule;
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app/app.module';

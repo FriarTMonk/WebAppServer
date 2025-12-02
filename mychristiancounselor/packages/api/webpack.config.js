@@ -11,6 +11,8 @@ module.exports = {
   },
   externals: {
     bcrypt: 'commonjs bcrypt',
+    crypto: 'commonjs crypto',
+    '@nestjs/schedule': 'commonjs @nestjs/schedule',
   },
   plugins: [
     new NxAppWebpackPlugin({
