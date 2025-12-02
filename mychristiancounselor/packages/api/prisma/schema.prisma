@@ -708,3 +708,25 @@ model TicketSimilarity {
   @@index([sourceTicketId, matchType, expiresAt])
   @@index([expiresAt])
 }
+
+// Safety detection feedback for continuous improvement
+model SafetyDetectionFeedback {
+  id                 String   @id @default(uuid())
+  sessionId          String? // Session where detection occurred (null for anonymous)
+  messageId          String? // Message that triggered detection
+  userId             String? // User providing feedback (null for anonymous)
+  detectionType      String // 'crisis' | 'grief'
+  detectionMethod    String // 'pattern' | 'ai' | 'both'
+  confidenceLevel    String // 'high' | 'medium' | 'low'
+  messageContent     String   @db.Text // Anonymized message content for analysis
+  isAccurate         Boolean? // True if user confirmed accurate, False if false positive, null if not yet rated
+  feedbackNote       String? // Optional user comment about the detection
+  detectedAt         DateTime @default(now()) // When detection occurred
+  feedbackSubmittedAt DateTime? // When user provided feedback
+
+  @@index([detectionType])
+  @@index([detectionMethod])
+  @@index([confidenceLevel])
+  @@index([isAccurate])
+  @@index([detectedAt])
+}
