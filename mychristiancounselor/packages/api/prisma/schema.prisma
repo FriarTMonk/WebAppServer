@@ -259,6 +259,8 @@ model Message {
   content                  String   @db.Text
   scriptureReferences      Json     @default("[]")
   constitutionalReferences Json     @default("[]")
+  griefResources           Json?    // Grief support resources if grief detected
+  crisisResources          Json?    // Crisis support resources if crisis detected
   isClarifyingQuestion     Boolean  @default(false) // True if this assistant message was a clarifying question
   timestamp                DateTime @default(now())
 

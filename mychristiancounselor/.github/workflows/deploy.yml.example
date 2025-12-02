@@ -1,0 +1,151 @@
+# Deployment Workflow Template
+# Copy this file to deploy.yml and configure for your deployment target
+# Remove .example extension and add your deployment credentials to GitHub Secrets
+
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate --schema=./packages/api/prisma/schema.prisma
+
+      - name: Build applications
+        run: |
+          npx nx build api --configuration=production
+          npx nx build web --configuration=production
+
+      # ==============================================
+      # OPTION 1: Deploy to Docker Registry + Server
+      # ==============================================
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker images
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/mcc-api:${{ github.sha }} -f packages/api/Dockerfile .
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/mcc-web:${{ github.sha }} -f packages/web/Dockerfile .
+          docker push ${{ secrets.DOCKER_USERNAME }}/mcc-api:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/mcc-web:${{ github.sha }}
+          docker tag ${{ secrets.DOCKER_USERNAME }}/mcc-api:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/mcc-api:latest
+          docker tag ${{ secrets.DOCKER_USERNAME }}/mcc-web:${{ github.sha }} ${{ secrets.DOCKER_USERNAME }}/mcc-web:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/mcc-api:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/mcc-web:latest
+
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/mychristiancounselor
+            docker-compose pull
+            docker-compose up -d
+            docker-compose exec -T api npx prisma migrate deploy
+
+      # ==============================================
+      # OPTION 2: Deploy to AWS ECS (Alternative)
+      # ==============================================
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: us-east-1
+
+      # - name: Login to Amazon ECR
+      #   id: login-ecr
+      #   uses: aws-actions/amazon-ecr-login@v2
+
+      # - name: Build, tag, and push images to Amazon ECR
+      #   env:
+      #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      #     ECR_REPOSITORY_API: mcc-api
+      #     ECR_REPOSITORY_WEB: mcc-web
+      #     IMAGE_TAG: ${{ github.sha }}
+      #   run: |
+      #     docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG -f packages/api/Dockerfile .
+      #     docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG -f packages/web/Dockerfile .
+      #     docker push $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG
+      #     docker push $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG
+
+      # - name: Update ECS service
+      #   run: |
+      #     aws ecs update-service --cluster mcc-cluster --service mcc-api --force-new-deployment
+      #     aws ecs update-service --cluster mcc-cluster --service mcc-web --force-new-deployment
+
+      # ==============================================
+      # OPTION 3: Deploy to Kubernetes (Alternative)
+      # ==============================================
+      # - name: Set up kubectl
+      #   uses: azure/setup-kubectl@v3
+
+      # - name: Configure kubectl
+      #   run: |
+      #     echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig.yaml
+      #     export KUBECONFIG=kubeconfig.yaml
+
+      # - name: Deploy to Kubernetes
+      #   run: |
+      #     kubectl set image deployment/mcc-api mcc-api=${{ secrets.DOCKER_USERNAME }}/mcc-api:${{ github.sha }}
+      #     kubectl set image deployment/mcc-web mcc-web=${{ secrets.DOCKER_USERNAME }}/mcc-web:${{ github.sha }}
+      #     kubectl rollout status deployment/mcc-api
+      #     kubectl rollout status deployment/mcc-web
+
+      # ==============================================
+      # Post-deployment tasks
+      # ==============================================
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests..."
+          # Add your smoke test commands here
+          # curl -f ${{ secrets.PRODUCTION_URL }}/health || exit 1
+
+      - name: Notify deployment status
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Deployment to production ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+# Required GitHub Secrets:
+# - DOCKER_USERNAME: Docker Hub username
+# - DOCKER_PASSWORD: Docker Hub password or access token
+# - DEPLOY_HOST: Production server hostname/IP
+# - DEPLOY_USER: SSH username for deployment
+# - DEPLOY_SSH_KEY: SSH private key for deployment
+# - PRODUCTION_URL: Production URL for smoke tests
+# - SLACK_WEBHOOK (optional): Slack webhook for notifications

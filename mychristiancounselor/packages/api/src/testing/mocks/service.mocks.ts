@@ -168,5 +168,6 @@ export function createEmailServiceMock(): Partial<EmailService> {
     sendBillingEmail: jest.fn().mockResolvedValue(undefined),
     sendOrganizationInvitationEmail: jest.fn().mockResolvedValue(undefined),
     sendSupportTicketEmail: jest.fn().mockResolvedValue(undefined),
+    sendSessionShareEmail: jest.fn().mockResolvedValue(undefined),
   } as any;
 }

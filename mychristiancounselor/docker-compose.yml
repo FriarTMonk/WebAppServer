@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: mcc-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mychristiancounselor
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mcc-network
+
+  # API Service
+  api:
+    build:
+      context: .
+      dockerfile: ./packages/api/Dockerfile
+    container_name: mcc-api
+    restart: unless-stopped
+    ports:
+      - '3697:3697'
+    environment:
+      NODE_ENV: production
+      PORT: 3697
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mychristiancounselor
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-15m}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
+      CORS_ORIGIN: http://localhost:3699
+      # Email
+      POSTMARK_API_TOKEN: ${POSTMARK_API_TOKEN}
+      POSTMARK_FROM_EMAIL: ${POSTMARK_FROM_EMAIL}
+      # AI Services
+      AI_SERVICE: ${AI_SERVICE:-anthropic}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # Stripe
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      STRIPE_MONTHLY_PRICE_ID: ${STRIPE_MONTHLY_PRICE_ID}
+      STRIPE_ANNUAL_PRICE_ID: ${STRIPE_ANNUAL_PRICE_ID}
+      # App URLs
+      WEB_APP_URL: http://localhost:3699
+      API_URL: http://localhost:3697
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - api_logs:/app/logs
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://localhost:3697/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mcc-network
+
+  # Web Service
+  web:
+    build:
+      context: .
+      dockerfile: ./packages/web/Dockerfile
+    container_name: mcc-web
+    restart: unless-stopped
+    ports:
+      - '3699:3699'
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost:3697
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://localhost:3699', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mcc-network
+
+volumes:
+  postgres_data:
+    driver: local
+  api_logs:
+    driver: local
+
+networks:
+  mcc-network:
+    driver: bridge

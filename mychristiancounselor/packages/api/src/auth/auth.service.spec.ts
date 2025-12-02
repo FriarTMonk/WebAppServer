@@ -3,6 +3,9 @@ import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { EmailService } from '../email/email.service';
+import { EmailRateLimitService } from '../email/email-rate-limit.service';
+import { createEmailServiceMock } from '../testing';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -45,6 +48,17 @@ describe('AuthService', () => {
               };
               return config[key];
             }),
+          },
+        },
+        {
+          provide: EmailService,
+          useValue: createEmailServiceMock(),
+        },
+        {
+          provide: EmailRateLimitService,
+          useValue: {
+            canSendEmail: jest.fn().mockResolvedValue(true),
+            recordEmailSent: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

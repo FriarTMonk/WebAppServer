@@ -1,0 +1,142 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [master, main, develop]
+  pull_request:
+    branches: [master, main, develop]
+
+jobs:
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mychristiancounselor_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate --schema=./packages/api/prisma/schema.prisma
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mychristiancounselor_test
+        run: npx prisma migrate deploy --schema=./packages/api/prisma/schema.prisma
+
+      - name: Run linting
+        run: npx nx run-many --target=lint --all --parallel=3
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mychristiancounselor_test
+          JWT_SECRET: test-secret-key-for-ci-pipeline-minimum-32-characters
+        run: npx nx run-many --target=test --all --parallel=3 --coverage
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  build:
+    name: Build Applications
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate --schema=./packages/api/prisma/schema.prisma
+
+      - name: Build API
+        run: npx nx build api --configuration=production
+
+      - name: Build Web
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3697
+        run: npx nx build web --configuration=production
+
+      - name: Upload API build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-build
+          path: dist/packages/api
+          retention-days: 7
+
+      - name: Upload Web build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: packages/web/.next
+          retention-days: 7
+
+  docker-build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./packages/api/Dockerfile
+          push: false
+          tags: mychristiancounselor-api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Web Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./packages/web/Dockerfile
+          push: false
+          tags: mychristiancounselor-web:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -80,25 +80,10 @@ export class CounselProcessingService {
       userName = user?.firstName || undefined;
     }
 
-    // 1. Check for crisis using AI-powered contextual detection
+    // 1. Check for crisis using AI-powered contextual detection - flag but continue with normal flow
     const isCrisis = await this.counselingAi.detectCrisisContextual(message);
-
     if (isCrisis) {
       this.logger.warn(`Crisis detected for user ${userId || 'anonymous'}`);
-      return {
-        sessionId: sessionId || randomUUID(),
-        message: {
-          id: randomUUID(),
-          sessionId: sessionId || '',
-          role: 'system',
-          content: this.safetyService.generateCrisisResponse(),
-          scriptureReferences: [],
-          timestamp: new Date(),
-        },
-        requiresClarification: false,
-        isCrisisDetected: true,
-        crisisResources: this.safetyService.getCrisisResources(),
-      };
     }
 
     // 2. Check for grief using AI-powered contextual detection - flag but continue with normal flow
@@ -159,13 +144,18 @@ export class CounselProcessingService {
       scriptures
     );
 
-    // 11. Store assistant message using SessionService
+    // 11. Store assistant message using SessionService (with grief/crisis resources if detected)
+    const griefResources = isGrief ? this.safetyService.getGriefResources() : undefined;
+    const crisisResources = isCrisis ? this.safetyService.getCrisisResources() : undefined;
+
     const assistantMessage = await this.sessionService.createAssistantMessage(
       session.id,
       aiResponse.content,
       JSON.parse(JSON.stringify(finalScriptures)),
       aiResponse.requiresClarification,
-      canSaveSession
+      canSaveSession,
+      griefResources,
+      crisisResources
     );
 
     // 12. Calculate current question count AFTER this response
@@ -173,7 +163,7 @@ export class CounselProcessingService {
     // Since we just added the new message, if it's a clarifying question, it will be included
     const updatedQuestionCount = clarificationCount + (aiResponse.requiresClarification ? 1 : 0);
 
-    // 13. Return response with grief detection flag and question count
+    // 13. Return response with crisis/grief detection flags and question count
     return {
       sessionId: session.id,
       message: {
@@ -185,9 +175,10 @@ export class CounselProcessingService {
         timestamp: assistantMessage.timestamp,
       },
       requiresClarification: aiResponse.requiresClarification,
-      isCrisisDetected: false,
+      isCrisisDetected: isCrisis,
+      crisisResources,
       isGriefDetected: isGrief,
-      griefResources: isGrief ? this.safetyService.getGriefResources() : undefined,
+      griefResources,
       currentSessionQuestionCount: updatedQuestionCount,
     };
   }

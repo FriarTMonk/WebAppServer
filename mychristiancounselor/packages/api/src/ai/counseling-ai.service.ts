@@ -107,13 +107,6 @@ ${currentQuestionCount >= maxClarifyingQuestions
 
     const parsed = JSON.parse(response);
 
-    // Debug logging
-    this.logger.debug('[AI RESPONSE DEBUG] Raw response:', response);
-    this.logger.debug('[AI RESPONSE DEBUG] Parsed object:', JSON.stringify(parsed));
-    this.logger.debug('[AI RESPONSE DEBUG] requiresClarification:', parsed.requiresClarification);
-    this.logger.debug('[AI RESPONSE DEBUG] guidance field:', parsed.guidance);
-    this.logger.debug('[AI RESPONSE DEBUG] clarifyingQuestion field:', parsed.clarifyingQuestion);
-
     // The JSON format uses 'guidance' or 'clarifyingQuestion', not 'content'
     const content = parsed.requiresClarification
       ? parsed.clarifyingQuestion

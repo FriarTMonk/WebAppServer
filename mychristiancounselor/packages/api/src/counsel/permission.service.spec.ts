@@ -92,8 +92,8 @@ describe('PermissionService', () => {
     });
 
     it('should return false when assignment is not active', async () => {
-      const assignment = createAssignmentFixture({ status: 'inactive' });
-      prismaMock.counselorAssignment!.findFirst = jest.fn().mockResolvedValue(assignment);
+      // Service filters for status: 'active', so inactive assignments won't be found
+      prismaMock.counselorAssignment!.findFirst = jest.fn().mockResolvedValue(null);
 
       const result = await service.isAssignedCounselor('counselor-1', 'member-1', 'org-1');
 
@@ -135,10 +135,8 @@ describe('PermissionService', () => {
     });
 
     it('should return false when coverage grant is revoked', async () => {
-      const coverageGrant = createCoverageGrantFixture({
-        revokedAt: new Date(),
-      });
-      prismaMock.counselorCoverageGrant!.findFirst = jest.fn().mockResolvedValue(coverageGrant);
+      // Service filters for revokedAt: null, so revoked grants won't be found
+      prismaMock.counselorCoverageGrant!.findFirst = jest.fn().mockResolvedValue(null);
 
       const result = await service.isCoverageCounselor('counselor-2', 'member-1');
 
@@ -146,13 +144,8 @@ describe('PermissionService', () => {
     });
 
     it('should return false when coverage grant has expired', async () => {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const coverageGrant = createCoverageGrantFixture({
-        expiresAt: yesterday,
-        revokedAt: null,
-      });
-      prismaMock.counselorCoverageGrant!.findFirst = jest.fn().mockResolvedValue(coverageGrant);
+      // Service filters for expiresAt >= now, so expired grants won't be found
+      prismaMock.counselorCoverageGrant!.findFirst = jest.fn().mockResolvedValue(null);
 
       const result = await service.isCoverageCounselor('counselor-2', 'member-1');
 
@@ -297,12 +290,8 @@ describe('PermissionService', () => {
     });
 
     it('should return no access when share has expired', async () => {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const share = createShareFixture({
-        expiresAt: yesterday,
-      });
-      prismaMock.sessionShare!.findFirst = jest.fn().mockResolvedValue(share);
+      // Service filters for expiresAt > now, so expired shares won't be found
+      prismaMock.sessionShare!.findFirst = jest.fn().mockResolvedValue(null);
 
       const result = await service.getShareAccess('user-2', 'session-1');
 

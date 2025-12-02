@@ -12,13 +12,15 @@ import QuestionProgressIndicator from './QuestionProgressIndicator';
 import { SessionNotesPanel } from './SessionNotesPanel';
 import { SessionExportView } from './SessionExportView';
 import { SharedWithMe } from './SharedWithMe';
+import RegistrationPromptModal from './RegistrationPromptModal';
 import { Message, CrisisResource, GriefResource, BibleTranslation, DEFAULT_TRANSLATION } from '@mychristiancounselor/shared';
 import { apiGet, apiPost } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 
-// Extended message type to include grief resources for display
+// Extended message type to include grief and crisis resources for display
 interface ExtendedMessage extends Message {
   griefResources?: GriefResource[];
+  crisisResources?: CrisisResource[];
 }
 
 export function ConversationView() {
@@ -43,6 +45,7 @@ export function ConversationView() {
   const [currentSessionQuestionCount, setCurrentSessionQuestionCount] = useState(0);
   const [showMobileNotes, setShowMobileNotes] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showRegistrationPrompt, setShowRegistrationPrompt] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -166,18 +169,29 @@ export function ConversationView() {
         setCurrentSessionQuestionCount(responseQuestionCount);
       }
 
-      // Attach grief resources to the message for inline display
+      // Attach grief and crisis resources to the message for inline display
       const extendedMessage: ExtendedMessage = {
         ...message,
         griefResources: isGriefDetected ? griefResources : undefined,
+        crisisResources: isCrisisDetected ? crisisResources : undefined,
       };
 
-      console.log('Extended message:', { hasGriefResources: !!extendedMessage.griefResources, resourceCount: extendedMessage.griefResources?.length });
+      console.log('Extended message:', {
+        hasGriefResources: !!extendedMessage.griefResources,
+        hasCrisisResources: !!extendedMessage.crisisResources,
+        resourceCount: extendedMessage.griefResources?.length
+      });
 
       setMessages((prev) => [...prev, extendedMessage]);
 
+      // Show crisis modal that user must acknowledge before seeing the AI response
       if (isCrisisDetected && crisisResources) {
         setCrisisModal({ isOpen: true, resources: crisisResources });
+      }
+
+      // Show registration prompt for anonymous users after each response
+      if (!isAuthenticated) {
+        setShowRegistrationPrompt(true);
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -362,6 +376,11 @@ export function ConversationView() {
         isOpen={crisisModal.isOpen}
         resources={crisisModal.resources}
         onClose={() => setCrisisModal({ isOpen: false, resources: [] })}
+      />
+
+      <RegistrationPromptModal
+        isOpen={showRegistrationPrompt}
+        onClose={() => setShowRegistrationPrompt(false)}
       />
 
       {/* Mobile Notes Overlay - Only for subscribed users */}

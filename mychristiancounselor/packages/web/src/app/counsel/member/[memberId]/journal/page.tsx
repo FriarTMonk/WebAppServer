@@ -5,6 +5,9 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '../../../../../contexts/AuthContext';
 import { getAccessToken } from '../../../../../lib/auth';
 import { SessionNotesPanel } from '../../../../../components/SessionNotesPanel';
+import { GriefAlert } from '../../../../../components/GriefAlert';
+import { CrisisAlert } from '../../../../../components/CrisisAlert';
+import { CrisisResource, GriefResource } from '@mychristiancounselor/shared';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
@@ -29,6 +32,8 @@ interface FullConversation {
     content: string;
     timestamp: string;
     scriptureReferences: any[];
+    griefResources?: GriefResource[];
+    crisisResources?: CrisisResource[];
   }>;
 }
 
@@ -281,6 +286,16 @@ export default function MemberJournalPage() {
                             </div>
                           ))}
                         </div>
+                      )}
+
+                      {/* Crisis Alert - Show if crisis was detected */}
+                      {message.crisisResources && message.crisisResources.length > 0 && (
+                        <CrisisAlert resources={message.crisisResources} />
+                      )}
+
+                      {/* Grief Alert - Show if grief was detected */}
+                      {message.griefResources && message.griefResources.length > 0 && (
+                        <GriefAlert resources={message.griefResources} />
                       )}
                     </div>
                   ))}
