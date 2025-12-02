@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { AiService } from './ai.service';
+import { SupportAiService } from './support-ai.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -8,7 +8,7 @@ export class AiScheduler {
   private readonly logger = new Logger(AiScheduler.name);
 
   constructor(
-    private aiService: AiService,
+    private supportAi: SupportAiService,
     private prisma: PrismaService
   ) {}
 
@@ -24,7 +24,7 @@ export class AiScheduler {
     this.logger.log('Starting scheduled weekly historical similarity job');
 
     try {
-      await this.aiService.processWeeklySimilarityBatch();
+      await this.supportAi.processWeeklySimilarityBatch();
       this.logger.log('Weekly historical similarity job completed successfully');
     } catch (error) {
       this.logger.error('Weekly historical similarity job failed', {

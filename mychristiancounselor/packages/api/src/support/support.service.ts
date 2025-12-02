@@ -5,7 +5,7 @@ import { ReplyToTicketDto } from './dto/reply-to-ticket.dto';
 import { AssignTicketDto } from './dto/assign-ticket.dto';
 import { LinkTicketsDto } from './dto/link-tickets.dto';
 import { ResolveTicketDto } from './dto/resolve-ticket.dto';
-import { AiService } from '../ai/ai.service';
+import { SupportAiService } from '../ai/support-ai.service';
 import { SlaCalculatorService } from '../sla/sla-calculator.service';
 
 @Injectable()
@@ -14,7 +14,7 @@ export class SupportService {
 
   constructor(
     private prisma: PrismaService,
-    private aiService: AiService,
+    private supportAi: SupportAiService,
     private slaCalculator: SlaCalculatorService,
   ) {}
 
@@ -58,7 +58,7 @@ export class SupportService {
     // Only use AI if user didn't explicitly set priority OR set it to default 'medium'
     if (!dto.priority || dto.priority === 'medium') {
       try {
-        const aiPriority = await this.aiService.detectPriority(
+        const aiPriority = await this.supportAi.detectPriority(
           dto.title,
           dto.description
         );
@@ -1065,9 +1065,9 @@ export class SupportService {
     let similarityResults: any[];
 
     if (matchType === 'active') {
-      similarityResults = await this.aiService.findSimilarActiveTickets(ticketId);
+      similarityResults = await this.supportAi.findSimilarActiveTickets(ticketId);
     } else {
-      similarityResults = await this.aiService.getCachedHistoricalMatches(
+      similarityResults = await this.supportAi.getCachedHistoricalMatches(
         ticketId
       );
     }

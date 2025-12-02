@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AiService } from '../ai/ai.service';
+import { CounselingAiService } from '../ai/counseling-ai.service';
 import { SafetyService } from '../safety/safety.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { ScriptureEnrichmentService } from './scripture-enrichment.service';
@@ -26,7 +26,7 @@ export class CounselProcessingService {
 
   constructor(
     private prisma: PrismaService,
-    private aiService: AiService,
+    private counselingAi: CounselingAiService,
     private safetyService: SafetyService,
     private subscriptionService: SubscriptionService,
     private scriptureEnrichment: ScriptureEnrichmentService,
@@ -81,7 +81,7 @@ export class CounselProcessingService {
     }
 
     // 1. Check for crisis using AI-powered contextual detection
-    const isCrisis = await this.aiService.detectCrisisContextual(message);
+    const isCrisis = await this.counselingAi.detectCrisisContextual(message);
 
     if (isCrisis) {
       this.logger.warn(`Crisis detected for user ${userId || 'anonymous'}`);
@@ -102,13 +102,13 @@ export class CounselProcessingService {
     }
 
     // 2. Check for grief using AI-powered contextual detection - flag but continue with normal flow
-    const isGrief = await this.aiService.detectGriefContextual(message);
+    const isGrief = await this.counselingAi.detectGriefContextual(message);
     if (isGrief) {
       this.logger.debug(`Grief detected for user ${userId || 'anonymous'}`);
     }
 
     // 3. Extract theological themes from the question
-    const themes = await this.aiService.extractTheologicalThemes(message);
+    const themes = await this.counselingAi.extractTheologicalThemes(message);
     this.logger.debug(`Extracted themes: ${themes.join(', ')}`);
 
     // 4. Get or create session using SessionService
@@ -144,7 +144,7 @@ export class CounselProcessingService {
     }));
 
     // 9. Generate AI response
-    const aiResponse = await this.aiService.generateResponse(
+    const aiResponse = await this.counselingAi.generateResponse(
       message,
       scriptures,
       conversationHistory,
