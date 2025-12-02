@@ -6,6 +6,8 @@ import { SafetyService } from '../safety/safety.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { TranslationService } from '../scripture/translation.service';
 import { EmailService } from '../email/email.service';
+import { ScriptureEnrichmentService } from './scripture-enrichment.service';
+import { SessionService } from './session.service';
 import { CounselResponse, BibleTranslation, ScriptureReference } from '@mychristiancounselor/shared';
 import { randomUUID } from 'crypto';
 import { CreateNoteDto } from './dto/create-note.dto';
@@ -23,6 +25,9 @@ export class CounselService {
     private subscriptionService: SubscriptionService,
     private translationService: TranslationService,
     private emailService: EmailService,
+    // Extracted services for refactored responsibilities
+    private scriptureEnrichment: ScriptureEnrichmentService,
+    private sessionService: SessionService,
   ) {}
 
   async processQuestion(
@@ -69,99 +74,34 @@ export class CounselService {
     // 2. Check for grief using AI-powered contextual detection - flag but continue with normal flow
     const isGrief = await this.aiService.detectGriefContextual(message);
 
-    // 3. Get or create session
-    let session;
-    if (sessionId) {
-      session = await this.prisma.session.findUnique({
-        where: { id: sessionId },
-        include: { messages: { orderBy: { timestamp: 'asc' } } },
-      });
-    }
-
-    // 6. Extract theological themes from the question
+    // 3. Extract theological themes from the question
     const themes = await this.aiService.extractTheologicalThemes(message);
 
-    // Only create/save sessions for subscribed users
+    // 4. Get or create session using SessionService
     const canSaveSession = subscriptionStatus.hasHistoryAccess;
+    const session = await this.sessionService.getOrCreateSession(
+      sessionId,
+      userId || null,
+      canSaveSession,
+      message,
+      themes,
+      preferredTranslation || 'KJV'
+    );
 
-    if (!session && canSaveSession) {
-      // Create new session with title from first message
-      const title = message.substring(0, 50) + (message.length > 50 ? '...' : '');
-      const validTranslation = await this.translationService.validateTranslation(preferredTranslation);
+    // 5. Store user message using SessionService
+    await this.sessionService.createUserMessage(session.id, message, canSaveSession);
 
-      session = await this.prisma.session.create({
-        data: {
-          id: randomUUID(),
-          userId: userId!, // Only subscribed users reach here
-          title,
-          topics: JSON.stringify(themes), // Store theological topics
-          status: 'active',
-          preferredTranslation: validTranslation,
-        },
-        include: { messages: true },
-      });
-    } else if (session && preferredTranslation && preferredTranslation !== session.preferredTranslation) {
-      // Update session translation preference if it changed
-      const validTranslation = await this.translationService.validateTranslation(preferredTranslation);
-      session = await this.prisma.session.update({
-        where: { id: session.id },
-        data: { preferredTranslation: validTranslation },
-        include: { messages: true },
-      });
-    }
+    // 6. Count clarifying questions using SessionService
+    const clarificationCount = this.sessionService.countClarifyingQuestions(session);
 
-    // For non-subscribed users without a session, create a temporary session object for conversation flow
-    if (!session) {
-      const validTranslation = await this.translationService.validateTranslation(preferredTranslation);
-      session = {
-        id: sessionId || randomUUID(),
-        userId: userId || null,
-        title: '',
-        topics: JSON.stringify(themes),
-        status: 'active' as const,
-        preferredTranslation: validTranslation,
-        messages: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-    }
-
-    // 4. Store user message (only for subscribed users)
-    if (canSaveSession) {
-      await this.prisma.message.create({
-        data: {
-          id: randomUUID(),
-          sessionId: session.id,
-          role: 'user',
-          content: message,
-          scriptureReferences: [],
-          timestamp: new Date(),
-        },
-      });
-    }
-
-    // 5. Count clarifying questions so far
-    const clarificationCount = session.messages.filter(
-      (m) => m.role === 'assistant' && m.isClarifyingQuestion === true
-    ).length;
-
-    // 6. Retrieve relevant scriptures with themes (single translation or multiple for comparison)
-    let scriptures;
-    if (comparisonMode && comparisonTranslations && comparisonTranslations.length > 0) {
-      // Fetch same verses in multiple translations for proper comparison (with themes)
-      scriptures = await this.scriptureService.retrieveSameVersesInMultipleTranslationsWithThemes(
-        themes,
-        comparisonTranslations,
-        3
-      );
-    } else {
-      // Single translation mode (with themes)
-      scriptures = await this.scriptureService.retrieveRelevantScripturesWithThemes(
-        themes,
-        session.preferredTranslation,
-        3
-      );
-    }
+    // 7. Retrieve relevant scriptures using ScriptureEnrichmentService
+    const scriptures = await this.scriptureEnrichment.retrieveScripturesByThemes(
+      themes,
+      session.preferredTranslation,
+      comparisonMode,
+      comparisonTranslations,
+      3
+    );
 
     // 8. Build conversation history
     const conversationHistory = session.messages.map((m) => ({
@@ -178,77 +118,21 @@ export class CounselService {
       maxClarifyingQuestions
     );
 
-    // 10. Extract scripture references from AI response and get related verses
-    const extractedRefs = this.aiService.extractScriptureReferences(
-      aiResponse.content
+    // 10. Enrich response with scripture references using ScriptureEnrichmentService
+    const finalScriptures = await this.scriptureEnrichment.enrichResponseWithScriptures(
+      aiResponse.content,
+      session.preferredTranslation,
+      scriptures
     );
 
-    const versesForResponse: ScriptureReference[] = [];
-
-    // For each extracted reference, get the verse and 2-3 related verses
-    for (const ref of extractedRefs) {
-      try {
-        // Get the specific verse mentioned by the AI
-        const mainVerse = await this.scriptureService.getScriptureByReference(
-          ref.book,
-          ref.chapter,
-          ref.verse,
-          session.preferredTranslation
-        );
-
-        if (mainVerse) {
-          // Tag as AI-cited
-          versesForResponse.push({ ...mainVerse, source: 'ai-cited' as const });
-
-          // Get related verses (nearby context)
-          const relatedVerses = await this.scriptureService.getRelatedVerses(
-            ref.book,
-            ref.chapter,
-            ref.verse,
-            session.preferredTranslation,
-            2 // Get 2 related verses for each referenced verse
-          );
-
-          // Tag related verses
-          versesForResponse.push(...relatedVerses.map(v => ({ ...v, source: 'related' as const })));
-        }
-      } catch (error) {
-        // If a specific reference can't be found, continue with others
-        this.logger.warn(`Could not fetch verse ${ref.book} ${ref.chapter}:${ref.verse}`, error);
-      }
-    }
-
-    // If no verses were extracted from AI response, fall back to theme-based scriptures
-    const finalScriptures = versesForResponse.length > 0
-      ? versesForResponse
-      : scriptures.map(s => ({ ...s, source: 'theme' as const }));
-
-    // 11. Store assistant message (only for subscribed users)
-    let assistantMessage;
-    if (canSaveSession) {
-      assistantMessage = await this.prisma.message.create({
-        data: {
-          id: randomUUID(),
-          sessionId: session.id,
-          role: 'assistant',
-          content: aiResponse.content,
-          scriptureReferences: JSON.parse(JSON.stringify(finalScriptures)),
-          isClarifyingQuestion: aiResponse.requiresClarification,
-          timestamp: new Date(),
-        },
-      });
-    } else {
-      // For non-subscribed users, create a temporary message object
-      assistantMessage = {
-        id: randomUUID(),
-        sessionId: session.id,
-        role: 'assistant' as const,
-        content: aiResponse.content,
-        scriptureReferences: JSON.parse(JSON.stringify(finalScriptures)),
-        isClarifyingQuestion: aiResponse.requiresClarification,
-        timestamp: new Date(),
-      };
-    }
+    // 11. Store assistant message using SessionService
+    const assistantMessage = await this.sessionService.createAssistantMessage(
+      session.id,
+      aiResponse.content,
+      JSON.parse(JSON.stringify(finalScriptures)),
+      aiResponse.requiresClarification,
+      canSaveSession
+    );
 
     // 12. Calculate current question count AFTER this response
     // Count all assistant messages that were clarifying questions (requiresClarification: true)
@@ -275,14 +159,7 @@ export class CounselService {
   }
 
   async getSession(sessionId: string) {
-    return this.prisma.session.findUnique({
-      where: { id: sessionId },
-      include: {
-        messages: {
-          orderBy: { timestamp: 'asc' },
-        },
-      },
-    });
+    return this.sessionService.getSession(sessionId);
   }
 
   async createNote(

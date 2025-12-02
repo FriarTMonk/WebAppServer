@@ -5,6 +5,8 @@ import { AssignmentService } from './assignment.service';
 import { ObservationService } from './observation.service';
 import { WellbeingAnalysisService } from './wellbeing-analysis.service';
 import { WellbeingAnalysisScheduler } from './wellbeing-analysis.scheduler';
+import { ScriptureEnrichmentService } from './scripture-enrichment.service';
+import { SessionService } from './session.service';
 import { CounselController } from './counsel.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AiModule } from '../ai/ai.module';
@@ -30,12 +32,16 @@ import { EmailModule } from '../email/email.module';
     ObservationService,
     WellbeingAnalysisService,
     WellbeingAnalysisScheduler,
+    ScriptureEnrichmentService,
+    SessionService,
   ],
   exports: [
     CounselService,
     AssignmentService,
     ObservationService,
     WellbeingAnalysisService,
+    SessionService,
+    ScriptureEnrichmentService,
   ],
 })
 export class CounselModule {}
