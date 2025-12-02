@@ -1,9 +1,27 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SubscriptionStatusDto } from './dto/subscription-status.dto';
 import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../email/email.service';
 import Stripe from 'stripe';
+
+/**
+ * Subscription features that can be checked for access
+ */
+export enum SubscriptionFeature {
+  /** Access to session history and persistence */
+  HISTORY_ACCESS = 'HISTORY_ACCESS',
+  /** Ability to create and view session notes */
+  NOTE_ACCESS = 'NOTE_ACCESS',
+  /** Ability to share sessions with others */
+  SHARING_ACCESS = 'SHARING_ACCESS',
+  /** Ability to archive sessions */
+  ARCHIVE_ACCESS = 'ARCHIVE_ACCESS',
+  /** Ability to export session data */
+  EXPORT_ACCESS = 'EXPORT_ACCESS',
+  /** Access to clarifying questions feature */
+  CLARIFYING_QUESTIONS = 'CLARIFYING_QUESTIONS',
+}
 
 @Injectable()
 export class SubscriptionService {
@@ -76,6 +94,108 @@ export class SubscriptionService {
       hasArchiveAccess: isSubscribed,
     };
   }
+
+  // ============================================================================
+  // CENTRALIZED FEATURE ACCESS HELPERS
+  // ============================================================================
+
+  /**
+   * Check if user can access a specific feature
+   * Returns true if allowed, false otherwise
+   */
+  async canAccessFeature(
+    userId: string | undefined | null,
+    feature: SubscriptionFeature
+  ): Promise<boolean> {
+    const status = await this.getSubscriptionStatus(userId);
+
+    switch (feature) {
+      case SubscriptionFeature.HISTORY_ACCESS:
+        return status.hasHistoryAccess;
+      case SubscriptionFeature.NOTE_ACCESS:
+        return status.hasHistoryAccess; // Notes require history access
+      case SubscriptionFeature.SHARING_ACCESS:
+        return status.hasSharingAccess;
+      case SubscriptionFeature.ARCHIVE_ACCESS:
+        return status.hasArchiveAccess;
+      case SubscriptionFeature.EXPORT_ACCESS:
+        return status.hasHistoryAccess; // Export requires history access
+      case SubscriptionFeature.CLARIFYING_QUESTIONS:
+        return status.maxClarifyingQuestions > 0;
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Require that user has access to a specific feature
+   * Throws ForbiddenException if user doesn't have access
+   */
+  async requireFeature(
+    userId: string | undefined | null,
+    feature: SubscriptionFeature,
+    customMessage?: string
+  ): Promise<void> {
+    const hasAccess = await this.canAccessFeature(userId, feature);
+
+    if (!hasAccess) {
+      const defaultMessages: Record<SubscriptionFeature, string> = {
+        [SubscriptionFeature.HISTORY_ACCESS]: 'Session history is only available to subscribed users',
+        [SubscriptionFeature.NOTE_ACCESS]: 'Session notes are only available to subscribed users',
+        [SubscriptionFeature.SHARING_ACCESS]: 'Session sharing is only available to subscribed users',
+        [SubscriptionFeature.ARCHIVE_ACCESS]: 'Session archiving is only available to subscribed users',
+        [SubscriptionFeature.EXPORT_ACCESS]: 'Session export is only available to subscribed users',
+        [SubscriptionFeature.CLARIFYING_QUESTIONS]: 'Clarifying questions require an active subscription',
+      };
+
+      throw new ForbiddenException(customMessage || defaultMessages[feature]);
+    }
+  }
+
+  /**
+   * Convenience method: Require history access
+   * Throws ForbiddenException if user doesn't have history access
+   */
+  async requireHistoryAccess(userId: string | undefined | null): Promise<void> {
+    await this.requireFeature(userId, SubscriptionFeature.HISTORY_ACCESS);
+  }
+
+  /**
+   * Convenience method: Require note access
+   * Throws ForbiddenException if user doesn't have note access
+   */
+  async requireNoteAccess(userId: string | undefined | null): Promise<void> {
+    await this.requireFeature(userId, SubscriptionFeature.NOTE_ACCESS);
+  }
+
+  /**
+   * Convenience method: Require sharing access
+   * Throws ForbiddenException if user doesn't have sharing access
+   */
+  async requireSharingAccess(userId: string | undefined | null): Promise<void> {
+    await this.requireFeature(userId, SubscriptionFeature.SHARING_ACCESS);
+  }
+
+  /**
+   * Convenience method: Require export access
+   * Throws ForbiddenException if user doesn't have export access
+   */
+  async requireExportAccess(userId: string | undefined | null): Promise<void> {
+    await this.requireFeature(userId, SubscriptionFeature.EXPORT_ACCESS);
+  }
+
+  /**
+   * Get max clarifying questions for user
+   * Returns the number of clarifying questions allowed
+   */
+  async getMaxClarifyingQuestions(userId: string | undefined | null): Promise<number> {
+    const status = await this.getSubscriptionStatus(userId);
+    return status.maxClarifyingQuestions;
+  }
+
+  // ============================================================================
+  // SUBSCRIPTION MANAGEMENT
+  // ============================================================================
 
   /**
    * Create or update subscription for a user (manual for now, Stripe later)
