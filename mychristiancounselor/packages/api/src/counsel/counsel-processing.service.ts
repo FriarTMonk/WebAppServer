@@ -80,16 +80,22 @@ export class CounselProcessingService {
       userName = user?.firstName || undefined;
     }
 
-    // 1. Check for crisis using AI-powered contextual detection - flag but continue with normal flow
-    const isCrisis = await this.counselingAi.detectCrisisContextual(message);
-    if (isCrisis) {
-      this.logger.warn(`Crisis detected for user ${userId || 'anonymous'}`);
+    // 1. Check for crisis using layered detection (pattern + AI contextual)
+    const crisisResult = await this.safetyService.detectCrisis(message);
+    if (crisisResult.isDetected) {
+      this.logger.warn(
+        `Crisis detected for user ${userId || 'anonymous'} ` +
+        `[method: ${crisisResult.detectionMethod}, confidence: ${crisisResult.confidence}]`
+      );
     }
 
-    // 2. Check for grief using AI-powered contextual detection - flag but continue with normal flow
-    const isGrief = await this.counselingAi.detectGriefContextual(message);
-    if (isGrief) {
-      this.logger.debug(`Grief detected for user ${userId || 'anonymous'}`);
+    // 2. Check for grief using layered detection (pattern + AI contextual)
+    const griefResult = await this.safetyService.detectGrief(message);
+    if (griefResult.isDetected) {
+      this.logger.debug(
+        `Grief detected for user ${userId || 'anonymous'} ` +
+        `[method: ${griefResult.detectionMethod}, confidence: ${griefResult.confidence}]`
+      );
     }
 
     // 3. Extract theological themes from the question
@@ -145,8 +151,8 @@ export class CounselProcessingService {
     );
 
     // 11. Store assistant message using SessionService (with grief/crisis resources if detected)
-    const griefResources = isGrief ? this.safetyService.getGriefResources() : undefined;
-    const crisisResources = isCrisis ? this.safetyService.getCrisisResources() : undefined;
+    const griefResources = griefResult.isDetected ? this.safetyService.getGriefResources() : undefined;
+    const crisisResources = crisisResult.isDetected ? this.safetyService.getCrisisResources() : undefined;
 
     const assistantMessage = await this.sessionService.createAssistantMessage(
       session.id,
@@ -158,12 +164,35 @@ export class CounselProcessingService {
       crisisResources
     );
 
+    // 11a. Log detections for continuous improvement (non-blocking)
+    if (crisisResult.isDetected) {
+      await this.safetyService.logDetection(
+        'crisis',
+        crisisResult,
+        message,
+        session.id,
+        assistantMessage.id,
+        userId
+      );
+    }
+
+    if (griefResult.isDetected) {
+      await this.safetyService.logDetection(
+        'grief',
+        griefResult,
+        message,
+        session.id,
+        assistantMessage.id,
+        userId
+      );
+    }
+
     // 12. Calculate current question count AFTER this response
     // Count all assistant messages that were clarifying questions (requiresClarification: true)
     // Since we just added the new message, if it's a clarifying question, it will be included
     const updatedQuestionCount = clarificationCount + (aiResponse.requiresClarification ? 1 : 0);
 
-    // 13. Return response with crisis/grief detection flags and question count
+    // 13. Return response with crisis/grief detection flags, method, confidence, and question count
     return {
       sessionId: session.id,
       message: {
@@ -175,9 +204,13 @@ export class CounselProcessingService {
         timestamp: assistantMessage.timestamp,
       },
       requiresClarification: aiResponse.requiresClarification,
-      isCrisisDetected: isCrisis,
+      isCrisisDetected: crisisResult.isDetected,
+      crisisDetectionMethod: crisisResult.detectionMethod,
+      crisisDetectionConfidence: crisisResult.confidence,
       crisisResources,
-      isGriefDetected: isGrief,
+      isGriefDetected: griefResult.isDetected,
+      griefDetectionMethod: griefResult.detectionMethod,
+      griefDetectionConfidence: griefResult.confidence,
       griefResources,
       currentSessionQuestionCount: updatedQuestionCount,
     };

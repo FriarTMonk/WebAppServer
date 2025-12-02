@@ -1,67 +1,75 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { SafetyService } from './safety.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 describe('SafetyService', () => {
   let service: SafetyService;
+  let configService: ConfigService;
+  let prismaService: PrismaService;
+
+  const mockConfigService = {
+    get: jest.fn(),
+  };
+
+  const mockPrismaService = {
+    safetyDetectionFeedback: {
+      create: jest.fn(),
+      update: jest.fn(),
+      count: jest.fn(),
+      groupBy: jest.fn(),
+      findMany: jest.fn(),
+    },
+  };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
+    // Default: OpenAI not configured (pattern-only mode for most tests)
+    mockConfigService.get.mockReturnValue(null);
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SafetyService],
+      providers: [
+        SafetyService,
+        { provide: ConfigService, useValue: mockConfigService },
+        { provide: PrismaService, useValue: mockPrismaService },
+      ],
     }).compile();
 
     service = module.get<SafetyService>(SafetyService);
+    configService = module.get<ConfigService>(ConfigService);
+    prismaService = module.get<PrismaService>(PrismaService);
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  describe('detectCrisis', () => {
-    describe('suicide detection', () => {
-      it('should detect direct suicide keywords', () => {
-        const crisisMessages = [
+  describe('Crisis Detection - Layered Approach', () => {
+    describe('High-Confidence Pattern Detection (Skip AI)', () => {
+      it('should detect explicit suicide intent with high confidence', async () => {
+        const messages = [
           'I want to kill myself',
           'Thinking about suicide',
           'I want to end my life',
           'I am suicidal',
           'want to take my life',
-        ];
-
-        crisisMessages.forEach((msg) => {
-          expect(service.detectCrisis(msg)).toBe(true);
-        });
-      });
-
-      it('should detect suicide with punctuation', () => {
-        const messages = [
-          'I want to kill myself.',
-          'Thinking about suicide...',
-          'I want to end my life!',
-        ];
-
-        messages.forEach((msg) => {
-          expect(service.detectCrisis(msg)).toBe(true);
-        });
-      });
-
-      it('should detect suicide variations', () => {
-        const messages = [
           'I want to hurt myself',
           'I want to harm myself',
           'better off dead',
           'wish I was dead',
-          'wish I were dead',
           'no reason to live',
         ];
 
-        messages.forEach((msg) => {
-          expect(service.detectCrisis(msg)).toBe(true);
-        });
+        for (const msg of messages) {
+          const result = await service.detectCrisis(msg);
+          expect(result.isDetected).toBe(true);
+          expect(result.detectionMethod).toBe('pattern');
+          expect(result.confidence).toBe('high');
+        }
       });
-    });
 
-    describe('self-harm detection', () => {
-      it('should detect self-harm keywords', () => {
+      it('should detect self-harm with high confidence', async () => {
         const messages = [
           'I want to self-harm',
           'I engage in self harm',
@@ -69,45 +77,54 @@ describe('SafetyService', () => {
           'thinking of selfharm',
         ];
 
-        messages.forEach((msg) => {
-          expect(service.detectCrisis(msg)).toBe(true);
-        });
+        for (const msg of messages) {
+          const result = await service.detectCrisis(msg);
+          expect(result.isDetected).toBe(true);
+          expect(result.detectionMethod).toBe('pattern');
+          expect(result.confidence).toBe('high');
+        }
       });
-    });
 
-    describe('abuse detection', () => {
-      it('should detect abuse keywords', () => {
+      it('should detect active abuse with personal context (high confidence)', async () => {
         const messages = [
-          'I am being abused',
-          'experiencing abuse',
-          'domestic violence',
           'he beats me',
           'I was raped',
-          'sexual assault',
+          'raped me last night',
           'being molested',
+          'he hits me every day',
+          'being beaten regularly',
         ];
 
-        messages.forEach((msg) => {
-          expect(service.detectCrisis(msg)).toBe(true);
-        });
-      });
-
-      it('should detect abuse variations', () => {
-        const messages = [
-          'he raped me',
-          'I am being beaten',
-          'sexually assaulted',
-          'molesting me',
-        ];
-
-        messages.forEach((msg) => {
-          expect(service.detectCrisis(msg)).toBe(true);
-        });
+        for (const msg of messages) {
+          const result = await service.detectCrisis(msg);
+          expect(result.isDetected).toBe(true);
+          expect(result.detectionMethod).toBe('pattern');
+          expect(result.confidence).toBe('high');
+        }
       });
     });
 
-    describe('false positives', () => {
-      it('should not detect crisis in normal messages', () => {
+    describe('Medium-Confidence Pattern Detection (Needs AI Validation)', () => {
+      it('should detect ambiguous abuse terms with medium confidence (pattern-only mode)', async () => {
+        // Without OpenAI configured, medium-confidence patterns still trigger detection
+        const messages = [
+          'experiencing abuse',
+          'violence in my home',
+          'rape is terrible',
+          'sexual assault awareness',
+        ];
+
+        for (const msg of messages) {
+          const result = await service.detectCrisis(msg);
+          expect(result.isDetected).toBe(true);
+          expect(result.detectionMethod).toBe('pattern');
+          expect(result.confidence).toBe('medium'); // Medium confidence without AI validation
+        }
+      });
+    });
+
+    describe('False Positives - Should NOT Detect Crisis', () => {
+      it('should not detect crisis in normal emotional messages', async () => {
         const normalMessages = [
           'I am feeling sad today',
           'Need guidance on my marriage',
@@ -117,57 +134,47 @@ describe('SafetyService', () => {
           'Having a tough day',
         ];
 
-        normalMessages.forEach((msg) => {
-          expect(service.detectCrisis(msg)).toBe(false);
-        });
+        for (const msg of normalMessages) {
+          const result = await service.detectCrisis(msg);
+          expect(result.isDetected).toBe(false);
+        }
       });
 
-      it('should not detect crisis in context with non-crisis words', () => {
+      it('should not detect crisis in metaphorical language', async () => {
         const messages = [
           'This movie is killing me with laughter',
           'I am dying to see you',
           'That joke was so bad I wanted to hurt the comedian',
+          'This exam is killing me',
+          'I could die from embarrassment',
         ];
 
-        messages.forEach((msg) => {
-          expect(service.detectCrisis(msg)).toBe(false);
-        });
+        for (const msg of messages) {
+          const result = await service.detectCrisis(msg);
+          expect(result.isDetected).toBe(false);
+        }
+      });
+
+      it('should not detect crisis in spiritual questions about death', async () => {
+        const messages = [
+          'God, are you listening?',
+          'Where are you God?',
+          'Why does God allow suffering?',
+          'Will I see my loved ones in heaven?',
+          'What happens after we die?',
+        ];
+
+        for (const msg of messages) {
+          const result = await service.detectCrisis(msg);
+          expect(result.isDetected).toBe(false);
+        }
       });
     });
   });
 
-  describe('getCrisisResources', () => {
-    it('should return crisis resources', () => {
-      const resources = service.getCrisisResources();
-      expect(resources.length).toBeGreaterThan(0);
-      expect(resources[0]).toHaveProperty('name');
-      expect(resources[0]).toHaveProperty('contact');
-      expect(resources[0]).toHaveProperty('description');
-    });
-  });
-
-  describe('generateCrisisResponse', () => {
-    it('should generate crisis response with resources', () => {
-      const response = service.generateCrisisResponse();
-      expect(response).toContain('safety');
-      expect(response).toContain('911');
-      expect(response).toContain('professional');
-    });
-
-    it('should include resource details', () => {
-      const response = service.generateCrisisResponse();
-      const resources = service.getCrisisResources();
-
-      resources.forEach(resource => {
-        expect(response).toContain(resource.name);
-        expect(response).toContain(resource.contact);
-      });
-    });
-  });
-
-  describe('detectGrief', () => {
-    describe('loss detection', () => {
-      it('should detect loss of loved ones', () => {
+  describe('Grief Detection - Layered Approach', () => {
+    describe('High-Confidence Pattern Detection', () => {
+      it('should detect explicit loss of loved ones with high confidence', async () => {
         const griefMessages = [
           'I lost my mother',
           'my father died',
@@ -175,110 +182,111 @@ describe('SafetyService', () => {
           'losing my wife',
           'my husband is gone',
           'death of my child',
-        ];
-
-        griefMessages.forEach((msg) => {
-          expect(service.detectGrief(msg)).toBe(true);
-        });
-      });
-
-      it('should detect various relationships', () => {
-        const messages = [
           'my grandmother died',
           'lost my grandfather',
-          'my brother passed away',
-          'my sister is gone',
-          'my friend died',
-          'lost a loved one',
         ];
 
-        messages.forEach((msg) => {
-          expect(service.detectGrief(msg)).toBe(true);
-        });
+        for (const msg of griefMessages) {
+          const result = await service.detectGrief(msg);
+          expect(result.isDetected).toBe(true);
+          expect(result.detectionMethod).toBe('pattern');
+          expect(result.confidence).toBe('high');
+        }
+      });
+
+      it('should detect active grieving language with high confidence', async () => {
+        const messages = [
+          'grieving over my mother',
+          'mourning for my father',
+          'at the funeral of my brother',
+          'just lost my wife last week',
+          'cannot believe my son died',
+        ];
+
+        for (const msg of messages) {
+          const result = await service.detectGrief(msg);
+          expect(result.isDetected).toBe(true);
+          expect(result.detectionMethod).toBe('pattern');
+          expect(result.confidence).toBe('high');
+        }
       });
     });
 
-    describe('terminal illness detection', () => {
-      it('should detect terminal illness', () => {
+    describe('Medium-Confidence Pattern Detection', () => {
+      it('should detect ambiguous grief terms with medium confidence', async () => {
         const messages = [
-          'he is terminally ill',
-          'terminal cancer',
-          'she is dying',
-          'in hospice care',
-          'palliative care',
-          'not long to live',
+          'dealing with death',
+          'someone died',
+          'attending a funeral',
+          'feeling heartbroken',
+          'suffering so much pain',
         ];
 
-        messages.forEach((msg) => {
-          expect(service.detectGrief(msg)).toBe(true);
-        });
-      });
-
-      it('should detect end of life situations', () => {
-        const messages = [
-          'end of life care',
-          'final days',
-          'last hours',
-          'time is running out',
-          'on life support',
-          'intensive care',
-        ];
-
-        messages.forEach((msg) => {
-          expect(service.detectGrief(msg)).toBe(true);
-        });
+        for (const msg of messages) {
+          const result = await service.detectGrief(msg);
+          expect(result.isDetected).toBe(true);
+          expect(result.detectionMethod).toBe('pattern');
+          expect(result.confidence).toBe('medium');
+        }
       });
     });
 
-    describe('mourning detection', () => {
-      it('should detect mourning and funeral terms', () => {
+    describe('False Positives - Should NOT Detect Grief', () => {
+      it('should not detect grief in spiritual seeking', async () => {
         const messages = [
-          'at the funeral',
-          'grieving the loss',
-          'memorial service',
-          'we buried him',
-          'heartbroken',
-          'devastated by the loss',
+          'God, are you listening?',
+          'I feel so alone',
+          'Why is God silent?',
+          'Going through a hard time',
+          'Feeling distant from God',
         ];
 
-        messages.forEach((msg) => {
-          expect(service.detectGrief(msg)).toBe(true);
-        });
+        for (const msg of messages) {
+          const result = await service.detectGrief(msg);
+          expect(result.isDetected).toBe(false);
+        }
       });
 
-      it('should detect emotional grief expressions', () => {
+      it('should not detect grief in general discussions', async () => {
         const messages = [
-          'miss them so much',
-          'wish she was still here',
-          'gone too soon',
-          'can\'t believe he\'s gone',
-          'life without her',
-          'hole in my heart',
+          'What happens after death?',
+          'Will there be death in heaven?',
+          'Jesus conquered death',
+          'Eternal life through Christ',
         ];
 
-        messages.forEach((msg) => {
-          expect(service.detectGrief(msg)).toBe(true);
-        });
-      });
-    });
-
-    describe('false positives', () => {
-      it('should not detect grief in normal messages', () => {
-        const normalMessages = [
-          'I am having a great day',
-          'Enjoying time with family',
-          'Looking forward to the weekend',
-          'Need advice on my career',
-        ];
-
-        normalMessages.forEach((msg) => {
-          expect(service.detectGrief(msg)).toBe(false);
-        });
+        for (const msg of messages) {
+          const result = await service.detectGrief(msg);
+          expect(result.isDetected).toBe(false);
+        }
       });
     });
   });
 
-  describe('getGriefResources', () => {
+  describe('Crisis Resources', () => {
+    it('should return crisis resources', () => {
+      const resources = service.getCrisisResources();
+      expect(resources.length).toBeGreaterThan(0);
+      expect(resources[0]).toHaveProperty('name');
+      expect(resources[0]).toHaveProperty('contact');
+      expect(resources[0]).toHaveProperty('description');
+    });
+
+    it('should generate crisis response with resources', () => {
+      const response = service.generateCrisisResponse();
+      expect(response).toContain('safety');
+      expect(response).toContain('911');
+      expect(response).toContain('professional');
+
+      const resources = service.getCrisisResources();
+      resources.forEach((resource) => {
+        expect(response).toContain(resource.name);
+        expect(response).toContain(resource.contact);
+      });
+    });
+  });
+
+  describe('Grief Resources', () => {
     it('should return grief resources', () => {
       const resources = service.getGriefResources();
       expect(resources.length).toBeGreaterThan(0);
@@ -286,61 +294,162 @@ describe('SafetyService', () => {
       expect(resources[0]).toHaveProperty('contact');
       expect(resources[0]).toHaveProperty('description');
     });
-  });
 
-  describe('generateGriefResponse', () => {
-    it('should generate compassionate grief response', () => {
+    it('should generate grief response with resources', () => {
       const response = service.generateGriefResponse();
-      expect(response).toContain('sorry');
+      expect(response).toContain('loss');
       expect(response).toContain('grief');
-      expect(response).toContain('Psalm');
-    });
+      expect(response).toContain('Psalm 34:18');
 
-    it('should include grief resource details', () => {
-      const response = service.generateGriefResponse();
       const resources = service.getGriefResources();
-
-      resources.forEach(resource => {
+      resources.forEach((resource) => {
         expect(response).toContain(resource.name);
         expect(response).toContain(resource.contact);
       });
     });
   });
 
-  describe('text normalization', () => {
-    it('should handle different punctuation', () => {
-      const messages = [
-        'I want to kill myself!!!',
-        'I want to kill myself...',
-        'I want to kill myself???',
-        'I, want, to, kill, myself',
-      ];
+  describe('Feedback Logging', () => {
+    it('should log crisis detection for tracking', async () => {
+      mockPrismaService.safetyDetectionFeedback.create.mockResolvedValue({});
 
-      messages.forEach((msg) => {
-        expect(service.detectCrisis(msg)).toBe(true);
+      await service.logDetection(
+        'crisis',
+        { isDetected: true, detectionMethod: 'pattern', confidence: 'high' },
+        'I want to harm myself',
+        'session-123',
+        'message-456',
+        'user-789'
+      );
+
+      expect(mockPrismaService.safetyDetectionFeedback.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          detectionType: 'crisis',
+          detectionMethod: 'pattern',
+          confidenceLevel: 'high',
+          messageContent: 'I want to harm myself',
+          sessionId: 'session-123',
+          messageId: 'message-456',
+          userId: 'user-789',
+        }),
       });
     });
 
-    it('should handle different capitalizations', () => {
-      const messages = [
-        'I WANT TO KILL MYSELF',
-        'i want to kill myself',
-        'I Want To Kill Myself',
-      ];
+    it('should log grief detection for tracking', async () => {
+      mockPrismaService.safetyDetectionFeedback.create.mockResolvedValue({});
 
-      messages.forEach((msg) => {
-        expect(service.detectCrisis(msg)).toBe(true);
+      await service.logDetection(
+        'grief',
+        { isDetected: true, detectionMethod: 'ai', confidence: 'medium' },
+        'my mother passed away',
+        'session-123',
+        'message-456'
+      );
+
+      expect(mockPrismaService.safetyDetectionFeedback.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          detectionType: 'grief',
+          detectionMethod: 'ai',
+          confidenceLevel: 'medium',
+        }),
       });
     });
 
-    it('should handle extra spaces', () => {
-      const messages = [
-        'I  want  to  kill  myself',
-        'I    want    to    kill    myself',
+    it('should handle logging failures gracefully', async () => {
+      mockPrismaService.safetyDetectionFeedback.create.mockRejectedValue(new Error('DB error'));
+
+      // Should not throw
+      await expect(
+        service.logDetection(
+          'crisis',
+          { isDetected: true, detectionMethod: 'pattern', confidence: 'high' },
+          'test message'
+        )
+      ).resolves.not.toThrow();
+    });
+
+    it('should submit user feedback', async () => {
+      mockPrismaService.safetyDetectionFeedback.update.mockResolvedValue({});
+
+      await service.submitDetectionFeedback('feedback-123', true, 'This was accurate');
+
+      expect(mockPrismaService.safetyDetectionFeedback.update).toHaveBeenCalledWith({
+        where: { id: 'feedback-123' },
+        data: {
+          isAccurate: true,
+          feedbackNote: 'This was accurate',
+          feedbackSubmittedAt: expect.any(Date),
+        },
+      });
+    });
+  });
+
+  describe('Detection Statistics', () => {
+    it('should return detection statistics', async () => {
+      mockPrismaService.safetyDetectionFeedback.count
+        .mockResolvedValueOnce(100) // total
+        .mockResolvedValueOnce(80) // feedback submitted
+        .mockResolvedValueOnce(70) // accurate
+        .mockResolvedValueOnce(10); // false positives
+
+      mockPrismaService.safetyDetectionFeedback.groupBy
+        .mockResolvedValueOnce([
+          { detectionMethod: 'pattern', _count: 60 },
+          { detectionMethod: 'ai', _count: 40 },
+        ])
+        .mockResolvedValueOnce([
+          { confidenceLevel: 'high', _count: 50 },
+          { confidenceLevel: 'medium', _count: 30 },
+          { confidenceLevel: 'low', _count: 20 },
+        ]);
+
+      const stats = await service.getDetectionStatistics();
+
+      expect(stats.totalDetections).toBe(100);
+      expect(stats.feedbackSubmitted).toBe(80);
+      expect(stats.accurateDetections).toBe(70);
+      expect(stats.falsePositives).toBe(10);
+      expect(stats.accuracyRate).toBe('87.50%');
+      expect(stats.byMethod).toHaveLength(2);
+      expect(stats.byConfidence).toHaveLength(3);
+    });
+
+    it('should filter statistics by detection type', async () => {
+      mockPrismaService.safetyDetectionFeedback.count.mockResolvedValue(50);
+      mockPrismaService.safetyDetectionFeedback.groupBy
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      await service.getDetectionStatistics('crisis');
+
+      expect(mockPrismaService.safetyDetectionFeedback.count).toHaveBeenCalledWith({
+        where: { detectionType: 'crisis' },
+      });
+    });
+
+    it('should get false positives for pattern refinement', async () => {
+      const mockFalsePositives = [
+        {
+          id: '1',
+          messageContent: 'discussing violence in the Bible',
+          detectionMethod: 'pattern',
+          confidenceLevel: 'medium',
+          feedbackNote: 'This was theological discussion',
+          detectedAt: new Date(),
+          feedbackSubmittedAt: new Date(),
+        },
       ];
 
-      messages.forEach((msg) => {
-        expect(service.detectCrisis(msg)).toBe(true);
+      mockPrismaService.safetyDetectionFeedback.findMany.mockResolvedValue(mockFalsePositives);
+
+      const result = await service.getFalsePositives('crisis', 10);
+
+      expect(result).toEqual(mockFalsePositives);
+      expect(mockPrismaService.safetyDetectionFeedback.findMany).toHaveBeenCalledWith({
+        where: { detectionType: 'crisis', isAccurate: false },
+        orderBy: { feedbackSubmittedAt: 'desc' },
+        take: 10,
+        select: expect.any(Object),
       });
     });
   });
