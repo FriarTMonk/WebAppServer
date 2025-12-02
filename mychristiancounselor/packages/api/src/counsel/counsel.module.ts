@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CounselService } from './counsel.service';
 import { CounselExportService } from './counsel-export.service';
+import { CounselProcessingService } from './counsel-processing.service';
 import { AssignmentService } from './assignment.service';
 import { ObservationService } from './observation.service';
 import { WellbeingAnalysisService } from './wellbeing-analysis.service';
@@ -29,6 +30,7 @@ import { EmailModule } from '../email/email.module';
   providers: [
     CounselService,
     CounselExportService,
+    CounselProcessingService,
     AssignmentService,
     ObservationService,
     WellbeingAnalysisService,
@@ -39,6 +41,7 @@ import { EmailModule } from '../email/email.module';
   ],
   exports: [
     CounselService,
+    CounselProcessingService,
     AssignmentService,
     ObservationService,
     WellbeingAnalysisService,
