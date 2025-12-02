@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-nx-workspace@latest mychrisiancounselor --preset=ts --nx-cloud=skip --packageManager=npm)",
+      "Skill(superpowers:executing-plans)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

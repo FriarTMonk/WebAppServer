@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ScriptureService } from '../scripture/scripture.service';
-import { AiService } from '../ai/ai.service';
+import { CounselingAiService } from '../ai/counseling-ai.service';
 import { ScriptureReference, BibleTranslation } from '@mychristiancounselor/shared';
 
 /**
@@ -13,7 +13,7 @@ export class ScriptureEnrichmentService {
 
   constructor(
     private scriptureService: ScriptureService,
-    private aiService: AiService,
+    private counselingAi: CounselingAiService,
   ) {}
 
   /**
@@ -59,7 +59,7 @@ export class ScriptureEnrichmentService {
     themeBasedScriptures: ScriptureReference[]
   ): Promise<ScriptureReference[]> {
     // Extract scripture references from AI response
-    const extractedRefs = this.aiService.extractScriptureReferences(aiContent);
+    const extractedRefs = this.counselingAi.extractScriptureReferences(aiContent);
 
     if (extractedRefs.length === 0) {
       // No verses extracted - fall back to theme-based scriptures

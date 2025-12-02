@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AiService } from '../ai/ai.service';
+import { CounselingAiService } from '../ai/counseling-ai.service';
 
 @Injectable()
 export class WellbeingAnalysisService {
@@ -8,7 +8,7 @@ export class WellbeingAnalysisService {
 
   constructor(
     private prisma: PrismaService,
-    private aiService: AiService,
+    private counselingAi: CounselingAiService,
   ) {}
 
   /**
@@ -167,7 +167,7 @@ Respond in JSON format:
 }`;
 
     try {
-      const completion = await this.aiService['openai'].chat.completions.create({
+      const completion = await this.counselingAi['openai'].chat.completions.create({
         model: 'gpt-3.5-turbo',
         messages: [
           {
@@ -219,7 +219,7 @@ Create a 2-3 sentence summary including:
 Write in professional pastoral language suitable for clinical documentation.`;
 
     try {
-      const completion = await this.aiService['openai'].chat.completions.create({
+      const completion = await this.counselingAi['openai'].chat.completions.create({
         model: 'gpt-3.5-turbo',
         messages: [
           {
