@@ -106,7 +106,8 @@ export class CounselExportService {
 
     // Regular expression to match Bible verse patterns
     // Matches patterns like: "John 3:16", "1 Corinthians 13:4-7", "Genesis 1:1-3"
-    const bibleVersePattern = /\b(\d\s)?([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s(\d+):(\d+)(?:-(\d+))?/g;
+    // Multi-word books must start with a digit (e.g., "1 Corinthians", "2 Kings")
+    const bibleVersePattern = /\b(\d\s[A-Z][a-z]+(?:\s[A-Z][a-z]+)?|[A-Z][a-z]+)\s(\d+):(\d+)(?:-(\d+))?/g;
 
     // Scan through all message contents
     messages.forEach(message => {

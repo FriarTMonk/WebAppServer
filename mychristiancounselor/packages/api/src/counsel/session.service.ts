@@ -80,8 +80,8 @@ export class SessionService {
       this.logger.debug(`Created new session ${session.id} for user ${userId}`);
     }
 
-    // Update translation preference if changed
-    if (session && preferredTranslation && preferredTranslation !== session.preferredTranslation) {
+    // Update translation preference if changed (compare with validated translation)
+    if (session && validTranslation && validTranslation !== session.preferredTranslation) {
       session = await this.prisma.session.update({
         where: { id: session.id },
         data: { preferredTranslation: validTranslation },
@@ -147,7 +147,9 @@ export class SessionService {
     content: string,
     scriptureReferences: any[],
     isClarifyingQuestion: boolean,
-    canSaveSession: boolean
+    canSaveSession: boolean,
+    griefResources?: any[],
+    crisisResources?: any[]
   ) {
     if (!canSaveSession) {
       // Return temporary message object for free users
@@ -157,6 +159,8 @@ export class SessionService {
         role: 'assistant' as const,
         content,
         scriptureReferences,
+        griefResources,
+        crisisResources,
         isClarifyingQuestion,
         timestamp: new Date(),
       };
@@ -170,6 +174,8 @@ export class SessionService {
         role: 'assistant',
         content,
         scriptureReferences,
+        griefResources: griefResources ? JSON.parse(JSON.stringify(griefResources)) : undefined,
+        crisisResources: crisisResources ? JSON.parse(JSON.stringify(crisisResources)) : undefined,
         isClarifyingQuestion,
         timestamp: new Date(),
       },

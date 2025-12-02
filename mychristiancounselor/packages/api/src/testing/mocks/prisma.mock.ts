@@ -1,125 +1,65 @@
 import { PrismaService } from '../../prisma/prisma.service';
 
 /**
+ * Creates a mock for a Prisma model with common operations
+ */
+function createModelMock(methods: string[] = []) {
+  const mock: any = {};
+  const allMethods = [
+    'create',
+    'createMany',
+    'findUnique',
+    'findFirst',
+    'findMany',
+    'update',
+    'updateMany',
+    'delete',
+    'deleteMany',
+    'upsert',
+    'count',
+    ...methods,
+  ];
+
+  // Create a jest.fn() for each method
+  allMethods.forEach(method => {
+    mock[method] = jest.fn();
+  });
+
+  return mock;
+}
+
+/**
  * Mock factory for PrismaService
  * Provides a comprehensive mock for database operations
  */
-export function createPrismaMock(): Partial<PrismaService> {
-  return {
-    user: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findFirst: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      upsert: jest.fn(),
-      count: jest.fn(),
-    } as any,
-    session: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findFirst: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      upsert: jest.fn(),
-      count: jest.fn(),
-    } as any,
-    message: {
-      create: jest.fn(),
-      createMany: jest.fn(),
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    } as any,
-    sessionNote: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findFirst: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      count: jest.fn(),
-    } as any,
-    sessionShare: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findFirst: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    } as any,
-    counselorAssignment: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findFirst: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    } as any,
-    counselorCoverageGrant: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findFirst: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    } as any,
-    counselorObservation: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    } as any,
-    organization: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    } as any,
-    organizationMembership: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findFirst: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    } as any,
-    subscription: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findFirst: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    } as any,
-    supportTicket: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    } as any,
-    $transaction: jest.fn((callback) => callback({
-      user: {
-        create: jest.fn(),
-        findUnique: jest.fn(),
-        findMany: jest.fn(),
-        update: jest.fn(),
-        delete: jest.fn(),
-      },
-      session: {
-        create: jest.fn(),
-        findUnique: jest.fn(),
-        findMany: jest.fn(),
-        update: jest.fn(),
-        delete: jest.fn(),
-      },
-    })),
+export function createPrismaMock(): any {
+  const mock = {
+    user: createModelMock(),
+    session: createModelMock(),
+    message: createModelMock(),
+    sessionNote: createModelMock(),
+    sessionShare: createModelMock(),
+    sessionShareAccess: createModelMock(),
+    counselorAssignment: createModelMock(),
+    counselorCoverageGrant: createModelMock(),
+    counselorObservation: createModelMock(),
+    memberWellbeingStatus: createModelMock(),
+    organization: createModelMock(),
+    organizationMembership: createModelMock(),
+    organizationMember: createModelMock(),
+    subscription: createModelMock(),
+    supportTicket: createModelMock(),
+    $transaction: jest.fn((callback) => {
+      // For transactions, pass a mock that has the same structure
+      return callback(mock);
+    }),
+    $connect: jest.fn(),
+    $disconnect: jest.fn(),
+    $executeRaw: jest.fn(),
+    $queryRaw: jest.fn(),
   };
+
+  return mock;
 }
 
 /**

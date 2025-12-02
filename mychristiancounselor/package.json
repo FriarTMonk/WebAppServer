@@ -55,14 +55,19 @@
     "@nestjs/jwt": "^11.0.1",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/swagger": "^11.2.3",
     "@nestjs/throttler": "^6.4.0",
     "@prisma/client": "^6.19.0",
+    "@sentry/nestjs": "^10.27.0",
+    "@sentry/node": "^10.27.0",
+    "@sentry/profiling-node": "^10.27.0",
     "@tailwindcss/postcss": "^4.1.17",
     "autoprefixer": "^10.4.22",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "nest-winston": "^1.10.2",
     "next": "~15.2.4",
     "openai": "^6.8.1",
     "passport": "^0.7.0",
@@ -73,8 +78,10 @@
     "react-dom": "^19.0.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0",
+    "swagger-ui-express": "^5.0.1",
     "swr": "^2.3.6",
     "tailwindcss": "^4.1.17",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "winston": "^3.18.3"
   }
 }

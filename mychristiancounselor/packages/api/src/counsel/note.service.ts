@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nest
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from './permission.service';
 import { EmailService } from '../email/email.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 
@@ -18,6 +19,7 @@ export class NoteService {
     private prisma: PrismaService,
     private permissionService: PermissionService,
     private emailService: EmailService,
+    private subscriptionService: SubscriptionService,
   ) {}
 
   /**

@@ -87,7 +87,7 @@ export class SubscriptionService {
 
     return {
       subscriptionStatus: user.subscriptionStatus as 'none' | 'active' | 'canceled' | 'past_due',
-      subscriptionTier: user.subscriptionTier as 'basic' | 'premium' | undefined,
+      subscriptionTier: (user.subscriptionTier as 'basic' | 'premium' | null) || undefined,
       maxClarifyingQuestions: isSubscribed ? 9 : 3,
       hasHistoryAccess: isSubscribed,
       hasSharingAccess: isSubscribed,

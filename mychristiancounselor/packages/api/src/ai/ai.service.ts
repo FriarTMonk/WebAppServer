@@ -143,13 +143,6 @@ ${currentQuestionCount >= maxClarifyingQuestions
 
     const parsed = JSON.parse(response);
 
-    // Debug logging
-    this.logger.debug('[AI RESPONSE DEBUG] Raw response:', response);
-    this.logger.debug('[AI RESPONSE DEBUG] Parsed object:', JSON.stringify(parsed));
-    this.logger.debug('[AI RESPONSE DEBUG] requiresClarification:', parsed.requiresClarification);
-    this.logger.debug('[AI RESPONSE DEBUG] guidance field:', parsed.guidance);
-    this.logger.debug('[AI RESPONSE DEBUG] clarifyingQuestion field:', parsed.clarifyingQuestion);
-
     // The JSON format uses 'guidance' or 'clarifyingQuestion', not 'content'
     const content = parsed.requiresClarification
       ? parsed.clarifyingQuestion
@@ -271,9 +264,6 @@ Respond with ONLY "true" or "false" and nothing else.`;
       });
 
       const response = completion.choices[0].message.content?.trim().toLowerCase();
-      this.logger.debug(`[CRISIS DETECTION] Message: ${message.substring(0, 100)}`);
-      this.logger.debug(`[CRISIS DETECTION] AI Response: ${response}`);
-      this.logger.debug(`[CRISIS DETECTION] Result: ${response === 'true'}`);
       return response === 'true';
     } catch (error) {
       this.logger.error('AI crisis detection error:', error);
@@ -332,9 +322,6 @@ Respond with ONLY "true" or "false" and nothing else.`;
       });
 
       const response = completion.choices[0].message.content?.trim().toLowerCase();
-      this.logger.debug(`[GRIEF DETECTION] Message: ${message.substring(0, 100)}`);
-      this.logger.debug(`[GRIEF DETECTION] AI Response: ${response}`);
-      this.logger.debug(`[GRIEF DETECTION] Result: ${response === 'true'}`);
       return response === 'true';
     } catch (error) {
       this.logger.error('AI grief detection error:', error);

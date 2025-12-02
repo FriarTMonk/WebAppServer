@@ -9,8 +9,8 @@ describe('IsPlatformAdminGuard', () => {
 
   beforeEach(() => {
     prismaService = {
-      organizationMember: {
-        findFirst: jest.fn(),
+      user: {
+        findUnique: jest.fn(),
       },
     };
 
@@ -29,21 +29,18 @@ describe('IsPlatformAdminGuard', () => {
 
   it('should throw ForbiddenException if user is not platform admin', async () => {
     const context = createMockExecutionContext({ id: 'user-123', email: 'user@test.com' });
-    (prismaService.organizationMember.findFirst as jest.Mock).mockResolvedValue(null);
+    (prismaService.user.findUnique as jest.Mock).mockResolvedValue({
+      isPlatformAdmin: false,
+    });
 
     await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
   });
 
   it('should return true if user is platform admin', async () => {
     const context = createMockExecutionContext({ id: 'admin-123', email: 'admin@test.com' });
-    (prismaService.organizationMember.findFirst as jest.Mock).mockResolvedValue({
-      id: 'membership-123',
-      userId: 'admin-123',
-      organizationId: 'platform-admin-org',
-      roleId: 'admin-role',
-      organization: { id: 'platform-admin-org', isSystemOrganization: true } as any,
-      role: { id: 'admin-role', permissions: ['platform_admin'] } as any,
-    } as any);
+    (prismaService.user.findUnique as jest.Mock).mockResolvedValue({
+      isPlatformAdmin: true,
+    });
 
     const result = await guard.canActivate(context);
 
