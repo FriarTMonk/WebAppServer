@@ -575,4 +575,171 @@ describe('SubscriptionService', () => {
       expect(txMock.subscription.update).not.toHaveBeenCalled();
     });
   });
+
+  describe('suspendSubscription', () => {
+    it('should suspend active subscription', async () => {
+      const userId = 'test-user-id';
+      const user = createUserFixture({
+        id: userId,
+        subscriptionStatus: 'active',
+        stripeSubscriptionId: 'sub_123',
+      });
+
+      prismaMock.user!.findUnique = jest.fn().mockResolvedValue(user);
+      prismaMock.user!.update = jest.fn().mockResolvedValue({
+        ...user,
+        subscriptionStatus: 'suspended',
+      });
+
+      await service.suspendSubscription(userId, 'joined_organization');
+
+      expect(prismaMock.user!.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: {
+          subscriptionStatus: 'suspended',
+        },
+      });
+    });
+
+    it('should not suspend if subscription is not active', async () => {
+      const userId = 'test-user-id';
+      const user = createUserFixture({
+        id: userId,
+        subscriptionStatus: 'canceled',
+        stripeSubscriptionId: null,
+      });
+
+      prismaMock.user!.findUnique = jest.fn().mockResolvedValue(user);
+      prismaMock.user!.update = jest.fn();
+
+      await service.suspendSubscription(userId);
+
+      expect(prismaMock.user!.update).not.toHaveBeenCalled();
+    });
+
+    it('should handle missing Stripe subscription ID', async () => {
+      const userId = 'test-user-id';
+      const user = createUserFixture({
+        id: userId,
+        subscriptionStatus: 'active',
+        stripeSubscriptionId: null,
+      });
+
+      prismaMock.user!.findUnique = jest.fn().mockResolvedValue(user);
+      prismaMock.user!.update = jest.fn();
+
+      await service.suspendSubscription(userId);
+
+      expect(prismaMock.user!.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw error when user not found', async () => {
+      prismaMock.user!.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.suspendSubscription('non-existent')).rejects.toThrow(
+        'User not found: non-existent'
+      );
+    });
+  });
+
+  describe('reactivateSubscription', () => {
+    it('should reactivate suspended subscription', async () => {
+      const userId = 'test-user-id';
+      const user = createUserFixture({
+        id: userId,
+        subscriptionStatus: 'suspended',
+        stripeSubscriptionId: 'sub_123',
+      });
+
+      prismaMock.user!.findUnique = jest.fn().mockResolvedValue(user);
+      prismaMock.user!.update = jest.fn().mockResolvedValue({
+        ...user,
+        subscriptionStatus: 'active',
+      });
+
+      await service.reactivateSubscription(userId);
+
+      expect(prismaMock.user!.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: {
+          subscriptionStatus: 'active',
+        },
+      });
+    });
+
+    it('should not reactivate if subscription is not suspended', async () => {
+      const userId = 'test-user-id';
+      const user = createUserFixture({
+        id: userId,
+        subscriptionStatus: 'active',
+        stripeSubscriptionId: 'sub_123',
+      });
+
+      prismaMock.user!.findUnique = jest.fn().mockResolvedValue(user);
+      prismaMock.user!.update = jest.fn();
+
+      await service.reactivateSubscription(userId);
+
+      expect(prismaMock.user!.update).not.toHaveBeenCalled();
+    });
+
+    it('should handle missing Stripe subscription ID', async () => {
+      const userId = 'test-user-id';
+      const user = createUserFixture({
+        id: userId,
+        subscriptionStatus: 'suspended',
+        stripeSubscriptionId: null,
+      });
+
+      prismaMock.user!.findUnique = jest.fn().mockResolvedValue(user);
+      prismaMock.user!.update = jest.fn();
+
+      await service.reactivateSubscription(userId);
+
+      expect(prismaMock.user!.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw error when user not found', async () => {
+      prismaMock.user!.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.reactivateSubscription('non-existent')).rejects.toThrow(
+        'User not found: non-existent'
+      );
+    });
+  });
+
+  describe('Stripe Integration (without Stripe configured)', () => {
+    it('should throw error when calling handleStripeWebhook without Stripe', async () => {
+      const rawBody = Buffer.from('test');
+      const signature = 'test-signature';
+
+      await expect(
+        service.handleStripeWebhook(rawBody, signature)
+      ).rejects.toThrow(); // Will throw Stripe not configured or signature verification error
+    });
+
+    it('should throw error when calling createCheckoutSession without Stripe', async () => {
+      const user = createUserFixture({
+        id: 'user-123',
+        email: 'test@example.com',
+      });
+      prismaMock.user!.findUnique = jest.fn().mockResolvedValue(user);
+
+      await expect(
+        service.createCheckoutSession('user-123', 'price_123', 'success', 'cancel')
+      ).rejects.toThrow(); // Throws "Stripe not configured" or "User not found"
+    });
+
+    it('should throw error when calling createPortalSession without Stripe', async () => {
+      const user = createUserFixture({
+        id: 'user-123',
+        stripeCustomerId: null,
+      });
+      prismaMock.user!.findUnique = jest.fn().mockResolvedValue(user);
+
+      await expect(
+        service.createPortalSession('user-123', 'return-url')
+      ).rejects.toThrow(); // Throws "Stripe not configured" or "User does not have a Stripe customer account"
+    });
+  });
 });

@@ -51,8 +51,8 @@ export class SafetyService {
       /\babuse/i,
       /\bviolence/i,
       /\brap(e|ed|ing)\b/i, // Catches rape, raped, raping
-      /\bbeaten\b/i,
-      /\bbeating\s+me\b/i,
+      /\bbeat(s|en|ing)(\s+me)?\b/i, // Catches beat, beats, beaten, beating (me)
+      /\bhit(s|ting)?(\s+me)?\b/i, // Catches hit, hits, hitting (me)
       /\bsexual(ly)?\s+assault/i, // Catches sexual assault, sexually assaulted
       /\bmolest/i, // Catches molest, molested, molesting
     ];
