@@ -133,9 +133,22 @@ ${currentQuestionCount >= maxClarifyingQuestions
     }
 
     const parsed = JSON.parse(response);
+
+    // Debug logging
+    this.logger.debug('[AI RESPONSE DEBUG] Raw response:', response);
+    this.logger.debug('[AI RESPONSE DEBUG] Parsed object:', JSON.stringify(parsed));
+    this.logger.debug('[AI RESPONSE DEBUG] requiresClarification:', parsed.requiresClarification);
+    this.logger.debug('[AI RESPONSE DEBUG] guidance field:', parsed.guidance);
+    this.logger.debug('[AI RESPONSE DEBUG] clarifyingQuestion field:', parsed.clarifyingQuestion);
+
+    // The JSON format uses 'guidance' or 'clarifyingQuestion', not 'content'
+    const content = parsed.requiresClarification
+      ? parsed.clarifyingQuestion
+      : parsed.guidance;
+
     return {
       requiresClarification: parsed.requiresClarification === true,
-      content: parsed.content,
+      content: content,
     };
   }
 
@@ -163,6 +176,47 @@ ${currentQuestionCount >= maxClarifyingQuestions
     }
 
     return themes.length > 0 ? themes : ['general'];
+  }
+
+  /**
+   * Extract scripture references from AI response text
+   * Matches patterns like: "John 3:16", "1 Corinthians 13:4-7", "Genesis 1:1"
+   */
+  extractScriptureReferences(text: string): Array<{
+    book: string;
+    chapter: number;
+    verse: number;
+    verseEnd?: number;
+  }> {
+    const references: Array<{
+      book: string;
+      chapter: number;
+      verse: number;
+      verseEnd?: number;
+    }> = [];
+
+    // Regular expression to match Bible verse patterns
+    // Matches: "John 3:16", "1 Corinthians 13:4-7", "Genesis 1:1-3", etc.
+    const bibleVersePattern = /\b(\d\s)?([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s(\d+):(\d+)(?:-(\d+))?/g;
+
+    let match;
+    while ((match = bibleVersePattern.exec(text)) !== null) {
+      const bookPrefix = match[1] ? match[1].trim() : '';
+      const bookName = match[2];
+      const book = bookPrefix ? `${bookPrefix} ${bookName}` : bookName;
+      const chapter = parseInt(match[3], 10);
+      const verseStart = parseInt(match[4], 10);
+      const verseEnd = match[5] ? parseInt(match[5], 10) : undefined;
+
+      references.push({
+        book: book.trim(),
+        chapter,
+        verse: verseStart,
+        verseEnd,
+      });
+    }
+
+    return references;
   }
 
   /**

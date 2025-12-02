@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
 import { ScriptureService } from '../scripture/scripture.service';
@@ -6,13 +6,15 @@ import { SafetyService } from '../safety/safety.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { TranslationService } from '../scripture/translation.service';
 import { EmailService } from '../email/email.service';
-import { CounselResponse, BibleTranslation } from '@mychristiancounselor/shared';
+import { CounselResponse, BibleTranslation, ScriptureReference } from '@mychristiancounselor/shared';
 import { randomUUID } from 'crypto';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 
 @Injectable()
 export class CounselService {
+  private readonly logger = new Logger(CounselService.name);
+
   constructor(
     private prisma: PrismaService,
     private aiService: AiService,
@@ -176,11 +178,50 @@ export class CounselService {
       maxClarifyingQuestions
     );
 
-    // 10. Extract scripture references from response
-    // (Currently unused, but available for future enhancement)
-    // const extractedRefs = this.aiService.extractScriptureReferences(
-    //   aiResponse.content
-    // );
+    // 10. Extract scripture references from AI response and get related verses
+    const extractedRefs = this.aiService.extractScriptureReferences(
+      aiResponse.content
+    );
+
+    const versesForResponse: ScriptureReference[] = [];
+
+    // For each extracted reference, get the verse and 2-3 related verses
+    for (const ref of extractedRefs) {
+      try {
+        // Get the specific verse mentioned by the AI
+        const mainVerse = await this.scriptureService.getScriptureByReference(
+          ref.book,
+          ref.chapter,
+          ref.verse,
+          session.preferredTranslation
+        );
+
+        if (mainVerse) {
+          // Tag as AI-cited
+          versesForResponse.push({ ...mainVerse, source: 'ai-cited' as const });
+
+          // Get related verses (nearby context)
+          const relatedVerses = await this.scriptureService.getRelatedVerses(
+            ref.book,
+            ref.chapter,
+            ref.verse,
+            session.preferredTranslation,
+            2 // Get 2 related verses for each referenced verse
+          );
+
+          // Tag related verses
+          versesForResponse.push(...relatedVerses.map(v => ({ ...v, source: 'related' as const })));
+        }
+      } catch (error) {
+        // If a specific reference can't be found, continue with others
+        this.logger.warn(`Could not fetch verse ${ref.book} ${ref.chapter}:${ref.verse}`, error);
+      }
+    }
+
+    // If no verses were extracted from AI response, fall back to theme-based scriptures
+    const finalScriptures = versesForResponse.length > 0
+      ? versesForResponse
+      : scriptures.map(s => ({ ...s, source: 'theme' as const }));
 
     // 11. Store assistant message (only for subscribed users)
     let assistantMessage;
@@ -191,7 +232,7 @@ export class CounselService {
           sessionId: session.id,
           role: 'assistant',
           content: aiResponse.content,
-          scriptureReferences: JSON.parse(JSON.stringify(scriptures)),
+          scriptureReferences: JSON.parse(JSON.stringify(finalScriptures)),
           isClarifyingQuestion: aiResponse.requiresClarification,
           timestamp: new Date(),
         },
@@ -203,7 +244,7 @@ export class CounselService {
         sessionId: session.id,
         role: 'assistant' as const,
         content: aiResponse.content,
-        scriptureReferences: JSON.parse(JSON.stringify(scriptures)),
+        scriptureReferences: JSON.parse(JSON.stringify(finalScriptures)),
         isClarifyingQuestion: aiResponse.requiresClarification,
         timestamp: new Date(),
       };
@@ -222,7 +263,7 @@ export class CounselService {
         sessionId: session.id,
         role: 'assistant',
         content: aiResponse.content,
-        scriptureReferences: scriptures,
+        scriptureReferences: finalScriptures,
         timestamp: assistantMessage.timestamp,
       },
       requiresClarification: aiResponse.requiresClarification,

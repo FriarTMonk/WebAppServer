@@ -34,13 +34,57 @@ export function ScriptureCard({ scripture }: ScriptureCardProps) {
     return `https://www.blueletterbible.org/lexicon/${number.toLowerCase()}/kjv/wlc/0-1/`;
   };
 
+  // Get source badge styling
+  const getSourceBadge = () => {
+    if (!scripture.source) return null;
+
+    const badges = {
+      'ai-cited': {
+        label: 'AI Cited',
+        bgColor: 'bg-green-100',
+        textColor: 'text-green-800',
+        borderColor: 'border-green-300',
+        title: 'Directly referenced by the AI counselor'
+      },
+      'related': {
+        label: 'Related',
+        bgColor: 'bg-purple-100',
+        textColor: 'text-purple-800',
+        borderColor: 'border-purple-300',
+        title: 'Contextually related verse'
+      },
+      'theme': {
+        label: 'Theme',
+        bgColor: 'bg-amber-100',
+        textColor: 'text-amber-800',
+        borderColor: 'border-amber-300',
+        title: 'Thematically relevant verse'
+      }
+    };
+
+    const badge = badges[scripture.source];
+    if (!badge) return null;
+
+    return (
+      <span
+        className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${badge.bgColor} ${badge.textColor} ${badge.borderColor}`}
+        title={badge.title}
+      >
+        {badge.label}
+      </span>
+    );
+  };
+
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
       <div className="flex justify-between items-center mb-2">
-        <div className="font-semibold text-blue-900">
-          {scripture.book} {scripture.chapter}:{scripture.verseStart}{' '}
-          {scripture.theme && <span className="italic font-normal">({scripture.theme})</span>}{' '}
-          ({scripture.translation})
+        <div className="flex items-center gap-2 font-semibold text-blue-900">
+          <span>
+            {scripture.book} {scripture.chapter}:{scripture.verseStart}{' '}
+            {scripture.theme && <span className="italic font-normal">({scripture.theme})</span>}{' '}
+            ({scripture.translation})
+          </span>
+          {getSourceBadge()}
         </div>
         {hasStrongs && (
           <button
