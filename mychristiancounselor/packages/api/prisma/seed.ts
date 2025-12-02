@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { TRANSLATIONS } from '@mychristiancounselor/shared';
 import { seedHolidays } from './seeds/seed-holidays';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -79,19 +80,144 @@ async function seedVerses() {
   console.log('3. Run: npm run seed');
 }
 
-// Platform Admin organization is no longer needed
-// Platform admins are identified by the isPlatformAdmin flag on the User table
-// Individual users do not need to be in an organization
+async function seedPlatformOrganization() {
+  console.log('\nSeeding platform organization...');
+
+  // Check if platform organization already exists
+  const existingOrg = await prisma.organization.findFirst({
+    where: { isSystemOrganization: true },
+  });
+
+  if (existingOrg) {
+    console.log('✓ Platform organization already exists:', existingOrg.name);
+    return;
+  }
+
+  // Create platform organization "Tuckaho-tech"
+  const platformOrg = await prisma.organization.create({
+    data: {
+      name: 'Tuckaho-tech',
+      description: 'Platform Administration Organization',
+      licenseType: null,
+      licenseStatus: 'active',
+      licenseExpiresAt: null,
+      maxMembers: 999999, // Unlimited for platform org
+      isSystemOrganization: true,
+    },
+  });
+
+  console.log('✓ Created platform organization:', platformOrg.name);
+
+  // Create system roles for the organization
+  const ownerRole = await prisma.organizationRole.create({
+    data: {
+      organizationId: platformOrg.id,
+      name: 'Owner',
+      description: 'Organization owner with full administrative privileges',
+      isSystemRole: true,
+      permissions: JSON.parse(JSON.stringify([
+        'org:manage',
+        'members:manage',
+        'roles:manage',
+        'billing:manage',
+        'settings:manage',
+      ])),
+    },
+  });
+
+  console.log('✓ Created Owner role for platform organization');
+
+  // Check if platform admin user already exists
+  const existingAdmin = await prisma.user.findUnique({
+    where: { email: 'latuck369@gmail.com' },
+  });
+
+  if (existingAdmin) {
+    console.log('✓ Platform admin user already exists:', existingAdmin.email);
+
+    // Ensure user is marked as platform admin
+    if (!existingAdmin.isPlatformAdmin) {
+      await prisma.user.update({
+        where: { id: existingAdmin.id },
+        data: { isPlatformAdmin: true },
+      });
+      console.log('✓ Updated user to platform admin status');
+    }
+
+    // Ensure user is member of platform org
+    const membership = await prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId: platformOrg.id,
+          userId: existingAdmin.id,
+        },
+      },
+    });
+
+    if (!membership) {
+      await prisma.organizationMember.create({
+        data: {
+          organizationId: platformOrg.id,
+          userId: existingAdmin.id,
+          roleId: ownerRole.id,
+        },
+      });
+      console.log('✓ Added platform admin to organization');
+    }
+
+    return;
+  }
+
+  // Create platform admin user
+  // Default password: "ChangeMe123!" - MUST be changed on first login
+  const defaultPassword = 'ChangeMe123!';
+  const passwordHash = await bcrypt.hash(defaultPassword, 10);
+
+  const platformAdmin = await prisma.user.create({
+    data: {
+      email: 'latuck369@gmail.com',
+      passwordHash,
+      firstName: 'Platform',
+      lastName: 'Admin',
+      emailVerified: true, // Pre-verified for platform admin
+      isPlatformAdmin: true,
+      accountType: 'organization',
+      isActive: true,
+    },
+  });
+
+  console.log('✓ Created platform admin user:', platformAdmin.email);
+  console.log('  ⚠️  Default password: "ChangeMe123!" - CHANGE ON FIRST LOGIN!');
+
+  // Add admin to platform organization
+  await prisma.organizationMember.create({
+    data: {
+      organizationId: platformOrg.id,
+      userId: platformAdmin.id,
+      roleId: ownerRole.id,
+    },
+  });
+
+  console.log('✓ Added platform admin to organization');
+  console.log('✓ Platform organization setup complete');
+}
 
 async function main() {
   console.log('Starting database seed...\n');
 
   try {
+    // MUST run first - creates platform organization and admin user
+    await seedPlatformOrganization();
+
     await seedTranslations();
     await seedVerses();
     await seedHolidays();
 
     console.log('\n✅ Database seeding completed!');
+    console.log('\n📋 Platform Admin Credentials:');
+    console.log('   Email: latuck369@gmail.com');
+    console.log('   Default Password: ChangeMe123!');
+    console.log('   ⚠️  IMPORTANT: Change this password immediately after first login!\n');
   } catch (error) {
     console.error('❌ Error seeding database:', error);
     throw error;
