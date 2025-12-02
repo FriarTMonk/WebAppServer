@@ -7,6 +7,7 @@ import { WellbeingAnalysisService } from './wellbeing-analysis.service';
 import { WellbeingAnalysisScheduler } from './wellbeing-analysis.scheduler';
 import { ScriptureEnrichmentService } from './scripture-enrichment.service';
 import { SessionService } from './session.service';
+import { NoteService } from './note.service';
 import { CounselController } from './counsel.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AiModule } from '../ai/ai.module';
@@ -34,6 +35,7 @@ import { EmailModule } from '../email/email.module';
     WellbeingAnalysisScheduler,
     ScriptureEnrichmentService,
     SessionService,
+    NoteService,
   ],
   exports: [
     CounselService,
@@ -42,6 +44,7 @@ import { EmailModule } from '../email/email.module';
     WellbeingAnalysisService,
     SessionService,
     ScriptureEnrichmentService,
+    NoteService,
   ],
 })
 export class CounselModule {}
