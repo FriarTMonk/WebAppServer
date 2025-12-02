@@ -1,6 +1,6 @@
 # Phase 2: God Class Refactoring Guide
 
-## Status: ✅ In Progress (2/4 Services Extracted)
+## Status: ✅ In Progress (3/4 Services Extracted)
 
 This document provides a comprehensive guide for refactoring the CounselService "god class" (705 lines) into focused, testable services following the Single Responsibility Principle.
 
@@ -52,35 +52,9 @@ This document provides a comprehensive guide for refactoring the CounselService 
 
 ---
 
-### ✅ 3. Integration Complete
+### ✅ 3. NoteService
 
-**Date**: December 2025
-
-**Changes Made**:
-- Updated CounselService constructor to inject ScriptureEnrichmentService and SessionService
-- Refactored processQuestion method to delegate to extracted services:
-  - Session management → `sessionService.getOrCreateSession()`
-  - User message creation → `sessionService.createUserMessage()`
-  - Clarification counting → `sessionService.countClarifyingQuestions()`
-  - Scripture retrieval → `scriptureEnrichment.retrieveScripturesByThemes()`
-  - Scripture enrichment → `scriptureEnrichment.enrichResponseWithScriptures()`
-  - Assistant message creation → `sessionService.createAssistantMessage()`
-- Updated getSession method to delegate to SessionService
-
-**Results**:
-- **Before Integration**: 705 lines
-- **After Integration**: 582 lines
-- **Reduction**: 123 lines (17.4% decrease)
-- **Complexity**: Significantly reduced cyclomatic complexity in processQuestion method
-- **Status**: ✅ Compiles successfully, server running without errors
-
----
-
-## Remaining Extractions
-
-### 🔲 3. NoteService (High Priority)
-
-**Estimated Size**: ~350 lines
+**File**: `packages/api/src/counsel/note.service.ts`
 
 **Responsibilities**:
 - Note CRUD operations (create, read, update, delete)
@@ -89,29 +63,16 @@ This document provides a comprehensive guide for refactoring the CounselService 
 - Privacy filtering
 - Notification orchestration
 
-**Methods to Implement**:
-```typescript
-// Public methods
-async createNote(sessionId, authorId, organizationId, createNoteDto)
-async getNotesForSession(sessionId, requestingUserId, organizationId)
-async updateNote(noteId, requestingUserId, organizationId, updateNoteDto)
-async deleteNote(noteId, requestingUserId)
-
-// Private helpers
-private async validateNoteCreationAccess(session, authorId)
-private async determineAuthorRole(authorId, memberId, organizationId, isPrivate)
-private async filterNotesByPermission(notes, requestingUserId, sessionOwnerId, organizationId)
-private async sendNoteAddedNotifications(sessionId, authorId, authorName, isPrivate, session, organizationId)
-```
+**Methods**:
+- `createNote()` - Create notes with complex access control
+- `getNotesForSession()` - Retrieve notes with privacy filtering
+- `updateNote()` - Update notes (author-only)
+- `deleteNote()` - Soft delete notes (author-only)
+- Private: `sendNoteAddedNotifications()` - Email notification orchestration
 
 **Dependencies**: `PrismaService`, `SubscriptionService`, `EmailService`
 
-**Source Lines in CounselService**:
-- `createNote`: lines 288-423
-- `sendNoteAddedNotifications`: lines 432-510 (private)
-- `getNotesForSession`: lines 512-625
-- `updateNote`: lines 627-679
-- `deleteNote`: lines 681-704
+**Lines Extracted**: ~383 lines from CounselService
 
 **Access Control Scenarios**:
 1. **Session Owner** - Requires subscription to create notes
@@ -124,11 +85,43 @@ private async sendNoteAddedNotifications(sessionId, authorId, authorName, isPriv
 **Privacy Rules**:
 - Private notes visible to: Owner, Assigned Counselor only
 - Non-private notes visible to: Owner, All Counselors, Share recipients
-- Coverage counselors cannot create private notes
+- Coverage counselors cannot see private notes
 
 ---
 
-### 🔲 4. CounselProcessingService (Medium Priority)
+### ✅ 4. Integration Complete
+
+**Date**: December 2025
+
+**Changes Made**:
+- Updated CounselService constructor to inject ScriptureEnrichmentService, SessionService, and NoteService
+- Refactored processQuestion method to delegate to extracted services:
+  - Session management → `sessionService.getOrCreateSession()`
+  - User message creation → `sessionService.createUserMessage()`
+  - Clarification counting → `sessionService.countClarifyingQuestions()`
+  - Scripture retrieval → `scriptureEnrichment.retrieveScripturesByThemes()`
+  - Scripture enrichment → `scriptureEnrichment.enrichResponseWithScriptures()`
+  - Assistant message creation → `sessionService.createAssistantMessage()`
+- Refactored note methods to delegate to NoteService:
+  - Note creation → `noteService.createNote()`
+  - Note retrieval → `noteService.getNotesForSession()`
+  - Note updates → `noteService.updateNote()`
+  - Note deletion → `noteService.deleteNote()`
+- Updated getSession method to delegate to SessionService
+
+**Results**:
+- **Before Integration**: 705 lines
+- **After Phase 1 & 2**: 582 lines (123 lines / 17.4% reduction)
+- **After NoteService**: 199 lines (383 lines / 66% reduction from 582)
+- **Total Reduction**: 506 lines (72% reduction from original)
+- **Complexity**: Significantly reduced cyclomatic complexity across all methods
+- **Status**: ✅ Compiles successfully, server running without errors
+
+---
+
+## Remaining Extractions
+
+### 🔲 4. CounselProcessingService (Optional - Low Priority)
 
 **Estimated Size**: ~250 lines
 
@@ -391,11 +384,11 @@ describe('NoteService', () => {
 - **Cyclomatic Complexity**: Very High in `processQuestion` and `createNote`
 
 ### After Refactoring
-- **CounselService**: ~100 lines (facade/orchestrator)
+- **CounselService**: ~199 lines (facade/orchestrator)
 - **ScriptureEnrichmentService**: ~140 lines (focused)
 - **SessionService**: ~190 lines (focused)
-- **NoteService**: ~350 lines (focused) [Future]
-- **CounselProcessingService**: ~250 lines (focused) [Future]
+- **NoteService**: ~466 lines (focused)
+- **CounselProcessingService**: ~250 lines (focused) [Optional]
 
 ### Metrics Improvement
 
@@ -432,11 +425,11 @@ describe('NoteService', () => {
 2. ✅ **Complete** - Extract SessionService
 3. ✅ **Complete** - Update CounselModule with new services
 4. ✅ **Complete** - Update CounselService to inject and use new services
-5. 🔲 **Todo** - Write unit tests for ScriptureEnrichmentService
-6. 🔲 **Todo** - Write unit tests for SessionService
-7. 🔲 **Todo** - Extract NoteService with access control logic
+5. ✅ **Complete** - Extract NoteService with access control logic
+6. 🔲 **Todo** - Write unit tests for ScriptureEnrichmentService
+7. 🔲 **Todo** - Write unit tests for SessionService
 8. 🔲 **Todo** - Write unit tests for NoteService
-9. 🔲 **Todo** - Extract CounselProcessingService (optional)
+9. 🔲 **Todo** - Extract CounselProcessingService (optional - low priority)
 10. 🔲 **Todo** - Run full integration test suite
 11. 🔲 **Todo** - Deploy behind feature flag
 
@@ -446,11 +439,11 @@ describe('NoteService', () => {
 
 ```
 packages/api/src/counsel/
-├── counsel.service.ts                    # Facade (target: ~100 lines)
-├── counsel-processing.service.ts         # Future
+├── counsel.service.ts                    # Facade (~199 lines)
+├── counsel-processing.service.ts         # Optional
 ├── scripture-enrichment.service.ts       # ✅ Created
 ├── session.service.ts                    # ✅ Created
-├── note.service.ts                       # Future
+├── note.service.ts                       # ✅ Created
 ├── assignment.service.ts                 # Existing
 ├── observation.service.ts                # Existing
 ├── wellbeing-analysis.service.ts         # Existing
@@ -464,7 +457,7 @@ packages/api/src/counsel/
 └── spec/
     ├── scripture-enrichment.service.spec.ts  # Todo
     ├── session.service.spec.ts              # Todo
-    ├── note.service.spec.ts                 # Future
+    ├── note.service.spec.ts                 # Todo
     └── ...
 ```
 
@@ -472,11 +465,13 @@ packages/api/src/counsel/
 
 ## Conclusion
 
-This phased refactoring approach allows incremental improvement while maintaining production stability. The two services extracted so far (ScriptureEnrichmentService and SessionService) demonstrate the pattern and provide immediate benefits:
+This phased refactoring approach allows incremental improvement while maintaining production stability. The three services extracted so far (ScriptureEnrichmentService, SessionService, and NoteService) demonstrate the pattern and provide immediate benefits:
 
-- **Clearer separation of concerns**
-- **Easier to test in isolation**
-- **Reduced complexity in CounselService**
-- **Foundation for complete refactoring**
+- **Clearer separation of concerns** - Each service has a single, well-defined responsibility
+- **Easier to test in isolation** - Reduced dependencies and focused logic
+- **Reduced complexity in CounselService** - 72% reduction from 705 to 199 lines
+- **Foundation for complete refactoring** - Established pattern for future extractions
 
-The team can continue this pattern to complete the extraction of NoteService and optionally CounselProcessingService, ultimately transforming the 705-line god class into a set of focused, testable services.
+**Major Achievement**: The complex note access control logic (~383 lines) has been successfully isolated into NoteService, making it easier to understand, test, and modify the intricate permission rules involving session owners, counselors, coverage counselors, and shared access.
+
+The team can optionally continue this pattern to extract CounselProcessingService, or proceed with Phase 3 (test coverage) to ensure all extracted services have comprehensive unit tests.
