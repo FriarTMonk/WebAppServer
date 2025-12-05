@@ -142,6 +142,11 @@ async function bootstrap() {
   // Force HTTPS in production
   if (process.env.NODE_ENV === 'production') {
     app.use((req, res, next) => {
+      // Allow HTTP for health check endpoints (needed for load balancer health checks)
+      if (req.url.startsWith('/health/')) {
+        return next();
+      }
+
       // Check if request is already HTTPS (via x-forwarded-proto header from load balancer)
       if (req.headers['x-forwarded-proto'] !== 'https') {
         const httpsUrl = `https://${req.headers.host}${req.url}`;
