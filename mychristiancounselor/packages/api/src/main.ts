@@ -28,8 +28,9 @@ function validateEnvironment(): void {
     'JWT_SECRET',
     'JWT_REFRESH_SECRET',
     'OPENAI_API_KEY',
-    'POSTMARK_API_TOKEN',
-    'FROM_EMAIL',
+    // POSTMARK_API_KEY is optional because mock mode is default
+    // 'POSTMARK_API_KEY',
+    // 'POSTMARK_FROM_EMAIL',
     'WEB_APP_URL',
   ];
 
@@ -62,11 +63,11 @@ function validateEnvironment(): void {
     errors.push('DATABASE_URL must be a valid PostgreSQL connection string');
   }
 
-  // Validate FROM_EMAIL format
-  if (process.env.FROM_EMAIL) {
+  // Validate POSTMARK_FROM_EMAIL format
+  if (process.env.POSTMARK_FROM_EMAIL) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(process.env.FROM_EMAIL)) {
-      errors.push('FROM_EMAIL must be a valid email address');
+    if (!emailRegex.test(process.env.POSTMARK_FROM_EMAIL)) {
+      errors.push('POSTMARK_FROM_EMAIL must be a valid email address');
     }
   }
 
@@ -176,9 +177,13 @@ async function bootstrap() {
     })
   );
 
-  // Enable CORS - only allow web app on port 3699
+  // Enable CORS - allow web app and www variant
+  const corsOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+    : ['http://localhost:3699'];
+
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3699',
+    origin: corsOrigins,
     credentials: true,
   });
 
