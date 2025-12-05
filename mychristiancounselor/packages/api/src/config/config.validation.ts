@@ -15,13 +15,15 @@ export const configValidationSchema = Joi.object({
   JWT_REFRESH_EXPIRATION: Joi.string().default('7d'),
 
   // Email Service (Postmark)
-  POSTMARK_API_TOKEN: Joi.string().required(),
-  FROM_EMAIL: Joi.string().email().required(),
-  SUPPORT_EMAIL: Joi.string().email().required(),
+  POSTMARK_API_KEY: Joi.string().optional(), // Optional because mock mode is default
+  POSTMARK_FROM_EMAIL: Joi.string().email().default('noreply@mychristiancounselor.com'),
+  POSTMARK_FROM_NAME: Joi.string().default('MyChristianCounselor'),
+  POSTMARK_MOCK_MODE: Joi.string().valid('true', 'false').default('true'),
+  SUPPORT_EMAIL: Joi.string().email().default('support@mychristiancounselor.com'),
 
   // AI Services
   OPENAI_API_KEY: Joi.string().required(),
-  ANTHROPIC_API_KEY: Joi.string().required(),
+  ANTHROPIC_API_KEY: Joi.string().optional(),
 
   // Payment Service (Stripe)
   STRIPE_SECRET_KEY: Joi.string().required(),
