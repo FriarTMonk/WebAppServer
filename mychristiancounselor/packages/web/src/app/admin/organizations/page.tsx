@@ -324,6 +324,7 @@ function CreateOrganizationModal({ onClose, onSuccess }: CreateOrganizationModal
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    ownerEmail: '',
     licenseType: '',
     licenseStatus: 'trial',
     maxMembers: 10,
@@ -352,6 +353,8 @@ function CreateOrganizationModal({ onClose, onSuccess }: CreateOrganizationModal
         throw new Error(error.message || 'Failed to create organization');
       }
 
+      const data = await response.json();
+      alert(data.message); // Show success message with invitation status
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -412,6 +415,23 @@ function CreateOrganizationModal({ onClose, onSuccess }: CreateOrganizationModal
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter organization description (optional)"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Owner Email <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              value={formData.ownerEmail}
+              onChange={(e) => setFormData({ ...formData, ownerEmail: e.target.value })}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="owner@example.com"
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              This person will be able to manage the organization. If they don't have an account, they'll receive an invitation.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
