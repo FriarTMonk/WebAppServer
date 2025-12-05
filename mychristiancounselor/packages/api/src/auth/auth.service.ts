@@ -153,6 +153,11 @@ export class AuthService {
       throw new UnauthorizedException('Account is disabled');
     }
 
+    // Check if email is verified
+    if (!user.emailVerified) {
+      throw new UnauthorizedException('Please verify your email before logging in. Check your inbox for the verification link.');
+    }
+
     // Generate tokens
     const tokens = await this.generateTokens(this.sanitizeUser(user), ipAddress, userAgent);
 
