@@ -6,6 +6,7 @@ import { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminResetPasswordDto, UpdateMemberRoleRequest } from '@mychristiancounselor/shared';
 import { EmailMetricsService } from '../email/email-metrics.service';
+import { CreateAdminOrganizationDto } from './dto/create-admin-organization.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, IsPlatformAdminGuard)
@@ -222,19 +223,17 @@ export class AdminController {
   }
 
   /**
-   * Create a new organization
+   * Create a new organization with a designated owner
+   *
+   * The owner will be added immediately if they have an existing account,
+   * or will receive an invitation email if they don't.
+   *
    * POST /admin/organizations
    */
   @Post('organizations')
   async createOrganization(
     @CurrentUser() user: User,
-    @Body() dto: {
-      name: string;
-      description?: string;
-      licenseType?: string;
-      licenseStatus?: string;
-      maxMembers?: number;
-    },
+    @Body() dto: CreateAdminOrganizationDto,
   ) {
     return this.adminService.createOrganization(user.id, dto);
   }
