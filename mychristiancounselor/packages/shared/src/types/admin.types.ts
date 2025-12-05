@@ -156,3 +156,32 @@ export interface UpdateOrganizationSubscriptionResponse {
   licenseStatus: string;
   currentMemberCount: number;
 }
+
+// ===== ORGANIZATION CREATION DTOS =====
+
+export interface CreateAdminOrganizationDto {
+  name: string;
+  description?: string;
+  ownerEmail: string; // Required - email of initial owner
+  licenseType?: string;
+  licenseStatus?: string;
+  maxMembers?: number;
+}
+
+export interface CreateAdminOrganizationResponse {
+  organization: {
+    id: string;
+    name: string;
+    description: string | null;
+    licenseStatus: string;
+    maxMembers: number;
+  };
+  owner: {
+    id?: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+  };
+  ownerInvitationSent: boolean;
+  message: string;
+}

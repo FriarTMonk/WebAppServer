@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException, Logger, NotFoundException, Fo
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { SubscriptionService } from '../subscription/subscription.service';
+import { EmailService } from '../email/email.service';
 import { PlatformMetrics } from './types/platform-metrics.interface';
 import { GetOrganizationMembersResponse, MorphStartResponse, MorphEndResponse, AdminResetPasswordResponse, UpdateMemberRoleResponse, OrganizationMember, OrgMetrics } from '@mychristiancounselor/shared';
 import { randomBytes } from 'crypto';
@@ -15,6 +16,7 @@ export class AdminService {
     private prisma: PrismaService,
     private authService: AuthService,
     private subscriptionService: SubscriptionService,
+    private emailService: EmailService,
   ) {}
 
   async isPlatformAdmin(userId: string): Promise<boolean> {
@@ -1042,17 +1044,45 @@ export class AdminService {
   /**
    * Create a new organization (Platform Admin only)
    */
+  private async getPlatformRole(roleName: string) {
+    const SYSTEM_ORG_ID = '00000000-0000-0000-0000-000000000001';
+
+    const role = await this.prisma.organizationRole.findUnique({
+      where: {
+        organizationId_name: {
+          organizationId: SYSTEM_ORG_ID,
+          name: roleName,
+        },
+      },
+    });
+
+    if (!role) {
+      throw new InternalServerErrorException(
+        `Platform role "${roleName}" not found. Run ensure-platform-roles.ts script.`
+      );
+    }
+
+    return role;
+  }
+
   async createOrganization(
     adminUserId: string,
     data: {
       name: string;
       description?: string;
+      ownerEmail: string;
       licenseType?: string;
       licenseStatus?: string;
       maxMembers?: number;
     },
   ): Promise<any> {
-    this.logger.log(`[createOrganization] Admin ${adminUserId} creating organization: ${data.name}`);
+    this.logger.log(`[createOrganization] Admin ${adminUserId} creating organization: ${data.name} with owner: ${data.ownerEmail}`);
+
+    // Validate owner email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.ownerEmail)) {
+      throw new BadRequestException('Invalid owner email format');
+    }
 
     // Create organization with provided data
     const organization = await this.prisma.organization.create({
@@ -1065,75 +1095,76 @@ export class AdminService {
       },
     });
 
-    // Create system roles for the organization
-    const ownerRole = await this.prisma.organizationRole.create({
-      data: {
-        organizationId: organization.id,
-        name: 'Owner',
-        description: 'Full access to manage organization',
-        isSystemRole: true,
-        permissions: [
-          'MANAGE_ORGANIZATION',
-          'MANAGE_MEMBERS',
-          'INVITE_MEMBERS',
-          'REMOVE_MEMBERS',
-          'VIEW_MEMBERS',
-          'MANAGE_ROLES',
-          'ASSIGN_ROLES',
-          'VIEW_MEMBER_CONVERSATIONS',
-          'VIEW_ANALYTICS',
-          'EXPORT_DATA',
-          'MANAGE_BILLING',
-          'VIEW_BILLING',
-        ],
-      },
+    // Get platform Owner role
+    const platformOwnerRole = await this.getPlatformRole('Owner');
+
+    // Check if user with this email exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: data.ownerEmail },
     });
 
-    await this.prisma.organizationRole.create({
-      data: {
-        organizationId: organization.id,
-        name: 'Admin',
-        description: 'Can manage members and roles',
-        isSystemRole: true,
-        permissions: [
-          'VIEW_ORGANIZATION',
-          'MANAGE_MEMBERS',
-          'INVITE_MEMBERS',
-          'REMOVE_MEMBERS',
-          'VIEW_MEMBERS',
-          'ASSIGN_ROLES',
-          'VIEW_MEMBER_CONVERSATIONS',
-          'VIEW_ANALYTICS',
-          'EXPORT_DATA',
-          'VIEW_BILLING',
-        ],
-      },
-    });
+    let ownerInvitationSent = false;
+    let ownerUser = existingUser;
 
-    await this.prisma.organizationRole.create({
-      data: {
-        organizationId: organization.id,
-        name: 'Counselor',
-        description: 'Can view member conversations and analytics',
-        isSystemRole: true,
-        permissions: [
-          'VIEW_ORGANIZATION',
-          'VIEW_MEMBERS',
-          'VIEW_MEMBER_CONVERSATIONS',
-          'VIEW_ANALYTICS',
-        ],
-      },
-    });
+    if (existingUser) {
+      // User exists - add them as owner immediately
+      await this.prisma.organizationMember.create({
+        data: {
+          organizationId: organization.id,
+          userId: existingUser.id,
+          roleId: platformOwnerRole.id,
+        },
+      });
 
-    await this.prisma.organizationRole.create({
-      data: {
-        organizationId: organization.id,
-        name: 'Member',
-        description: 'Basic member access',
-        isSystemRole: true,
-        permissions: ['VIEW_ORGANIZATION'],
-      },
-    });
+      this.logger.log(`[createOrganization] Added existing user ${existingUser.email} as owner`);
+
+      // Send notification email
+      try {
+        await this.emailService.sendEmail({
+          to: existingUser.email,
+          subject: `You've been added as owner of ${organization.name}`,
+          text: `You are now the owner of the organization "${organization.name}". You can manage members and settings in the org-admin dashboard.`,
+          html: `<p>You are now the owner of the organization <strong>${organization.name}</strong>.</p><p>You can manage members and settings in the org-admin dashboard.</p>`,
+        });
+      } catch (error) {
+        this.logger.warn(`Failed to send owner notification email: ${error.message}`);
+      }
+    } else {
+      // User doesn't exist - create invitation
+      const invitationToken = randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+
+      await this.prisma.organizationInvitation.create({
+        data: {
+          organizationId: organization.id,
+          email: data.ownerEmail,
+          roleId: platformOwnerRole.id,
+          invitedById: adminUserId,
+          token: invitationToken,
+          expiresAt,
+          status: 'pending',
+        },
+      });
+
+      this.logger.log(`[createOrganization] Created invitation for ${data.ownerEmail}`);
+      ownerInvitationSent = true;
+
+      // Send invitation email
+      try {
+        const invitationUrl = `${process.env.WEB_APP_URL || 'http://localhost:3000'}/accept-invitation?token=${invitationToken}`;
+
+        await this.emailService.sendEmail({
+          to: data.ownerEmail,
+          subject: `You've been invited to join ${organization.name} as Owner`,
+          text: `You've been invited to be the owner of ${organization.name}. Click the link to accept: ${invitationUrl}`,
+          html: `<p>You've been invited to be the owner of <strong>${organization.name}</strong>.</p><p><a href="${invitationUrl}">Click here to accept the invitation</a></p><p>This invitation expires in 7 days.</p>`,
+        });
+      } catch (error) {
+        this.logger.error(`Failed to send invitation email: ${error.message}`);
+        throw new InternalServerErrorException('Failed to send invitation email');
+      }
+    }
 
     // Log admin action
     await this.logAdminAction(
@@ -1141,18 +1172,39 @@ export class AdminService {
       'create_organization',
       {
         organizationName: organization.name,
+        ownerEmail: data.ownerEmail,
         licenseType: data.licenseType,
         maxMembers: data.maxMembers || 10,
+        ownerInvitationSent,
       },
-      undefined,
+      existingUser?.id,
       organization.id,
     );
 
     this.logger.log(`[createOrganization] Successfully created organization ${organization.id}`);
 
     return {
-      ...organization,
-      message: 'Organization created successfully',
+      organization: {
+        id: organization.id,
+        name: organization.name,
+        description: organization.description,
+        licenseStatus: organization.licenseStatus,
+        maxMembers: organization.maxMembers,
+      },
+      owner: ownerUser
+        ? {
+            id: ownerUser.id,
+            email: ownerUser.email,
+            firstName: ownerUser.firstName,
+            lastName: ownerUser.lastName,
+          }
+        : {
+            email: data.ownerEmail,
+          },
+      ownerInvitationSent,
+      message: ownerInvitationSent
+        ? `Organization created successfully. Invitation sent to ${data.ownerEmail}`
+        : `Organization created successfully. ${data.ownerEmail} added as owner.`,
     };
   }
 
