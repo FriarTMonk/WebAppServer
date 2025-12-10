@@ -23,7 +23,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Platform Administration</h1>
             <Link
-              href="/"
+              href="/home"
               className="text-sm hover:underline"
             >
               Back to App

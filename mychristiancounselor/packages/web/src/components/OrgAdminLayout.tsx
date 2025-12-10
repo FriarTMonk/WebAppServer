@@ -29,7 +29,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
               )}
             </div>
             <Link
-              href="/"
+              href="/home"
               className="text-sm hover:underline"
             >
               Back to App
