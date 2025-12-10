@@ -26,7 +26,7 @@ function LoginForm() {
       setUser(response.user);
 
       // Redirect to the specified redirect URL or home page
-      const redirect = searchParams.get('redirect') || '/';
+      const redirect = searchParams.get('redirect') || '/home';
       router.push(redirect);
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -87,6 +87,14 @@ function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end">
+            <div className="text-sm">
+              <Link href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
+                Forgot your password?
+              </Link>
             </div>
           </div>
 
