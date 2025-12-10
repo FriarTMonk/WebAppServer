@@ -30,6 +30,9 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
     }
   }
 
+  // Include credentials for CSRF protection (sends Origin header and cookies)
+  fetchOptions.credentials = 'include';
+
   // Construct full URL
   const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
 

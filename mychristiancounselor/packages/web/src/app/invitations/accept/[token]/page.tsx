@@ -44,6 +44,7 @@ export default function AcceptInvitationPage() {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies and proper CORS headers for CSRF protection
         body: JSON.stringify({ token }),
       });
 
