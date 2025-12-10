@@ -1,14 +1,9 @@
 import { AuthResponse, LoginDto, RegisterDto } from '@mychristiancounselor/shared';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+import { apiPost } from './api';
 
 export async function login(credentials: LoginDto): Promise<AuthResponse> {
-  const response = await fetch(`${API_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include', // Include cookies and proper CORS headers
-    body: JSON.stringify(credentials),
-  });
+  // Use central API utility with skipAuth (no token yet)
+  const response = await apiPost('/auth/login', credentials, { skipAuth: true });
 
   if (!response.ok) {
     const error = await response.json();
@@ -19,12 +14,8 @@ export async function login(credentials: LoginDto): Promise<AuthResponse> {
 }
 
 export async function register(data: RegisterDto): Promise<AuthResponse> {
-  const response = await fetch(`${API_URL}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include', // Include cookies and proper CORS headers
-    body: JSON.stringify(data),
-  });
+  // Use central API utility with skipAuth (no token yet)
+  const response = await apiPost('/auth/register', data, { skipAuth: true });
 
   if (!response.ok) {
     const error = await response.json();
