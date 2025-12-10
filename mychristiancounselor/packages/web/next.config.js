@@ -12,6 +12,22 @@ const nextConfig = {
   nx: {},
   // Enable standalone output for Docker deployments
   output: 'standalone',
+  // Redirect non-www to www
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'mychristiancounselor.online',
+          },
+        ],
+        destination: 'https://www.mychristiancounselor.online/:path*',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 const plugins = [
