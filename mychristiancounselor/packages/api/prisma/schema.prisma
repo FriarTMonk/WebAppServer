@@ -39,8 +39,10 @@ model User {
   subscriptionEnd    DateTime? // When subscription ended (for canceled)
   stripeCustomerId   String?   @unique // Stripe customer ID
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletionRequestedAt  DateTime? // When user requested account deletion (30-day grace period)
+  deletionRequestedBy  String? // User ID who requested the deletion (self or admin)
 
   // Relations
   refreshTokens           RefreshToken[]

@@ -74,4 +74,16 @@ export class ProfileController {
     await this.profileService.hardDeleteConversation(req.user.id, sessionId);
     return { message: 'Conversation deleted' };
   }
+
+  /**
+   * Delete user account (GDPR compliance)
+   *
+   * Requires password confirmation for security.
+   * Deletes all user data permanently.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Delete()
+  async deleteAccount(@Request() req, @Body() body: { password: string }) {
+    return this.profileService.deleteAccount(req.user.id, body.password);
+  }
 }

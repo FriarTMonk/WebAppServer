@@ -457,7 +457,7 @@ export default function ProfilePage() {
               Manage your subscription and billing information
             </p>
             <button
-              onClick={() => router.push('/subscription')}
+              onClick={() => router.push('/settings/subscription')}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
               View Subscription →
@@ -534,7 +534,54 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
+
+        {/* Danger Zone - Account Deletion */}
+        <div className="bg-red-50 border border-red-200 rounded-lg shadow p-6 mb-6">
+          <h2 className="text-xl font-semibold text-red-900 mb-4">Danger Zone</h2>
+          <p className="text-red-800 mb-4">
+            Once you delete your account, there is no going back. Your account will be deactivated immediately and permanently deleted after 30 days.
+          </p>
+          <button
+            onClick={() => {
+              if (confirm('Are you sure you want to delete your account? This action cannot be undone.\n\nYour account will be deactivated immediately and permanently deleted after 30 days.\n\nYou can contact support within 30 days to cancel the deletion.')) {
+                const password = prompt('Please enter your password to confirm account deletion:');
+                if (password) {
+                  handleDeleteAccount(password);
+                }
+              }
+            }}
+            className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
+          >
+            Delete My Account
+          </button>
+        </div>
       </div>
     </div>
   );
+
+  async function handleDeleteAccount(password: string) {
+    try {
+      const token = getAccessToken();
+      const response = await fetch(`${API_URL}/profile`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(`Account deletion requested successfully.\n\n${data.message}\n\nDeletion Date: ${new Date(data.deletionDate).toLocaleDateString()}\n\n${data.note}`);
+        // Log out user
+        router.push('/');
+      } else {
+        const error = await response.json();
+        alert(`Failed to delete account: ${error.message}`);
+      }
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    }
+  }
 }

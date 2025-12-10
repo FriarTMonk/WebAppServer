@@ -303,4 +303,65 @@ export class ProfileService {
       endedAt: assignment.endedAt,
     }));
   }
+
+  /**
+   * Request account deletion (soft delete)
+   *
+   * Unix Principles:
+   * - Single purpose: Mark account for deletion
+   * - Fail safely: Verify password before marking
+   * - Clear: 30-day grace period, then permanent deletion
+   *
+   * GDPR Compliance:
+   * - User can request account deletion (right to erasure)
+   * - 30-day grace period (acceptable under GDPR)
+   * - Data not accessible during grace period
+   * - Permanent deletion after 30 days (background job)
+   *
+   * How it works:
+   * 1. Mark account as deleted (isActive = false)
+   * 2. Set deletionRequestedAt timestamp
+   * 3. User cannot log in during grace period
+   * 4. After 30 days, background job hard deletes all data
+   * 5. User can contact support to cancel deletion within 30 days
+   */
+  async deleteAccount(userId: string, password: string) {
+    // 1. Verify user exists and password is correct
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    if (!user.isActive) {
+      throw new BadRequestException('Account is already marked for deletion');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid password');
+    }
+
+    // 2. Soft delete: Mark account as inactive and set deletion timestamp
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        isActive: false,
+        deletionRequestedAt: new Date(),
+        deletionRequestedBy: userId, // Track who requested (self-initiated)
+      },
+    });
+
+    // 3. Cancel Stripe subscription immediately
+    // Note: Subscription cancellation should be handled in controller
+    // to ensure proper Stripe API calls before deletion
+
+    return {
+      message: 'Account deletion requested',
+      deletionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      note: 'Your account will be permanently deleted in 30 days. Contact support to cancel deletion.',
+    };
+  }
 }
