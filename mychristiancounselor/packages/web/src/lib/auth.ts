@@ -6,6 +6,7 @@ export async function login(credentials: LoginDto): Promise<AuthResponse> {
   const response = await fetch(`${API_URL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', // Include cookies and proper CORS headers
     body: JSON.stringify(credentials),
   });
 
@@ -21,6 +22,7 @@ export async function register(data: RegisterDto): Promise<AuthResponse> {
   const response = await fetch(`${API_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', // Include cookies and proper CORS headers
     body: JSON.stringify(data),
   });
 
