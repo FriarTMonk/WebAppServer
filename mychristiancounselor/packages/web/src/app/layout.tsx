@@ -1,5 +1,6 @@
 import './globals.css';
 import { Providers } from './providers';
+import CookieConsent from '../components/CookieConsent';
 
 export const metadata = {
   title: 'MyChristianCounselor',
@@ -16,6 +17,7 @@ export default function RootLayout({
       <body>
         <Providers>
           {children}
+          <CookieConsent />
         </Providers>
       </body>
     </html>

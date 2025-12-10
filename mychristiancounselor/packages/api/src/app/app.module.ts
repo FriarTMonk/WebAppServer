@@ -18,6 +18,7 @@ import { SlaModule } from '../sla/sla.module';
 import { HolidayModule } from '../holiday/holiday.module';
 import { HealthModule } from '../health/health.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CsrfGuard } from '../common/guards/csrf.guard';
 import { configValidationSchema } from '../config/config.validation';
 import { winstonConfig } from '../common/logging/winston.config';
 
@@ -64,11 +65,15 @@ import { winstonConfig } from '../common/logging/winston.config';
   providers: [
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard,
+      useClass: CsrfGuard, // CSRF protection (validates origin/referer)
     },
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: JwtAuthGuard, // Authentication (JWT validation)
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard, // Rate limiting (prevent abuse)
     },
   ],
 })
