@@ -66,7 +66,7 @@ export default function AcceptInvitationPage() {
 
       // Redirect to home after 3 seconds
       setTimeout(() => {
-        router.push('/');
+        router.push('/home');
       }, 3000);
     } catch (err: any) {
       console.error('Error accepting invitation:', err);
@@ -87,7 +87,7 @@ export default function AcceptInvitationPage() {
   const handleSignupRedirect = () => {
     // Save the current URL to return after signup
     const returnUrl = `/invitations/accept/${token}`;
-    router.push(`/signup?redirect=${encodeURIComponent(returnUrl)}`);
+    router.push(`/register?redirect=${encodeURIComponent(returnUrl)}`);
   };
 
   if (status === 'loading') {
@@ -212,7 +212,7 @@ export default function AcceptInvitationPage() {
 
           <div className="space-y-3">
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/home')}
               className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium"
             >
               Go to Home
