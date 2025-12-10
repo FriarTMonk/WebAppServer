@@ -50,7 +50,7 @@ export class EmailService {
 
       return await this.sendRealEmail(options);
     } catch (error) {
-      this.logger.error(`Failed to send email to ${options.to}:`, error);
+      this.logger.error(`Failed to send email to ${options.to}: ${error.message || 'Unknown error'}`, error);
 
       // Log failed email
       await this.emailTracking.markAsFailed({

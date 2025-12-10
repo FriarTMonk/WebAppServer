@@ -60,3 +60,26 @@ test-output
 
 # Git worktrees
 .worktrees/
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+*.env
+
+# AWS Lightsail deployment configs (contain secrets)
+lightsail-*.json
+*-deployment.json
+*-env.json
+api-custom-domain.json
+api-domain-config.json
+web-custom-domain.json
+web-domain-config.json
+route53-*.json
+
+# Test/debug scripts with hardcoded values
+packages/api/check-share.js
+packages/api/test-*.ts
+packages/api/test-*.js
+packages/api/verify-*.ts
+packages/api/verify-*.js

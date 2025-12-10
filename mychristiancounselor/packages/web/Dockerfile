@@ -9,17 +9,25 @@ COPY packages/web/package*.json ./packages/web/
 COPY packages/shared/package*.json ./packages/shared/
 
 # Install dependencies
-RUN npm ci --workspace=@mychristiancounselor/web --workspace=@mychristiancounselor/shared
+RUN npm ci --workspace=@mychristiancounselor/web --workspace=@mychristiancounselor/shared --include-workspace-root
 
 # Copy source files
 COPY nx.json ./
+COPY tsconfig.json ./
 COPY tsconfig.base.json ./
 COPY packages/web ./packages/web
 COPY packages/shared ./packages/shared
 
+# Sync NX workspace
+RUN NX_DAEMON=false npx nx sync
+
 # Build the application
+ARG NEXT_PUBLIC_API_URL=https://api.mychristiancounselor.online
+ARG NEXT_PUBLIC_SENTRY_DSN=https://450be74fd3d263728ebd3656fd772438@o4510468923326464.ingest.us.sentry.io/4510468927062016
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npx nx build web --configuration=production
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
+RUN NX_DAEMON=false npx nx build web --configuration=production
 
 # Stage 2: Production
 FROM node:20-alpine

@@ -1,19 +1,26 @@
 const { NxAppWebpackPlugin } = require('@nx/webpack/app-plugin');
 const { join } = require('path');
 
+// Externalize all Node.js built-in modules
+const nodeExternals = require('webpack-node-externals');
+
 module.exports = {
   output: {
     path: join(__dirname, 'dist'),
     clean: true,
-    ...(process.env.NODE_ENV !== 'production' && {
-      devtoolModuleFilenameTemplate: '[absolute-resource-path]',
+    libraryTarget: 'commonjs2',
+  },
+  target: 'node',
+  externalsPresets: { node: true },
+  externals: [
+    nodeExternals({
+      allowlist: [/^@mychristiancounselor/]
     }),
-  },
-  externals: {
-    bcrypt: 'commonjs bcrypt',
-    crypto: 'commonjs crypto',
-    '@nestjs/schedule': 'commonjs @nestjs/schedule',
-  },
+    {
+      bcrypt: 'commonjs bcrypt',
+      '@nestjs/schedule': 'commonjs @nestjs/schedule',
+    }
+  ],
   plugins: [
     new NxAppWebpackPlugin({
       target: 'node',
@@ -24,7 +31,7 @@ module.exports = {
       optimization: false,
       outputHashing: 'none',
       generatePackageJson: true,
-      sourceMaps: true,
+      sourceMaps: false,
     }),
   ],
 };

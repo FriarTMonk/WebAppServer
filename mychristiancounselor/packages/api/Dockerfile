@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM node:20-alpine AS builder
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
@@ -9,22 +9,26 @@ COPY packages/api/package*.json ./packages/api/
 COPY packages/shared/package*.json ./packages/shared/
 
 # Install dependencies
-RUN npm ci --workspace=@mychristiancounselor/api --workspace=@mychristiancounselor/shared
+RUN npm ci --workspace=@mychristiancounselor/api --workspace=@mychristiancounselor/shared --include-workspace-root
 
 # Copy source files
 COPY nx.json ./
+COPY tsconfig.json ./
 COPY tsconfig.base.json ./
 COPY packages/api ./packages/api
 COPY packages/shared ./packages/shared
 
 # Generate Prisma Client
-RUN npx prisma generate --schema=./packages/api/prisma/schema.prisma
+RUN npm exec prisma generate -- --schema=./packages/api/prisma/schema.prisma
+
+# Sync NX workspace
+RUN NX_DAEMON=false npx nx sync
 
 # Build the application
-RUN npx nx build api --configuration=production
+RUN NX_DAEMON=false npx nx build api --configuration=production
 
 # Stage 2: Production
-FROM node:20-alpine
+FROM node:18-alpine
 
 WORKDIR /app
 
@@ -35,9 +39,12 @@ RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
 
 # Copy built application and dependencies
-COPY --from=builder --chown=nestjs:nodejs /app/dist/packages/api ./
+COPY --from=builder --chown=nestjs:nodejs /app/packages/api/dist ./
 COPY --from=builder --chown=nestjs:nodejs /app/packages/api/prisma ./prisma
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
+
+# Copy built shared package to node_modules
+COPY --from=builder --chown=nestjs:nodejs /app/packages/shared ./node_modules/@mychristiancounselor/shared
 
 # Create logs directory
 RUN mkdir -p /app/logs && chown -R nestjs:nodejs /app/logs

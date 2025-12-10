@@ -79,7 +79,10 @@ export interface CounselResponse {
 
 export interface CrisisResource {
   name: string;
-  contact: string;
+  contact?: string;
+  phone?: string;
+  text?: string;
+  website?: string;
   description: string;
 }
 

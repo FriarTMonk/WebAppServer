@@ -36,7 +36,7 @@ interface ShareData {
 export default function SharedConversationPage() {
   const params = useParams();
   const router = useRouter();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const token = params.token as string;
 
   const [shareData, setShareData] = useState<ShareData | null>(null);
@@ -44,6 +44,11 @@ export default function SharedConversationPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Wait for auth to initialize before making decisions
+    if (authLoading) {
+      return;
+    }
+
     if (!isAuthenticated) {
       // Redirect to login if not authenticated
       router.push(`/?redirect=/shared/${token}`);
@@ -81,7 +86,7 @@ export default function SharedConversationPage() {
     };
 
     fetchSharedSession();
-  }, [token, isAuthenticated, router]);
+  }, [token, isAuthenticated, authLoading, router]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {

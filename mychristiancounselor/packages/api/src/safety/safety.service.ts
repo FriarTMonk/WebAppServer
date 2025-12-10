@@ -129,6 +129,7 @@ export class SafetyService {
 
     // HIGH CONFIDENCE PATTERNS - Explicit, unambiguous crisis indicators
     // These are immediate crisis flags that don't need AI validation
+    // IMPORTANT: Patterns must have PERSONAL CONTEXT to avoid flagging educational/academic questions
     const highConfidencePatterns = [
       /\bkill\s+my\s*self\b/i,              // "kill myself"
       /\bharm\s+my\s*self\b/i,              // "harm myself"
@@ -140,7 +141,11 @@ export class SafetyService {
       /\bwish\s+.{0,10}\s*dead\b/i,         // "wish I was dead"
       /\bbetter\s+off\s+dead\b/i,           // "better off dead"
       /\bno\s+reason\s+to\s+live\b/i,       // "no reason to live"
-      /\bsuicid/i,                          // "suicide", "suicidal"
+      /\b(i\'m|i\s+am|i\s+feel|i\s+have)\s+(so\s+)?(suicidal|having\s+suicidal)\b/i, // "I'm suicidal", "I have suicidal thoughts" (first-person only)
+      /\bsuicidal\s+(thought|idea|feeling)s?\b/i, // "suicidal thoughts", "suicidal feelings" (personal context)
+      /\bthinking\s+(about|of)\s+suicide\b/i, // "thinking about suicide" (personal context)
+      /\bcommit\s+suicide\b/i,              // "commit suicide" (intent context)
+      /\b(i\'m|i\s+am)\s+going\s+to\s+(kill|end)\b/i, // "I'm going to kill/end..." (intent)
       /\bself[\s-]*harm/i,                  // "self-harm", "self harm"
       /\brap(e|ed|ing)\s+me\b/i,            // "raped me", "raping me" (with personal context)
       /\bi\s+was\s+(raped|molested|assaulted|beaten|abused)\b/i, // First-person past tense

@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageBubble } from './MessageBubble';
 import { CrisisModal } from './CrisisModal';
+import { CrisisAlert } from './CrisisAlert';
 import { GriefAlert } from './GriefAlert';
 import { TranslationSelector } from './TranslationSelector';
 import { ComparisonTranslationSelector } from './ComparisonTranslationSelector';
@@ -307,6 +308,9 @@ export function ConversationView() {
             {messages.map((message) => (
               <React.Fragment key={message.id}>
                 <MessageBubble message={message} comparisonMode={comparisonMode} />
+                {message.crisisResources && message.crisisResources.length > 0 && (
+                  <CrisisAlert resources={message.crisisResources} />
+                )}
                 {message.griefResources && message.griefResources.length > 0 && (
                   <GriefAlert resources={message.griefResources} />
                 )}

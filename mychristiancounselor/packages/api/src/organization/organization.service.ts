@@ -384,7 +384,6 @@ export class OrganizationService {
       include: {
         organization: true,
         invitedBy: true,
-        role: true,
       },
     });
 
@@ -399,7 +398,7 @@ export class OrganizationService {
         recipientName: undefined, // We don't know their name yet
         inviterName,
         organizationName: invitation.organization.name,
-        roleName: (invitation as any).role.name,
+        roleName: role.name,
         inviteToken: invitation.token,
         expiresAt: invitation.expiresAt,
       },

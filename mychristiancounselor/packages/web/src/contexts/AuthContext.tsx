@@ -17,6 +17,7 @@ interface AuthContextType {
   user: User | null;
   setUser: (user: User | null) => void;
   isAuthenticated: boolean;
+  isLoading: boolean;
   morphSession: MorphSession | null;
   pendingInvitations: OrganizationInvitation[];
   logout: () => void;
@@ -337,6 +338,7 @@ export function AuthProvider({ children }: { children: React.ReactNode}) {
       user,
       setUser,
       isAuthenticated: !!user,
+      isLoading: !_isInitialized,
       morphSession,
       pendingInvitations: visibleInvitations,
       logout,

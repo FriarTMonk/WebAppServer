@@ -22,8 +22,45 @@ export class ShareController {
   }
 
   /**
+   * Get all shares created by current user
+   * GET /share
+   */
+  @Get()
+  async getUserShares(@Request() req) {
+    const userId = req.user.id;
+    return this.shareService.getUserShares(userId);
+  }
+
+  /**
+   * Get all shares accessed by current user
+   * GET /share/accessed/list
+   * IMPORTANT: This must come before the :token route
+   */
+  @Get('accessed/list')
+  async getAccessedShares(@Request() req) {
+    const userId = req.user.id;
+    return this.shareService.getAccessedShares(userId);
+  }
+
+  /**
+   * Dismiss/archive a share for current user
+   * PATCH /share/accessed/:shareId/dismiss
+   * IMPORTANT: This must come before the :token route
+   */
+  @Patch('accessed/:shareId/dismiss')
+  @HttpCode(200)
+  async dismissShare(
+    @Param('shareId') shareId: string,
+    @Request() req
+  ) {
+    const userId = req.user.id;
+    return this.shareService.dismissShare(userId, shareId);
+  }
+
+  /**
    * Get share information and validate access
    * GET /share/:token
+   * IMPORTANT: This must come after all specific routes
    */
   @Get(':token')
   async getShare(
@@ -35,18 +72,9 @@ export class ShareController {
   }
 
   /**
-   * Get all shares created by current user
-   * GET /share
-   */
-  @Get()
-  async getUserShares(@Request() req) {
-    const userId = req.user.id;
-    return this.shareService.getUserShares(userId);
-  }
-
-  /**
    * Delete a share link
    * DELETE /share/:id
+   * IMPORTANT: This must come after all specific routes
    */
   @Delete(':id')
   @HttpCode(200)
@@ -56,29 +84,5 @@ export class ShareController {
   ) {
     const userId = req.user.id;
     return this.shareService.deleteShare(userId, id);
-  }
-
-  /**
-   * Get all shares accessed by current user
-   * GET /share/accessed/list
-   */
-  @Get('accessed/list')
-  async getAccessedShares(@Request() req) {
-    const userId = req.user.id;
-    return this.shareService.getAccessedShares(userId);
-  }
-
-  /**
-   * Dismiss/archive a share for current user
-   * PATCH /share/accessed/:shareId/dismiss
-   */
-  @Patch('accessed/:shareId/dismiss')
-  @HttpCode(200)
-  async dismissShare(
-    @Param('shareId') shareId: string,
-    @Request() req
-  ) {
-    const userId = req.user.id;
-    return this.shareService.dismissShare(userId, shareId);
   }
 }
