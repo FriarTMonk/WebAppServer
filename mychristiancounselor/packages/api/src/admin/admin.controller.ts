@@ -263,6 +263,34 @@ export class AdminController {
   }
 
   /**
+   * Clean up stale sessions and expired refresh tokens
+   * POST /admin/system/cleanup-sessions
+   */
+  @Post('system/cleanup-sessions')
+  async cleanupStaleSessions(@CurrentUser() user: User) {
+    return this.adminService.cleanupStaleSessions(user.id);
+  }
+
+  /**
+   * Check user session status for debugging
+   * POST /admin/system/check-user-sessions
+   * Body: { emails?: string[] } - If emails not provided, returns all users (up to 100)
+   */
+  @Post('system/check-user-sessions')
+  async checkUserSessions(
+    @CurrentUser() user: User,
+    @Body() dto: { emails?: string[] },
+  ) {
+    await this.adminService.logAdminAction(
+      user.id,
+      'check_user_sessions',
+      { emails: dto.emails || 'all' },
+    );
+
+    return this.adminService.checkUserSessions(dto.emails);
+  }
+
+  /**
    * Get platform-wide email metrics (Platform Admin only)
    * GET /admin/email-metrics
    */

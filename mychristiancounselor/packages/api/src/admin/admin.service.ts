@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { EmailService } from '../email/email.service';
+import { MetricsService } from '../metrics/metrics.service';
+import { SalesPerformanceService } from '../sales/sales-performance.service';
 import { PlatformMetrics } from './types/platform-metrics.interface';
 import { GetOrganizationMembersResponse, MorphStartResponse, MorphEndResponse, AdminResetPasswordResponse, UpdateMemberRoleResponse, OrganizationMember, OrgMetrics } from '@mychristiancounselor/shared';
 import { randomBytes } from 'crypto';
@@ -17,6 +19,8 @@ export class AdminService {
     private authService: AuthService,
     private subscriptionService: SubscriptionService,
     private emailService: EmailService,
+    private metricsService: MetricsService,
+    private salesPerformanceService: SalesPerformanceService,
   ) {}
 
   async isPlatformAdmin(userId: string): Promise<boolean> {
@@ -173,6 +177,18 @@ export class AdminService {
       // SLA Health Statistics
       const slaHealth = await this.getSLAHealthStats();
 
+      // Performance Metrics
+      const performance = this.metricsService.getMetrics();
+
+      // Sales Metrics - wrapped in try-catch to prevent entire endpoint failure
+      let salesMetrics;
+      try {
+        salesMetrics = await this.salesPerformanceService.getSalesMetrics();
+      } catch (error) {
+        this.logger.warn('Failed to retrieve sales metrics, continuing without them', error);
+        salesMetrics = undefined;
+      }
+
       return {
         activeUsers: {
           total: activeUsers,
@@ -187,6 +203,8 @@ export class AdminService {
           expired: expiredOrgs,
         },
         slaHealth,
+        performance,
+        salesMetrics,
         timestamp: new Date(),
       };
     } catch (error) {
@@ -435,8 +453,38 @@ export class AdminService {
         this.prisma.user.count({ where }),
       ]);
 
+      // Enrich users with lastLogin and lastActive
+      const enrichedUsers = await Promise.all(
+        users.map(async (user) => {
+          // Get last login (most recent session)
+          const lastSession = await this.prisma.session.findFirst({
+            where: { userId: user.id },
+            orderBy: { createdAt: 'desc' },
+            select: { createdAt: true },
+          });
+
+          // Get last active (most recent user message)
+          const lastMessage = await this.prisma.message.findFirst({
+            where: {
+              role: 'user',
+              session: {
+                userId: user.id,
+              },
+            },
+            orderBy: { timestamp: 'desc' },
+            select: { timestamp: true },
+          });
+
+          return {
+            ...user,
+            lastLogin: lastSession?.createdAt,
+            lastActive: lastMessage?.timestamp,
+          };
+        })
+      );
+
       return {
-        users,
+        users: enrichedUsers,
         total,
         skip: filters?.skip || 0,
         take: filters?.take || 50,
@@ -483,16 +531,42 @@ export class AdminService {
       orderBy: { joinedAt: 'asc' },
     });
 
-    const members: OrganizationMember[] = memberships.map((m) => ({
-      id: m.id,
-      userId: m.user.id,
-      email: m.user.email,
-      firstName: m.user.firstName || undefined,
-      lastName: m.user.lastName || undefined,
-      roleName: m.role.name,
-      roleId: m.role.id,
-      joinedAt: m.joinedAt,
-    }));
+    // Enrich members with lastLogin and lastActive
+    const members: OrganizationMember[] = await Promise.all(
+      memberships.map(async (m) => {
+        // Get last login (most recent session)
+        const lastSession = await this.prisma.session.findFirst({
+          where: { userId: m.user.id },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true },
+        });
+
+        // Get last active (most recent user message)
+        const lastMessage = await this.prisma.message.findFirst({
+          where: {
+            role: 'user',
+            session: {
+              userId: m.user.id,
+            },
+          },
+          orderBy: { timestamp: 'desc' },
+          select: { timestamp: true },
+        });
+
+        return {
+          id: m.id,
+          userId: m.user.id,
+          email: m.user.email,
+          firstName: m.user.firstName || undefined,
+          lastName: m.user.lastName || undefined,
+          roleName: m.role.name,
+          roleId: m.role.id,
+          joinedAt: m.joinedAt,
+          lastLogin: lastSession?.createdAt,
+          lastActive: lastMessage?.timestamp,
+        };
+      })
+    );
 
     return {
       members,
@@ -1318,5 +1392,189 @@ export class AdminService {
       ...updated,
       message: 'Organization unarchived successfully',
     };
+  }
+
+  /**
+   * Clean up stale sessions and expired refresh tokens (Platform Admin only)
+   *
+   * This operation:
+   * 1. Deletes expired refresh tokens (expiresAt < now)
+   * 2. Deletes anonymous sessions older than 7 days
+   * 3. Preserves all authenticated user sessions (conversation history)
+   *
+   * @param adminUserId Platform admin performing the cleanup
+   * @returns Cleanup summary with counts of deleted items
+   */
+  async cleanupStaleSessions(adminUserId: string): Promise<any> {
+    this.logger.log('[cleanupStaleSessions] Starting stale session cleanup');
+
+    try {
+      const now = new Date();
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+      // Execute cleanup operations
+      const [expiredTokensResult, anonymousSessionsResult] = await Promise.all([
+        // Delete expired refresh tokens
+        this.prisma.refreshToken.deleteMany({
+          where: {
+            expiresAt: { lt: now },
+          },
+        }),
+
+        // Delete anonymous sessions older than 7 days
+        this.prisma.session.deleteMany({
+          where: {
+            userId: null,
+            createdAt: { lt: sevenDaysAgo },
+          },
+        }),
+      ]);
+
+      const expiredTokensCount = expiredTokensResult.count;
+      const anonymousSessionsCount = anonymousSessionsResult.count;
+      const totalCleaned = expiredTokensCount + anonymousSessionsCount;
+
+      // Log admin action
+      await this.logAdminAction(
+        adminUserId,
+        'cleanup_stale_sessions',
+        {
+          expiredTokensCount,
+          anonymousSessionsCount,
+          totalCleaned,
+          cleanupTimestamp: now,
+        },
+      );
+
+      this.logger.log(
+        `[cleanupStaleSessions] Cleanup complete: ${expiredTokensCount} expired tokens, ` +
+        `${anonymousSessionsCount} anonymous sessions, ${totalCleaned} total items deleted`
+      );
+
+      return {
+        expiredTokensCount,
+        anonymousSessionsCount,
+        totalCleaned,
+        cleanupTimestamp: now,
+        message: `Cleanup successful: Removed ${expiredTokensCount} expired tokens and ${anonymousSessionsCount} anonymous sessions.`,
+      };
+    } catch (error) {
+      this.logger.error('[cleanupStaleSessions] Cleanup failed', error);
+      throw new InternalServerErrorException('Failed to clean up stale sessions');
+    }
+  }
+
+  async checkUserSessions(emails?: string[]): Promise<any> {
+    this.logger.log('[checkUserSessions] Checking session status for users:', emails || 'all users');
+
+    try {
+      const results = [];
+      let users = [];
+
+      // If emails provided, find specific users, otherwise get all users
+      if (emails && emails.length > 0) {
+        // Find specific users by email
+        for (const email of emails) {
+          const user = await this.prisma.user.findUnique({
+            where: { email: email.toLowerCase() },
+            include: {
+              refreshTokens: {
+                orderBy: { createdAt: 'desc' },
+                take: 5,
+              },
+              sessions: {
+                where: { status: 'active' },
+                orderBy: { createdAt: 'desc' },
+                take: 5,
+              },
+            },
+          });
+
+          if (user) {
+            users.push(user);
+          } else {
+            results.push({
+              email,
+              found: false,
+              message: 'User not found',
+            });
+          }
+        }
+      } else {
+        // Get all users (limited to 100)
+        users = await this.prisma.user.findMany({
+          take: 100,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            refreshTokens: {
+              orderBy: { createdAt: 'desc' },
+              take: 5,
+            },
+            sessions: {
+              where: { status: 'active' },
+              orderBy: { createdAt: 'desc' },
+              take: 5,
+            },
+          },
+        });
+      }
+
+      // Process each user
+      const now = new Date();
+      for (const user of users) {
+        const validTokens = user.refreshTokens.filter(token => token.expiresAt > now);
+        const expiredTokens = user.refreshTokens.filter(token => token.expiresAt <= now);
+
+        results.push({
+          email: user.email,
+          found: true,
+          user: {
+            id: user.id,
+            name: `${user.firstName} ${user.lastName}`,
+            emailVerified: user.emailVerified,
+            isActive: user.isActive,
+            accountType: user.accountType,
+            subscriptionStatus: user.subscriptionStatus,
+            subscriptionTier: user.subscriptionTier,
+            createdAt: user.createdAt,
+          },
+          refreshTokens: {
+            total: user.refreshTokens.length,
+            valid: validTokens.length,
+            expired: expiredTokens.length,
+            tokens: user.refreshTokens.map(token => ({
+              createdAt: token.createdAt,
+              expiresAt: token.expiresAt,
+              isExpired: token.expiresAt <= now,
+              ipAddress: token.ipAddress,
+              userAgent: token.userAgent ? token.userAgent.substring(0, 50) + '...' : null,
+            })),
+          },
+          activeSessions: {
+            total: user.sessions.length,
+            sessions: user.sessions.map(session => ({
+              id: session.id,
+              title: session.title,
+              createdAt: session.createdAt,
+              updatedAt: session.updatedAt,
+            })),
+          },
+        });
+      }
+
+      return {
+        results,
+        totalResults: results.length,
+        configuration: {
+          jwtAccessTokenExpiration: '15 minutes',
+          refreshTokenExpiration: '30 days',
+          sessionTimeoutMinutes: 60,
+        },
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      this.logger.error('[checkUserSessions] Failed to check user sessions', error);
+      throw new InternalServerErrorException('Failed to check user sessions');
+    }
   }
 }
