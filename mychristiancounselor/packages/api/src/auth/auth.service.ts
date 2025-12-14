@@ -14,12 +14,14 @@ import {
 } from '@mychristiancounselor/shared';
 import { EmailService } from '../email/email.service';
 import { EmailRateLimitService } from '../email/email-rate-limit.service';
+import { SessionLimitService } from '../counsel/session-limit.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly SALT_ROUNDS = 12;
-  private readonly REFRESH_TOKEN_EXPIRY_DAYS = 30;
+  private readonly REFRESH_TOKEN_EXPIRY_MINUTES = 60; // 60 minutes for session timeout
   private readonly VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
   private readonly PASSWORD_RESET_TOKEN_EXPIRY_HOURS = 1;
 
@@ -29,6 +31,8 @@ export class AuthService {
     private configService: ConfigService,
     private emailService: EmailService,
     private emailRateLimit: EmailRateLimitService,
+    private sessionLimitService: SessionLimitService,
+    private subscriptionService: SubscriptionService,
   ) {}
 
   // ===== PASSWORD METHODS =====
@@ -56,7 +60,7 @@ export class AuthService {
   async generateRefreshToken(userId: string, ipAddress?: string, userAgent?: string): Promise<string> {
     const token = randomBytes(64).toString('hex');
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + this.REFRESH_TOKEN_EXPIRY_DAYS);
+    expiresAt.setMinutes(expiresAt.getMinutes() + this.REFRESH_TOKEN_EXPIRY_MINUTES);
 
     await this.prisma.refreshToken.create({
       data: {
@@ -158,12 +162,29 @@ export class AuthService {
       throw new UnauthorizedException('Please verify your email before logging in. Check your inbox for the verification link.');
     }
 
+    // Check session limit and create login session
+    const subscriptionStatus = await this.subscriptionService.getSubscriptionStatus(user.id);
+    const limitStatus = await this.sessionLimitService.checkLimit(user.id, subscriptionStatus.hasHistoryAccess);
+
+    // Create a Session record for this login
+    // Each login creates a new session that counts against the daily limit
+    await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        title: 'Session',
+        status: 'active',
+        preferredTranslation: 'ASV', // Default translation
+      },
+    });
+    this.logger.log(`User ${user.id} logged in - created login session - session limit: ${limitStatus.used}/${limitStatus.limit}`);
+
     // Generate tokens
     const tokens = await this.generateTokens(this.sanitizeUser(user), ipAddress, userAgent);
 
     return {
       user: this.sanitizeUser(user),
       tokens,
+      sessionLimitStatus: limitStatus, // Return limit status for frontend to handle
     };
   }
 

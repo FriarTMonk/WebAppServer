@@ -1,23 +1,24 @@
 /**
  * Authenticated API fetch wrapper
- * Automatically handles session timeouts and redirects to home on 401/403
+ * Automatically handles session timeouts and token refresh
  */
 
-import { getAccessToken, clearTokens } from './auth';
+import { getAccessToken, clearTokens, refreshAccessToken } from './auth';
 import { showToast } from '../components/Toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
 interface FetchOptions extends RequestInit {
   skipAuth?: boolean;
+  _isRetry?: boolean; // Internal flag to prevent infinite retry loops
 }
 
 /**
- * Wrapper around fetch that automatically adds authentication
- * and handles session timeouts gracefully
+ * Wrapper around fetch that automatically adds authentication,
+ * refreshes expired tokens, and handles session timeouts gracefully
  */
 export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
-  const { skipAuth, ...fetchOptions } = options;
+  const { skipAuth, _isRetry, ...fetchOptions } = options;
 
   // Add authorization header if not skipping auth
   if (!skipAuth) {
@@ -40,10 +41,22 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
     const response = await fetch(url, fetchOptions);
 
     // Handle authentication errors gracefully
-    // 401 = Unauthorized (invalid/expired token) -> session expired, redirect
+    // 401 = Unauthorized (invalid/expired token) -> try to refresh, then redirect if refresh fails
     // 403 = Forbidden (valid token but insufficient permissions) -> just return response, let caller handle
-    if (response.status === 401) {
-      console.log('[API] Session expired (401), redirecting to home');
+    if (response.status === 401 && !_isRetry && !skipAuth) {
+      console.log('[API] Access token expired (401), attempting refresh...');
+
+      // Try to refresh the access token
+      const refreshSuccess = await refreshAccessToken();
+
+      if (refreshSuccess) {
+        console.log('[API] Token refresh successful, retrying request');
+        // Retry the original request with the new token
+        return apiFetch(endpoint, { ...options, _isRetry: true });
+      }
+
+      // Refresh failed (refresh token expired or invalid) - session truly expired
+      console.log('[API] Token refresh failed, session expired');
 
       // Clear authentication state
       clearTokens();
@@ -52,7 +65,7 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
       // (prevents showing "signed out" message immediately after login)
       if (typeof window !== 'undefined' && window.location.pathname !== '/') {
         // Show friendly message to user
-        showToast('Your session has timed out. Redirecting to home...', 'warning', 2500);
+        showToast('Your session has timed out. Please log in again.', 'warning', 2500);
 
         // Redirect to home as anonymous after a short delay (let user see the message)
         setTimeout(() => {
@@ -61,8 +74,7 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
       }
 
       // Return a rejected promise with a user-friendly message
-      // This allows calling code to handle it if needed
-      return Promise.reject(new Error('Session expired. Redirecting to home...'));
+      return Promise.reject(new Error('Session expired. Please log in again.'));
     }
 
     // For 403 (Forbidden), just return the response - let calling code decide how to handle

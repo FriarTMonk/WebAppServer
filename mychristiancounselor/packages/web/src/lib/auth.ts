@@ -52,3 +52,37 @@ export function clearTokens(): void {
     localStorage.removeItem('refreshToken');
   }
 }
+
+export async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+
+  if (!refreshToken) {
+    return false;
+  }
+
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const response = await fetch(`${apiUrl}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) {
+      // Refresh token is invalid or expired
+      clearTokens();
+      return false;
+    }
+
+    const data = await response.json();
+    saveTokens(data.accessToken, data.refreshToken);
+    return true;
+  } catch (error) {
+    console.error('[Auth] Token refresh failed:', error);
+    clearTokens();
+    return false;
+  }
+}

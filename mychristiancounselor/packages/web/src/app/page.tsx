@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { PlansMenu } from '../components/PlansMenu';
+import { TestimonialsSection } from '../components/TestimonialsSection';
 
 /**
  * Marketing Landing Page
@@ -16,6 +18,7 @@ import { useEffect } from 'react';
 export default function LandingPage() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
+  const [isContactDropdownOpen, setIsContactDropdownOpen] = useState(false);
 
   // Redirect authenticated users to conversation view
   useEffect(() => {
@@ -34,6 +37,39 @@ export default function LandingPage() {
               <h1 className="text-2xl font-bold text-teal-700">MyChristianCounselor</h1>
             </div>
             <div className="flex items-center gap-4">
+              {/* Plans Dropdown */}
+              <PlansMenu />
+
+              {/* Contact Us Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsContactDropdownOpen(!isContactDropdownOpen)}
+                  className="text-gray-700 hover:text-teal-700 font-medium transition-colors flex items-center gap-1"
+                >
+                  Contact Us
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {isContactDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                    <a
+                      href="mailto:sales@mychristiancounselor.online?subject=Sales%20Inquiry"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsContactDropdownOpen(false)}
+                    >
+                      Sales Inquiry
+                    </a>
+                    <a
+                      href="mailto:support@mychristiancounselor.online?subject=Support%20Request"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsContactDropdownOpen(false)}
+                    >
+                      Support
+                    </a>
+                  </div>
+                )}
+              </div>
               <Link
                 href="/login"
                 className="text-gray-700 hover:text-teal-700 font-medium transition-colors"
@@ -178,9 +214,26 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Testimonials Section */}
+      <TestimonialsSection />
+
       {/* Footer */}
       <footer className="bg-gray-900 text-gray-400 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Crisis Line */}
+          <div className="text-center mb-6 pb-6 border-b border-gray-700">
+            <p className="text-sm text-gray-300">
+              <span className="font-semibold text-red-400">In Crisis?</span> Call{' '}
+              <a href="tel:988" className="text-white hover:text-red-400 font-bold">
+                988
+              </a>{' '}
+              (Suicide & Crisis Lifeline) or{' '}
+              <a href="tel:911" className="text-white hover:text-red-400 font-bold">
+                911
+              </a>
+            </p>
+          </div>
+
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
               <p className="text-sm">
@@ -188,6 +241,9 @@ export default function LandingPage() {
               </p>
             </div>
             <div className="flex gap-6">
+              <Link href="/faq" className="text-sm hover:text-white transition-colors">
+                FAQ
+              </Link>
               <Link href="/legal/privacy" className="text-sm hover:text-white transition-colors">
                 Privacy Policy
               </Link>
@@ -196,6 +252,9 @@ export default function LandingPage() {
               </Link>
               <Link href="/support/new" className="text-sm hover:text-white transition-colors">
                 Support
+              </Link>
+              <Link href="/sales/new" className="text-sm hover:text-white transition-colors">
+                Sales Inquiry
               </Link>
             </div>
           </div>

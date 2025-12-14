@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { register, saveTokens } from '../../lib/auth';
+import { register, saveTokens, clearTokens } from '../../lib/auth';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function RegisterPage() {
@@ -15,6 +15,12 @@ export default function RegisterPage() {
   const [lastName, setLastName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Clear any stale tokens when landing on register page
+  // This ensures a clean registration state
+  useEffect(() => {
+    clearTokens();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +53,46 @@ export default function RegisterPage() {
             </Link>
           </p>
         </div>
+
+        {/* Trial Period Benefits Section */}
+        <div className="mt-6 bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-lg p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-green-900 text-lg mb-2">
+                Start Your Free Trial Today
+              </h3>
+              <div className="space-y-2 text-sm text-gray-700">
+                <div className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span><span className="font-semibold">21-day trial period</span> with 6 daily logins (3 hours of access per day)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>After trial: <span className="font-semibold">3 daily logins</span> (90 minutes) on the free tier</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Upgrade anytime for <span className="font-semibold">unlimited logins, conversation history, and premium features</span></span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-600 mt-2 italic">
+                Each login gives you 30 minutes of access. Start your journey with generous trial access!
+              </p>
+            </div>
+          </div>
+        </div>
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="rounded-md bg-red-50 p-4">

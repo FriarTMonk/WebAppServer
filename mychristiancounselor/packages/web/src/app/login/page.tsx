@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { login, saveTokens } from '../../lib/auth';
+import { login, saveTokens, clearTokens } from '../../lib/auth';
 import { useAuth } from '../../contexts/AuthContext';
+import { SessionLimitModal } from '../../components/SessionLimitModal';
+import { SessionLimitStatus } from '@mychristiancounselor/shared';
 
 function LoginForm() {
   const router = useRouter();
@@ -14,6 +16,16 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sessionLimitModal, setSessionLimitModal] = useState<{
+    isOpen: boolean;
+    limitStatus: SessionLimitStatus | null;
+  }>({ isOpen: false, limitStatus: null });
+
+  // Clear any stale tokens when landing on login page
+  // This ensures a clean login state
+  useEffect(() => {
+    clearTokens();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +36,14 @@ function LoginForm() {
       const response = await login({ email, password });
       saveTokens(response.tokens.accessToken, response.tokens.refreshToken);
       setUser(response.user);
+
+      // Check if session limit was exceeded at login
+      if (response.sessionLimitStatus && response.sessionLimitStatus.isLimited) {
+        // Show session limit modal instead of redirecting
+        setSessionLimitModal({ isOpen: true, limitStatus: response.sessionLimitStatus });
+        setLoading(false);
+        return;
+      }
 
       // Redirect to the specified redirect URL or home page
       const redirect = searchParams.get('redirect') || '/home';
@@ -109,6 +129,22 @@ function LoginForm() {
           </div>
         </form>
       </div>
+
+      {/* Session Limit Modal */}
+      <SessionLimitModal
+        isOpen={sessionLimitModal.isOpen}
+        limitStatus={sessionLimitModal.limitStatus}
+        onClose={() => {
+          // User cancelled the modal - redirect to landing page
+          setSessionLimitModal({ isOpen: false, limitStatus: null });
+          router.push('/');
+        }}
+        onUpgrade={() => {
+          // User wants to upgrade - go to subscription page
+          setSessionLimitModal({ isOpen: false, limitStatus: null });
+          router.push('/settings/subscription');
+        }}
+      />
     </div>
   );
 }
