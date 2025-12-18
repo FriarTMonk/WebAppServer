@@ -1,7 +1,17 @@
 import Stripe from 'stripe';
+import * as dotenv from 'dotenv';
 
-// Use the live key provided by user
-const STRIPE_LIVE_KEY = 'REDACTED_STRIPE_KEY';
+// Load environment variables from .env file
+dotenv.config();
+
+// Get Stripe key from environment variable
+const STRIPE_LIVE_KEY = process.env.STRIPE_SECRET_KEY;
+
+if (!STRIPE_LIVE_KEY) {
+  console.error('❌ Error: STRIPE_SECRET_KEY not found in environment variables');
+  console.error('Please set STRIPE_SECRET_KEY in your .env file or environment');
+  process.exit(1);
+}
 
 async function getLivePrices() {
   console.log('🔍 Fetching Live Stripe Prices...\n');
