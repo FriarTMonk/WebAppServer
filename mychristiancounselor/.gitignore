@@ -63,6 +63,7 @@ test-output
 
 # Environment variables and secrets
 .env
+.env.*
 .env.local
 .env.*.local
 *.env
