@@ -123,7 +123,9 @@ export interface CounselorMemberSummary {
     email: string;
   };
   wellbeingStatus: MemberWellbeingStatus;
-  lastConversationDate?: Date;
+  lastLogin?: Date; // Most recent session created
+  lastActive?: Date; // Most recent user message
+  lastConversationDate?: Date; // Deprecated: use lastLogin instead
   totalConversations: number;
   observationCount: number;
   assignment: CounselorAssignment;

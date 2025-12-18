@@ -10,8 +10,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 301);
   }
 
-  // For admin routes, let the API handle authentication
-  // Middleware can't access localStorage where tokens are stored
+  // For all routes, let the API handle authentication
   // The admin pages will handle 401/403 responses and redirect to login
   return NextResponse.next();
 }

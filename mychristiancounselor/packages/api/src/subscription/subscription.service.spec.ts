@@ -19,6 +19,10 @@ describe('SubscriptionService', () => {
   let prismaMock: ReturnType<typeof createPrismaMock>;
   let emailMock: ReturnType<typeof createEmailServiceMock>;
 
+  // Question limit constants (match defaults in SubscriptionService)
+  const MAX_QUESTIONS_SUBSCRIBED = 6;
+  const MAX_QUESTIONS_FREE = 3;
+
   beforeEach(async () => {
     prismaMock = createPrismaMock();
     emailMock = createEmailServiceMock();
@@ -31,6 +35,8 @@ describe('SubscriptionService', () => {
             () => ({
               STRIPE_SECRET_KEY: undefined, // Disable Stripe in tests
               STRIPE_WEBHOOK_SECRET: '',
+              MAX_CLARIFYING_QUESTIONS_SUBSCRIBED: MAX_QUESTIONS_SUBSCRIBED,
+              MAX_CLARIFYING_QUESTIONS_FREE: MAX_QUESTIONS_FREE,
             }),
           ],
         }),
@@ -93,7 +99,7 @@ describe('SubscriptionService', () => {
       expect(result).toEqual({
         subscriptionStatus: 'active',
         subscriptionTier: 'basic',
-        maxClarifyingQuestions: 9,
+        maxClarifyingQuestions: MAX_QUESTIONS_SUBSCRIBED,
         hasHistoryAccess: true,
         hasSharingAccess: true,
         hasArchiveAccess: true,
@@ -113,7 +119,7 @@ describe('SubscriptionService', () => {
       expect(result).toEqual({
         subscriptionStatus: 'none',
         subscriptionTier: undefined,
-        maxClarifyingQuestions: 9,
+        maxClarifyingQuestions: MAX_QUESTIONS_SUBSCRIBED,
         hasHistoryAccess: true,
         hasSharingAccess: true,
         hasArchiveAccess: true,
@@ -133,7 +139,7 @@ describe('SubscriptionService', () => {
       expect(result).toEqual({
         subscriptionStatus: 'none',
         subscriptionTier: undefined,
-        maxClarifyingQuestions: 3,
+        maxClarifyingQuestions: MAX_QUESTIONS_FREE,
         hasHistoryAccess: false,
         hasSharingAccess: false,
         hasArchiveAccess: false,

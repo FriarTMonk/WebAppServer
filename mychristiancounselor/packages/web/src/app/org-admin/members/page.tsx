@@ -340,7 +340,7 @@ export default function OrgAdminMembersPage() {
         {!loading && !error && pendingInvitations.length > 0 && (
           <div className="mb-6">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Pending Invitations</h3>
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-white rounded-lg shadow overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -429,7 +429,7 @@ export default function OrgAdminMembersPage() {
         )}
 
         {!loading && !error && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white rounded-lg shadow overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -441,6 +441,12 @@ export default function OrgAdminMembersPage() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Role
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Last Login
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Last Active
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Joined
@@ -466,6 +472,12 @@ export default function OrgAdminMembersPage() {
                       <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                         {member.roleName || 'Member'}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {member.lastLogin ? new Date(member.lastLogin).toLocaleDateString() : '—'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {member.lastActive ? new Date(member.lastActive).toLocaleDateString() : '—'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {new Date(member.joinedAt).toLocaleDateString()}

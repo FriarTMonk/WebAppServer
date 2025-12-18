@@ -28,6 +28,8 @@ export class SubscriptionService {
   private readonly logger = new Logger(SubscriptionService.name);
   private readonly stripe: Stripe;
   private readonly webhookSecret: string;
+  private readonly maxQuestionsSubscribed: number;
+  private readonly maxQuestionsFree: number;
 
   constructor(
     private prisma: PrismaService,
@@ -44,6 +46,10 @@ export class SubscriptionService {
       });
     }
     this.webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET', '');
+
+    // Load question limits from environment with sensible defaults
+    this.maxQuestionsSubscribed = this.configService.get<number>('MAX_CLARIFYING_QUESTIONS_SUBSCRIBED', 6);
+    this.maxQuestionsFree = this.configService.get<number>('MAX_CLARIFYING_QUESTIONS_FREE', 3);
   }
 
   /**
@@ -88,7 +94,7 @@ export class SubscriptionService {
     return {
       subscriptionStatus: user.subscriptionStatus as 'none' | 'active' | 'canceled' | 'past_due',
       subscriptionTier: (user.subscriptionTier as 'basic' | 'premium' | null) || undefined,
-      maxClarifyingQuestions: isSubscribed ? 9 : 3,
+      maxClarifyingQuestions: isSubscribed ? this.maxQuestionsSubscribed : this.maxQuestionsFree,
       hasHistoryAccess: isSubscribed,
       hasSharingAccess: isSubscribed,
       hasArchiveAccess: isSubscribed,

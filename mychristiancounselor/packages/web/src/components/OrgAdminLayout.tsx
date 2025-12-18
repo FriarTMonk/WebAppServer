@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { TourButton } from './TourButton';
 
 interface OrgAdminLayoutProps {
   children: React.ReactNode;
@@ -28,12 +29,15 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
                 <p className="text-sm text-green-200 mt-1">{organizationName}</p>
               )}
             </div>
-            <Link
-              href="/home"
-              className="text-sm hover:underline"
-            >
-              Back to App
-            </Link>
+            <div className="flex items-center gap-4">
+              <TourButton />
+              <Link
+                href="/home"
+                className="text-sm hover:underline"
+              >
+                Back to App
+              </Link>
+            </div>
           </div>
         </div>
       </header>

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '../../../../contexts/AuthContext';
+import { apiPost } from '../../../../lib/api';
 
 type InvitationStatus = 'loading' | 'success' | 'error' | 'not_logged_in';
 
@@ -35,18 +36,8 @@ export default function AcceptInvitationPage() {
       setStatus('loading');
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
-      const accessToken = localStorage.getItem('accessToken');
-
-      const response = await fetch(`${apiUrl}/organizations/invitations/accept`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Include cookies and proper CORS headers for CSRF protection
-        body: JSON.stringify({ token }),
-      });
+      // Use central API utility (includes credentials automatically)
+      const response = await apiPost('/organizations/invitations/accept', { token });
 
       if (!response.ok) {
         const errorData = await response.json();

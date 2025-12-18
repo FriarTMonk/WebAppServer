@@ -6,6 +6,7 @@ import { WellbeingStatus, CounselorMemberSummary } from '@mychristiancounselor/s
 import OverrideStatusModal from './OverrideStatusModal';
 import MemberProfileModal from './MemberProfileModal';
 import { apiPost } from '@/lib/api';
+import { TourButton } from './TourButton';
 
 export default function CounselorDashboard() {
   const [selectedOrg] = useState<string | undefined>(undefined);
@@ -114,12 +115,15 @@ export default function CounselorDashboard() {
       </div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Counselor Dashboard</h1>
-        <button
-          onClick={() => refetch()}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Refresh All
-        </button>
+        <div className="flex items-center gap-3">
+          <TourButton />
+          <button
+            onClick={() => refetch()}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Refresh All
+          </button>
+        </div>
       </div>
 
       {members.length === 0 ? (
@@ -127,7 +131,7 @@ export default function CounselorDashboard() {
           <p>You have no assigned members yet. Contact your organization admin to assign members to you.</p>
         </div>
       ) : (
-        <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <div className="bg-white shadow-md rounded-lg overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -139,6 +143,9 @@ export default function CounselorDashboard() {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   7-Day Summary
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Last Login
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Last Active
@@ -185,9 +192,15 @@ export default function CounselorDashboard() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(memberSummary.lastConversationDate)}
+                      {formatDate(memberSummary.lastLogin)}
                       <div className="text-xs text-gray-400">
-                        {memberSummary.totalConversations} total
+                        {memberSummary.totalConversations} sessions
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(memberSummary.lastActive)}
+                      <div className="text-xs text-gray-400">
+                        last question
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">

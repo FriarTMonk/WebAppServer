@@ -7,11 +7,15 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
+import { CounselModule } from '../counsel/counsel.module';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
   imports: [
     PrismaModule,
     EmailModule,
+    CounselModule,
+    SubscriptionModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

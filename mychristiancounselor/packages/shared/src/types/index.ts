@@ -17,6 +17,17 @@ export interface Message {
   timestamp: Date;
 }
 
+// Session limit tracking (for free users)
+export interface SessionLimitStatus {
+  used: number;      // Number of sessions created today
+  limit: number;     // Daily session limit (-1 for unlimited)
+  remaining: number; // Remaining sessions for today (-1 for unlimited)
+  isLimited: boolean; // True if user has reached their limit
+  resetTime: Date;   // When the limit will reset (start of next day)
+  isInTrialPeriod?: boolean; // True if user is in trial period (first 21 days)
+  trialDaysRemaining?: number; // Days remaining in trial period
+}
+
 // Bible translation type - Multiple translations available
 export type BibleTranslation = 'KJV' | 'ASV' | 'NIV' | 'ESV' | 'NASB' | 'NKJV' | 'NLT' | 'YLT';
 
@@ -126,6 +137,7 @@ export interface AuthTokens {
 export interface AuthResponse {
   user: User;
   tokens: AuthTokens;
+  sessionLimitStatus?: SessionLimitStatus; // Session limit info returned at login
 }
 
 export interface JwtPayload {

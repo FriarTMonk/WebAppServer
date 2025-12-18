@@ -8,6 +8,7 @@ import { WellbeingAnalysisService } from './wellbeing-analysis.service';
 import { WellbeingAnalysisScheduler } from './wellbeing-analysis.scheduler';
 import { ScriptureEnrichmentService } from './scripture-enrichment.service';
 import { SessionService } from './session.service';
+import { SessionLimitService } from './session-limit.service';
 import { NoteService } from './note.service';
 import { PermissionService } from './permission.service';
 import { CounselController } from './counsel.controller';
@@ -38,6 +39,7 @@ import { EmailModule } from '../email/email.module';
     WellbeingAnalysisScheduler,
     ScriptureEnrichmentService,
     SessionService,
+    SessionLimitService,
     NoteService,
     PermissionService,
   ],
@@ -48,6 +50,7 @@ import { EmailModule } from '../email/email.module';
     ObservationService,
     WellbeingAnalysisService,
     SessionService,
+    SessionLimitService,
     ScriptureEnrichmentService,
     NoteService,
     PermissionService,

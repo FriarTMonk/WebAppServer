@@ -12,10 +12,37 @@ import { randomUUID } from 'crypto';
 export class SessionService {
   private readonly logger = new Logger(SessionService.name);
 
+  // In-memory cache for temporary sessions (free users)
+  // Key: sessionId, Value: { session: Session, expiresAt: number }
+  private readonly tempSessionCache = new Map<string, { session: Session; expiresAt: number }>();
+  private readonly CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
   constructor(
     private prisma: PrismaService,
     private translationService: TranslationService,
-  ) {}
+  ) {
+    // Clean up expired cache entries every 10 minutes
+    setInterval(() => this.cleanupExpiredSessions(), 10 * 60 * 1000);
+  }
+
+  /**
+   * Remove expired temporary sessions from cache
+   */
+  private cleanupExpiredSessions(): void {
+    const now = Date.now();
+    let removedCount = 0;
+
+    for (const [sessionId, cached] of this.tempSessionCache.entries()) {
+      if (now > cached.expiresAt) {
+        this.tempSessionCache.delete(sessionId);
+        removedCount++;
+      }
+    }
+
+    if (removedCount > 0) {
+      this.logger.debug(`Cleaned up ${removedCount} expired temporary sessions`);
+    }
+  }
 
   /**
    * Get a session by ID with all messages ordered by timestamp
@@ -56,6 +83,21 @@ export class SessionService {
     let session: Session | null = null;
     if (sessionId) {
       session = await this.getSession(sessionId);
+
+      // If not in database, check temporary session cache (for free users)
+      if (!session && this.tempSessionCache.has(sessionId)) {
+        const cached = this.tempSessionCache.get(sessionId)!;
+
+        // Check if cache entry is still valid
+        if (Date.now() <= cached.expiresAt) {
+          session = cached.session;
+          this.logger.debug(`Retrieved temporary session ${sessionId} from cache with ${session.messages.length} messages`);
+        } else {
+          // Remove expired entry
+          this.tempSessionCache.delete(sessionId);
+          this.logger.debug(`Removed expired temporary session ${sessionId} from cache`);
+        }
+      }
     }
 
     // Validate translation preference
@@ -105,7 +147,13 @@ export class SessionService {
         updatedAt: new Date(),
       };
 
-      this.logger.debug(`Created temporary session ${session.id} for ${userId ? 'user ' + userId : 'anonymous user'}`);
+      // Store in cache with 1-hour expiration
+      this.tempSessionCache.set(session.id, {
+        session,
+        expiresAt: Date.now() + this.CACHE_TTL_MS,
+      });
+
+      this.logger.debug(`Created temporary session ${session.id} for ${userId ? 'user ' + userId : 'anonymous user'} and stored in cache`);
     }
 
     return session;
@@ -113,14 +161,38 @@ export class SessionService {
 
   /**
    * Store a user message in the session (subscription-gated)
+   * For temporary sessions, add to in-memory messages array
    */
   async createUserMessage(
     sessionId: string,
     content: string,
-    canSaveSession: boolean
+    canSaveSession: boolean,
+    session?: Session
   ): Promise<void> {
     if (!canSaveSession) {
-      this.logger.debug('Skipping message persistence - user has no subscription');
+      // For temporary sessions, add message to in-memory array for history/counting
+      if (session) {
+        const tempMessage = {
+          id: randomUUID(),
+          sessionId,
+          role: 'user' as const,
+          content,
+          scriptureReferences: [],
+          timestamp: new Date(),
+          isClarifyingQuestion: false,
+        };
+        session.messages.push(tempMessage);
+
+        // Update cache to persist message across requests
+        if (this.tempSessionCache.has(sessionId)) {
+          this.tempSessionCache.set(sessionId, {
+            session,
+            expiresAt: Date.now() + this.CACHE_TTL_MS, // Reset expiration
+          });
+        }
+
+        this.logger.debug(`Added user message to temporary session ${sessionId} (${session.messages.length} total messages)`);
+      }
       return;
     }
 
@@ -141,6 +213,7 @@ export class SessionService {
   /**
    * Store an assistant message in the session (subscription-gated)
    * Returns the persisted message or a temporary message object
+   * For temporary sessions, add to in-memory messages array
    */
   async createAssistantMessage(
     sessionId: string,
@@ -149,11 +222,12 @@ export class SessionService {
     isClarifyingQuestion: boolean,
     canSaveSession: boolean,
     griefResources?: any[],
-    crisisResources?: any[]
+    crisisResources?: any[],
+    session?: Session
   ) {
     if (!canSaveSession) {
-      // Return temporary message object for free users
-      return {
+      // Create temporary message object for free users
+      const tempMessage = {
         id: randomUUID(),
         sessionId,
         role: 'assistant' as const,
@@ -164,6 +238,23 @@ export class SessionService {
         isClarifyingQuestion,
         timestamp: new Date(),
       };
+
+      // Add to in-memory array for history/counting
+      if (session) {
+        session.messages.push(tempMessage);
+
+        // Update cache to persist message across requests
+        if (this.tempSessionCache.has(sessionId)) {
+          this.tempSessionCache.set(sessionId, {
+            session,
+            expiresAt: Date.now() + this.CACHE_TTL_MS, // Reset expiration
+          });
+        }
+
+        this.logger.debug(`Added assistant message to temporary session ${sessionId} (${session.messages.length} total messages, isClarifyingQuestion: ${isClarifyingQuestion})`);
+      }
+
+      return tempMessage;
     }
 
     // Persist message for subscribed users

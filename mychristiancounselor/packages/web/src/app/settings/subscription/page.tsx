@@ -212,7 +212,7 @@ export default function SubscriptionManagementPage() {
             Have questions about your subscription or billing?
           </p>
           <a
-            href="mailto:support@mychristiancounselor.com"
+            href="mailto:support@mychristiancounselor.online"
             className="text-purple-600 hover:text-purple-700 font-semibold text-sm"
           >
             Contact Support →

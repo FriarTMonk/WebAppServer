@@ -1,12 +1,12 @@
 # Dependencies
-node_modules
+# node_modules - needed for prebuilt Docker images
 npm-debug.log
 yarn-error.log
 yarn.lock
 
 # Build outputs
-dist
-.next
+# dist - needed for prebuilt Docker images
+# .next - needed for prebuilt Docker images
 out
 build
 tmp

@@ -1,0 +1,103 @@
+name: Deploy to Lightsail
+
+on:
+  push:
+    branches:
+      - master  # Deploy when pushing to master
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Build and push API image
+        run: |
+          VERSION="ci-build-${{ github.run_number }}"
+
+          # Build API image
+          docker build -f packages/api/Dockerfile -t api:${VERSION} .
+
+          # Push to Lightsail
+          aws lightsail push-container-image \
+            --service-name api \
+            --label ${VERSION} \
+            --image api:${VERSION} \
+            --region us-east-2
+
+          # Update deployment config with new image tag
+          sed -i "s/:api\.[^\"]*/:api.${VERSION}/" lightsail-api-deployment.json
+
+          # Deploy
+          aws lightsail create-container-service-deployment \
+            --service-name api \
+            --cli-input-json file://lightsail-api-deployment.json \
+            --region us-east-2
+
+      - name: Build and push Web image
+        run: |
+          VERSION="ci-build-${{ github.run_number }}"
+
+          # Build Web image
+          docker build -f packages/web/Dockerfile \
+            --build-arg NEXT_PUBLIC_API_URL=https://api.mychristiancounselor.online \
+            --build-arg NEXT_PUBLIC_SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
+            -t web:${VERSION} .
+
+          # Push to Lightsail
+          aws lightsail push-container-image \
+            --service-name web \
+            --label ${VERSION} \
+            --image web:${VERSION} \
+            --region us-east-2
+
+          # Update deployment config
+          sed -i "s/:web\.[^\"]*/:web.${VERSION}/" lightsail-web-deployment.json
+
+          # Deploy
+          aws lightsail create-container-service-deployment \
+            --service-name web \
+            --cli-input-json file://lightsail-web-deployment.json \
+            --region us-east-2
+
+      - name: Wait for deployments
+        run: |
+          echo "Waiting for API deployment..."
+          for i in {1..30}; do
+            STATE=$(aws lightsail get-container-services --service-name api --region us-east-2 --query 'containerServices[0].state' --output text)
+            if [ "$STATE" = "RUNNING" ]; then
+              echo "✓ API deployed successfully"
+              break
+            fi
+            sleep 10
+          done
+
+          echo "Waiting for Web deployment..."
+          for i in {1..30}; do
+            STATE=$(aws lightsail get-container-services --service-name web --region us-east-2 --query 'containerServices[0].state' --output text)
+            if [ "$STATE" = "RUNNING" ]; then
+              echo "✓ Web deployed successfully"
+              break
+            fi
+            sleep 10
+          done
+
+      - name: Verify deployment
+        run: |
+          # Test API health
+          curl -f https://api.mychristiancounselor.online/health/live || exit 1
+
+          # Test Web app
+          curl -f -o /dev/null https://mychristiancounselor.online/ || exit 1
+
+          echo "✓ Deployment verified successfully"

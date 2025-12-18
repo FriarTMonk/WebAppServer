@@ -1,0 +1,31 @@
+# Simple Dockerfile for pre-built Web app
+# Use this when the app is already built locally to avoid memory issues
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+
+# Copy pre-built Next.js output
+COPY --chown=nextjs:nodejs packages/web/.next/standalone ./
+COPY --chown=nextjs:nodejs packages/web/.next/static ./packages/web/.next/static
+COPY --chown=nextjs:nodejs packages/web/public ./packages/web/public
+
+# Switch to non-root user
+USER nextjs
+
+# Expose port
+EXPOSE 3699
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3699', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Start the application
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "packages/web/server.js"]

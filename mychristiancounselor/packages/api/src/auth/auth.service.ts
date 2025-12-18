@@ -104,6 +104,7 @@ export class AuthService {
 
     // Generate email verification token (unless bypassing)
     const verificationToken = bypassEmailVerification ? null : randomBytes(32).toString('hex');
+    const verificationTokenExpiry = bypassEmailVerification ? null : new Date(Date.now() + this.VERIFICATION_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
 
     // Create user
     const user = await this.prisma.user.create({
@@ -113,6 +114,7 @@ export class AuthService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         verificationToken,
+        verificationTokenExpiry,
         emailVerified: bypassEmailVerification, // Auto-verify if from org invite
       },
     });
@@ -266,12 +268,18 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired verification token');
     }
 
+    // Check if token has expired
+    if (user.verificationTokenExpiry && user.verificationTokenExpiry < new Date()) {
+      throw new BadRequestException('Verification token has expired. Please request a new verification email.');
+    }
+
     // Update user to mark email as verified
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
         emailVerified: true,
         verificationToken: null, // Clear token after use
+        verificationTokenExpiry: null, // Clear expiry after use
       },
     });
   }
@@ -303,10 +311,14 @@ export class AuthService {
     if (user && !user.emailVerified) {
       // Generate new verification token
       const verificationToken = randomBytes(32).toString('hex');
+      const verificationTokenExpiry = new Date(Date.now() + this.VERIFICATION_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
 
       await this.prisma.user.update({
         where: { id: user.id },
-        data: { verificationToken },
+        data: {
+          verificationToken,
+          verificationTokenExpiry,
+        },
       });
 
       // Send verification email

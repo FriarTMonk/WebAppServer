@@ -23,26 +23,41 @@ export interface PlatformMetrics {
     individual: number;
     organization: number;
   };
-  activeSessions: number;
+  totalUsers: number;
   organizations: {
     total: number;
     trial: number;
     active: number;
     expired: number;
   };
-  revenue: {
-    mrr: number;
-    arr: number;
-  };
-  systemHealth: {
-    apiResponseTime: {
-      p50: number;
-      p95: number;
-      p99: number;
+  slaHealth?: {
+    breachedResponse: number;
+    breachedResolution: number;
+    criticalResponse: number;
+    criticalResolution: number;
+    complianceRate: {
+      overall: number;
+      response: number;
+      resolution: number;
     };
-    errorRate: number;
-    dbConnections: number;
   };
+  performance?: {
+    uptimeSeconds: number;
+    uptimePercentage: number;
+    avgResponseTimeMs: number;
+    totalRequests: number;
+    requestsPerMinute: number;
+    errorRate: number;
+  };
+  salesMetrics?: {
+    pipelineValue: number;
+    activeOpportunities: number;
+    avgDealSize: number;
+    winRate: number;
+    avgSalesCycle: number;
+    forecastedRevenue: number;
+  };
+  timestamp: Date;
 }
 
 export interface OrgMetrics {
@@ -109,6 +124,8 @@ export interface AdminOrganizationMember {
   roleName: string;
   roleId: string;
   joinedAt: Date | string;
+  lastLogin?: Date | string; // Most recent session created
+  lastActive?: Date | string; // Most recent user message
 }
 
 export interface GetOrganizationMembersResponse {
@@ -183,5 +200,15 @@ export interface CreateAdminOrganizationResponse {
     lastName?: string;
   };
   ownerInvitationSent: boolean;
+  message: string;
+}
+
+// ===== SYSTEM MAINTENANCE DTOS =====
+
+export interface CleanupStaleSessionsResponse {
+  expiredTokensCount: number;
+  anonymousSessionsCount: number;
+  totalCleaned: number;
+  cleanupTimestamp: Date;
   message: string;
 }

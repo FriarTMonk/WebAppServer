@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, UseGuards, Request, Query, Patch, Delete, Param } from '@nestjs/common';
+import { Controller, Get, Put, Body, UseGuards, Request, Query, Patch, Delete, Param, Post } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ProfileService } from './profile.service';
 import { UpdateProfileDto, ChangePasswordDto } from './dto/update-profile.dto';
@@ -73,6 +73,41 @@ export class ProfileController {
   async deleteConversation(@Request() req, @Param('sessionId') sessionId: string) {
     await this.profileService.hardDeleteConversation(req.user.id, sessionId);
     return { message: 'Conversation deleted' };
+  }
+
+  /**
+   * Get completed tours for the current user
+   */
+  @Get('tours/completed')
+  async getCompletedTours(@Request() req) {
+    return this.profileService.getCompletedTours(req.user.id);
+  }
+
+  /**
+   * Mark a tour as completed
+   */
+  @Post('tours/:tourId/complete')
+  async completeTour(@Request() req, @Param('tourId') tourId: string) {
+    const completedTours = await this.profileService.completeTour(req.user.id, tourId);
+    return { completedTours };
+  }
+
+  /**
+   * Reset a tour (mark as not completed)
+   */
+  @Delete('tours/:tourId')
+  async resetTour(@Request() req, @Param('tourId') tourId: string) {
+    const completedTours = await this.profileService.resetTour(req.user.id, tourId);
+    return { completedTours };
+  }
+
+  /**
+   * Get session limit status for current user
+   * Returns: { used: number, limit: number, remaining: number, isLimited: boolean, resetTime: Date }
+   */
+  @Get('session-limit-status')
+  async getSessionLimitStatus(@Request() req) {
+    return this.profileService.getSessionLimitStatus(req.user.id);
   }
 
   /**

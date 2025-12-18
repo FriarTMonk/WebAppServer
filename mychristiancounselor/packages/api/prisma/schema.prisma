@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -15,6 +16,36 @@ enum SLAStatus {
   breached
 }
 
+// Sales opportunity stages
+enum SalesStage {
+  prospect
+  qualified
+  proposal
+  negotiation
+  won
+  lost
+}
+
+// Lead source tracking
+enum LeadSource {
+  email
+  website
+  referral
+  cold_outreach
+  event
+  partner
+}
+
+// Reason for lost opportunities
+enum LossReason {
+  budget
+  timing
+  competitor
+  no_response
+  not_qualified
+  other
+}
+
 // User account
 model User {
   id                     String    @id @default(uuid())
@@ -24,13 +55,16 @@ model User {
   lastName               String?
   emailVerified          Boolean   @default(false)
   verificationToken      String?   @unique
+  verificationTokenExpiry DateTime?
   resetToken             String?   @unique
   resetTokenExpiry       DateTime?
   isActive               Boolean   @default(true)
   isPlatformAdmin        Boolean   @default(false) // Global platform admin access
+  isSalesRep             Boolean   @default(false) // Sales representative role
   accountType            String    @default("individual") // 'individual' or 'organization'
   preferredTranslation   String?   @default("KJV") // User's preferred Bible translation
   comparisonTranslations String[]  @default(["ESV", "NASB", "NIV", "NKJV"]) // For comparison mode
+  completedTours         String[]  @default([]) // IDs of completed page tours (e.g., ["home-tour", "admin-tour"])
 
   // Individual subscription fields (denormalized for fast access)
   subscriptionStatus String    @default("none") // 'none' | 'active' | 'canceled' | 'past_due'
@@ -79,11 +113,18 @@ model User {
   // Holiday management
   holidaysCreated Holiday[] @relation("HolidaysCreated")
 
+  // Sales opportunity relations
+  opportunitiesCreated     SalesOpportunity[] @relation("OpportunitiesCreated")
+  opportunitiesAssigned    SalesOpportunity[] @relation("OpportunitiesAssigned")
+  salesActivitiesPerformed SalesActivity[]    @relation("SalesActivitiesPerformed")
+  salesNotesAuthored       SalesNote[]        @relation("SalesNotesAuthored")
+
   @@index([email])
   @@index([verificationToken])
   @@index([resetToken])
   @@index([accountType])
   @@index([isPlatformAdmin])
+  @@index([isSalesRep])
   @@index([subscriptionStatus])
 }
 
@@ -128,6 +169,7 @@ model Organization {
   counselorAssignments CounselorAssignment[]
   contract             OrganizationContract?
   supportTickets       SupportTicket[]
+  salesOpportunities   SalesOpportunity[]
 
   @@index([licenseStatus])
   @@index([licenseExpiresAt])
@@ -731,4 +773,102 @@ model SafetyDetectionFeedback {
   @@index([confidenceLevel])
   @@index([isAccurate])
   @@index([detectedAt])
+}
+
+// Sales opportunity tracking for sales queue
+model SalesOpportunity {
+  id          String  @id @default(uuid())
+  title       String
+  description String  @db.Text
+  createdById String
+  assignedToId String?
+
+  // Contact information
+  contactName  String
+  contactEmail String
+  contactPhone String?
+  companyName  String?
+  organizationId String? // Link to Organization if applicable
+
+  // Sales tracking
+  stage        SalesStage
+  leadSource   LeadSource
+  dealValue    Decimal    @db.Decimal(10, 2)
+  probability  Int // 0-100 percentage
+  priorityScore Float     @default(0) // Calculated: (dealValue/1000) × (probability/100) × urgencyFactor
+
+  // Timeline tracking
+  estimatedCloseDate    DateTime?
+  firstContactAt        DateTime?
+  proposalSentAt        DateTime?
+  negotiationStartedAt  DateTime?
+  wonAt                 DateTime?
+  lostAt                DateTime?
+
+  // Activity tracking
+  lastActivityAt  DateTime?
+  nextFollowUpAt  DateTime?
+  followUpNotes   String?  @db.Text
+
+  // Loss tracking
+  lossReason    LossReason?
+  lossNotes     String?     @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  createdBy    User               @relation("OpportunitiesCreated", fields: [createdById], references: [id])
+  assignedTo   User?              @relation("OpportunitiesAssigned", fields: [assignedToId], references: [id])
+  organization Organization?      @relation(fields: [organizationId], references: [id])
+  activities   SalesActivity[]
+  notes        SalesNote[]
+
+  @@index([stage])
+  @@index([leadSource])
+  @@index([createdById])
+  @@index([assignedToId])
+  @@index([organizationId])
+  @@index([priorityScore])
+  @@index([estimatedCloseDate])
+  @@index([createdAt])
+}
+
+// Sales activity tracking (calls, emails, meetings, etc.)
+model SalesActivity {
+  id             String   @id @default(uuid())
+  opportunityId  String
+  performedById  String
+  activityType   String // 'call' | 'email' | 'meeting' | 'demo' | 'proposal'
+  subject        String
+  notes          String?  @db.Text
+  duration       Int? // Minutes
+  outcome        String? // 'positive' | 'neutral' | 'negative' | 'no_response'
+  nextFollowUpAt DateTime?
+  createdAt      DateTime @default(now())
+
+  opportunity  SalesOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  performedBy  User             @relation("SalesActivitiesPerformed", fields: [performedById], references: [id])
+
+  @@index([opportunityId])
+  @@index([performedById])
+  @@index([createdAt])
+}
+
+// Internal sales notes (admin/rep only)
+model SalesNote {
+  id            String   @id @default(uuid())
+  opportunityId String
+  authorId      String
+  content       String   @db.Text
+  isPrivate     Boolean  @default(false) // Private to author only
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  opportunity SalesOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  author      User             @relation("SalesNotesAuthored", fields: [authorId], references: [id])
+
+  @@index([opportunityId])
+  @@index([authorId])
+  @@index([createdAt])
 }

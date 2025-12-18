@@ -15,6 +15,8 @@ interface User {
   emailVerified: boolean;
   isActive: boolean;
   createdAt: string;
+  lastLogin?: string;
+  lastActive?: string;
   subscriptionStatus?: string;
   subscriptionTier?: string;
   organizationMemberships: Array<{
@@ -235,7 +237,7 @@ export default function UsersListPage() {
         )}
 
         {!loading && !error && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white rounded-lg shadow overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -256,6 +258,12 @@ export default function UsersListPage() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Organizations
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Last Login
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Last Active
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Created
@@ -312,6 +320,12 @@ export default function UsersListPage() {
                       ) : (
                         '—'
                       )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '—'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {user.lastActive ? new Date(user.lastActive).toLocaleDateString() : '—'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {new Date(user.createdAt).toLocaleDateString()}

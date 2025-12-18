@@ -1,0 +1,32 @@
+[
+  {
+    "id": "sample-1",
+    "content": "MyChristianCounselor has been a blessing in my life. The scripture-based guidance has helped me navigate difficult decisions with biblical wisdom.",
+    "authorName": "Sarah M.",
+    "authorRole": "Premium Subscriber",
+    "authorImage": null,
+    "isFeatured": true,
+    "isPublished": true,
+    "displayOrder": 1
+  },
+  {
+    "id": "sample-2",
+    "content": "Having access to biblical counseling 24/7 has made such a difference. I can seek guidance whenever I need it, without waiting for an appointment.",
+    "authorName": "John D.",
+    "authorRole": "Church Leader",
+    "authorImage": null,
+    "isFeatured": true,
+    "isPublished": true,
+    "displayOrder": 2
+  },
+  {
+    "id": "sample-3",
+    "content": "The AI counselor provides thoughtful, scripture-backed responses that have strengthened my faith journey. It's like having a Bible study partner available anytime.",
+    "authorName": "Emily R.",
+    "authorRole": "Premium Subscriber",
+    "authorImage": null,
+    "isFeatured": false,
+    "isPublished": true,
+    "displayOrder": 3
+  }
+]

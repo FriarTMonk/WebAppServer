@@ -71,17 +71,94 @@ export class CounselingAiService {
       maxClarifyingQuestions
     );
 
-    // Construct enhanced system prompt with question limits
-    const questionLimitGuidance = `
+    // Construct enhanced system prompt with progressive question strategy
+    const remainingQuestions = maxClarifyingQuestions - currentQuestionCount;
+    const isAtLimit = currentQuestionCount >= maxClarifyingQuestions;
 
-IMPORTANT: You may ask clarifying questions to better understand the user's situation.
-- Current clarifying questions asked: ${currentQuestionCount}
-- Maximum clarifying questions allowed: ${maxClarifyingQuestions}
-- Remaining questions you can ask: ${maxClarifyingQuestions - currentQuestionCount}
+    // Determine question phase based on maxClarifyingQuestions
+    // Free users (3 questions): Q0=broad, Q1=specific, Q2+=critical
+    // Subscribed users (6 questions): Q0=broad, Q1-2=specific, Q3-5=critical
+    const specificPhaseEnd = maxClarifyingQuestions === 3 ? 1 : 2;
+    const criticalPhaseStart = specificPhaseEnd + 1;
 
-${currentQuestionCount >= maxClarifyingQuestions
-  ? 'You have reached the maximum number of clarifying questions. Provide a final, comprehensive answer based on the information you have.'
-  : 'You may ask clarifying questions if needed to provide better guidance, but be judicious.'}`;
+    let questionPhase: 'broad' | 'specific' | 'critical' | 'force-answer';
+    if (isAtLimit) {
+      questionPhase = 'force-answer';
+    } else if (currentQuestionCount === 0) {
+      questionPhase = 'broad';
+    } else if (currentQuestionCount <= specificPhaseEnd) {
+      questionPhase = 'specific';
+    } else {
+      questionPhase = 'critical';
+    }
+
+    let questionLimitGuidance = `
+
+CLARIFYING QUESTION LIMITS:
+- Questions asked: ${currentQuestionCount}/${maxClarifyingQuestions}
+- Remaining: ${remainingQuestions}
+`;
+
+    // Progressive strategy based on question phase
+    if (questionPhase === 'force-answer') {
+      // AT LIMIT - Force answer, no more questions
+      questionLimitGuidance += `
+CRITICAL: You have reached your clarifying question limit (${maxClarifyingQuestions}/${maxClarifyingQuestions}).
+You MUST now provide comprehensive Biblical guidance based on the information you have.
+
+REQUIRED ACTIONS:
+- Provide substantive Biblical counsel addressing their situation
+- Cite relevant Scripture passages to support your guidance
+- If details are unclear, make reasonable assumptions and acknowledge them
+  (e.g., "While I don't know [specific detail], Biblical wisdom teaches...")
+- DO NOT ask another clarifying question under any circumstances
+- Set "requiresClarification" to false in your response
+
+Your role is to provide Biblical wisdom and guidance, not to gather perfect information.
+Give the best counsel you can with what you know.`;
+    } else if (questionPhase === 'critical') {
+      // CRITICAL PHASE - Only ask if absolutely necessary
+      const questionsUntilLimit = remainingQuestions;
+      questionLimitGuidance += `
+QUESTION PHASE: Critical Only (${questionsUntilLimit} question${questionsUntilLimit === 1 ? '' : 's'} remaining)
+
+You are in the CRITICAL QUESTIONS phase. Only ask if:
+- You are genuinely unable to provide helpful Biblical guidance without this information
+- The missing information is central to understanding their core spiritual need
+- You cannot make a reasonable assumption about the missing detail
+
+STRONG PREFERENCE: If you can provide meaningful Biblical counsel with what you know, do so now.
+Consider whether the information you have is sufficient to guide them toward Scripture and Christ.
+
+If you ask a question now, make it highly targeted and essential.
+After ${questionsUntilLimit} more question${questionsUntilLimit === 1 ? '' : 's'}, you must provide your final answer.`;
+    } else if (questionPhase === 'specific') {
+      // SPECIFIC PHASE - Drill into key details
+      questionLimitGuidance += `
+QUESTION PHASE: Specific Details (${remainingQuestions} questions remaining after this)
+
+You are in the SPECIFIC QUESTIONS phase. Focus on:
+- Drilling into key details that will inform your Biblical counsel
+- Understanding the practical circumstances of their situation
+- Clarifying any ambiguities from their initial message
+- Gathering information that will help you select the most relevant Scripture
+
+Each question should be targeted and move you closer to providing Biblical guidance.
+After this phase, you'll only be able to ask if absolutely critical.`;
+    } else {
+      // BROAD PHASE - First question, understand the situation
+      questionLimitGuidance += `
+QUESTION PHASE: Broad Understanding (${remainingQuestions - 1} questions remaining after this)
+
+You are asking your FIRST clarifying question. Focus on:
+- Understanding the overall situation and context
+- Identifying the core spiritual or relational issue
+- Determining what type of Biblical guidance would be most helpful
+- Getting a holistic view before drilling into specifics
+
+Ask a broad, open question that helps you understand the big picture.
+You'll have opportunities for more specific questions after this.`;
+    }
 
     const enhancedSystemPrompt = SYSTEM_PROMPT + questionLimitGuidance;
 

@@ -84,10 +84,10 @@ export default function SubscriptionCancelPage() {
           <p className="text-sm text-gray-500">
             Contact us at{' '}
             <a
-              href="mailto:support@mychristiancounselor.com"
+              href="mailto:support@mychristiancounselor.online"
               className="text-purple-600 hover:underline"
             >
-              support@mychristiancounselor.com
+              support@mychristiancounselor.online
             </a>
           </p>
         </div>

@@ -55,6 +55,14 @@ export class CounselService {
   }
 
   /**
+   * Create an empty session
+   * Delegates to CounselProcessingService
+   */
+  async createEmptySession(userId: string | undefined, preferredTranslation: BibleTranslation) {
+    return this.counselProcessing.createEmptySession(userId, preferredTranslation);
+  }
+
+  /**
    * Get a session by ID
    * Delegates to SessionService
    */

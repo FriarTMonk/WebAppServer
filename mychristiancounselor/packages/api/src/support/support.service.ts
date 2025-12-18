@@ -333,6 +333,87 @@ export class SupportService {
     };
   }
 
+  async getTicket(ticketId: string, userId: string): Promise<any> {
+    // Fetch ticket with all related data
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id: ticketId },
+      include: {
+        createdBy: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        assignedTo: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        organization: {
+          select: { id: true, name: true },
+        },
+        messages: {
+          include: {
+            author: {
+              select: { id: true, email: true, firstName: true, lastName: true },
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!ticket) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    // Check permissions - user must be creator, assigned admin, or platform admin
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        isPlatformAdmin: true,
+        organizationMemberships: {
+          include: {
+            role: {
+              select: { name: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Platform admins can view all tickets
+    if (user.isPlatformAdmin) {
+      return ticket;
+    }
+
+    // Ticket creator can view their own ticket
+    if (ticket.createdById === userId) {
+      return ticket;
+    }
+
+    // Assigned admin can view the ticket
+    if (ticket.assignedToId === userId) {
+      return ticket;
+    }
+
+    // Org admins can view tickets from their organizations
+    if (ticket.organizationId) {
+      const isOrgAdmin = user.organizationMemberships.some(
+        (m) =>
+          m.organizationId === ticket.organizationId &&
+          (m.role.name === 'Owner' || m.role.name === 'Admin')
+      );
+
+      if (isOrgAdmin) {
+        return ticket;
+      }
+    }
+
+    // No permission
+    throw new ForbiddenException('You do not have permission to view this ticket');
+  }
+
   async replyToTicket(ticketId: string, userId: string, dto: ReplyToTicketDto): Promise<any> {
     // Fetch user once with all needed data to avoid duplicate queries
     const user = await this.prisma.user.findUnique({
@@ -727,6 +808,7 @@ export class SupportService {
     // Transform to include messageCount in the response
     const tickets = ticketsRaw.map((ticket) => ({
       ...ticket,
+      user: ticket.createdBy, // Alias createdBy as user for frontend compatibility
       messageCount: ticket._count.messages,
       _count: undefined, // Remove _count from response
     }));

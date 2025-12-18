@@ -64,7 +64,7 @@ export class EmailTemplatesService {
     verificationToken: string;
     expirationHours?: number;
   }): EmailTemplate {
-    const verificationUrl = `${this.appUrl}/verify-email?token=${data.verificationToken}`;
+    const verificationUrl = `${this.appUrl}/verify-email/${data.verificationToken}`;
 
     const templateData: VerificationEmailData = {
       ...this.getBaseTemplateData(data.recipientName),
@@ -83,7 +83,7 @@ export class EmailTemplatesService {
     resetToken: string;
     expirationHours?: number;
   }): EmailTemplate {
-    const resetUrl = `${this.appUrl}/reset-password?token=${data.resetToken}`;
+    const resetUrl = `${this.appUrl}/reset-password/${data.resetToken}`;
 
     const templateData: PasswordResetEmailData = {
       ...this.getBaseTemplateData(data.recipientName),
@@ -105,7 +105,7 @@ export class EmailTemplatesService {
     shareToken: string;
     expiresAt?: Date;
   }): EmailTemplate {
-    const shareUrl = `${this.appUrl}/sessions/shared?token=${data.shareToken}`;
+    const shareUrl = `${this.appUrl}/shared/${data.shareToken}`;
 
     const templateData: SessionShareEmailData = {
       ...this.getBaseTemplateData(data.recipientName),

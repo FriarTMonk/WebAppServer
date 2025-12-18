@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '../../../../../contexts/AuthContext';
 import { getAccessToken } from '../../../../../lib/auth';
 import { SessionNotesPanel } from '../../../../../components/SessionNotesPanel';
 import { GriefAlert } from '../../../../../components/GriefAlert';
 import { CrisisAlert } from '../../../../../components/CrisisAlert';
-import { CrisisResource, GriefResource } from '@mychristiancounselor/shared';
+import { MessageBubble } from '../../../../../components/MessageBubble';
+import { CrisisResource, GriefResource, Message } from '@mychristiancounselor/shared';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
@@ -244,61 +245,26 @@ export default function MemberJournalPage() {
                 </div>
 
                 <div className="space-y-4">
-                  {selectedConversation.messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`p-4 rounded-lg ${
-                        message.role === 'user'
-                          ? 'bg-blue-50 border border-blue-200'
-                          : message.role === 'assistant'
-                          ? 'bg-gray-50 border border-gray-200'
-                          : 'bg-yellow-50 border border-yellow-200'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-semibold text-gray-900 capitalize">
-                          {message.role === 'assistant' ? 'Counselor AI' : 'Member'}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {formatDate(message.timestamp)}
-                        </span>
-                      </div>
-                      <p className="text-gray-700 whitespace-pre-wrap">{message.content}</p>
+                  {selectedConversation.messages.map((message) => {
+                    // Convert to Message type with proper timestamp
+                    const messageForBubble: Message = {
+                      ...message,
+                      sessionId: selectedConversation.id,
+                      timestamp: new Date(message.timestamp),
+                    };
 
-                      {message.scriptureReferences && message.scriptureReferences.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-gray-300">
-                          <p className="text-sm font-semibold text-gray-700 mb-2">Scripture References:</p>
-                          {message.scriptureReferences.map((ref: any, index: number) => (
-                            <div key={index} className="text-sm text-gray-600 mb-2">
-                              <span className="font-semibold">
-                                {ref.book && ref.chapter && ref.verseStart ? (
-                                  <>
-                                    {ref.book} {ref.chapter}:{ref.verseStart}
-                                    {ref.verseEnd && ref.verseEnd !== ref.verseStart && `-${ref.verseEnd}`}
-                                    {ref.theme && <span className="italic font-normal"> ({ref.theme})</span>}
-                                    {' '}({ref.translation || 'KJV'})
-                                  </>
-                                ) : ref.reference ? (
-                                  ref.reference
-                                ) : null}
-                              </span>
-                              <p className="italic mt-1">"{ref.text}"</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Crisis Alert - Show if crisis was detected */}
-                      {message.crisisResources && message.crisisResources.length > 0 && (
-                        <CrisisAlert resources={message.crisisResources} />
-                      )}
-
-                      {/* Grief Alert - Show if grief was detected */}
-                      {message.griefResources && message.griefResources.length > 0 && (
-                        <GriefAlert resources={message.griefResources} />
-                      )}
-                    </div>
-                  ))}
+                    return (
+                      <React.Fragment key={message.id}>
+                        <MessageBubble message={messageForBubble} comparisonMode={false} />
+                        {message.crisisResources && message.crisisResources.length > 0 && (
+                          <CrisisAlert resources={message.crisisResources} />
+                        )}
+                        {message.griefResources && message.griefResources.length > 0 && (
+                          <GriefAlert resources={message.griefResources} />
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
               </div>
             </div>

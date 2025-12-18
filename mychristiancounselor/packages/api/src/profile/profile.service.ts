@@ -1,11 +1,17 @@
 import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SessionLimitService } from '../counsel/session-limit.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 import { UpdateProfileDto, ChangePasswordDto } from './dto/update-profile.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class ProfileService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private sessionLimitService: SessionLimitService,
+    private subscriptionService: SubscriptionService,
+  ) {}
 
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -21,6 +27,7 @@ export class ProfileService {
         isPlatformAdmin: true,
         preferredTranslation: true,
         comparisonTranslations: true,
+        completedTours: true,
         createdAt: true,
       },
     });
@@ -127,9 +134,14 @@ export class ProfileService {
       if (dateTo) where.createdAt.lte = dateTo;
     }
 
-    // Fetch sessions with note count
+    // Fetch sessions with note count (only sessions with messages)
     const sessions = await this.prisma.session.findMany({
-      where,
+      where: {
+        ...where,
+        messages: {
+          some: {}, // Only sessions with at least one message
+        },
+      },
       include: {
         messages: {
           orderBy: { timestamp: 'asc' },
@@ -363,5 +375,89 @@ export class ProfileService {
       deletionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       note: 'Your account will be permanently deleted in 30 days. Contact support to cancel deletion.',
     };
+  }
+
+  /**
+   * Get completed tours for a user
+   */
+  async getCompletedTours(userId: string): Promise<string[]> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { completedTours: true },
+    });
+
+    return user?.completedTours || [];
+  }
+
+  /**
+   * Mark a tour as completed for a user
+   */
+  async completeTour(userId: string, tourId: string): Promise<string[]> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { completedTours: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // Don't add if already completed
+    if (user.completedTours.includes(tourId)) {
+      return user.completedTours;
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        completedTours: {
+          push: tourId,
+        },
+      },
+      select: { completedTours: true },
+    });
+
+    return updated.completedTours;
+  }
+
+  /**
+   * Reset a tour (mark as not completed)
+   */
+  async resetTour(userId: string, tourId: string): Promise<string[]> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { completedTours: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        completedTours: user.completedTours.filter((t) => t !== tourId),
+      },
+      select: { completedTours: true },
+    });
+
+    return updated.completedTours;
+  }
+
+  /**
+   * Get session limit status for current user
+   * Returns usage info to display in UI
+   */
+  async getSessionLimitStatus(userId: string) {
+    // Get subscription status
+    const subscriptionStatus = await this.subscriptionService.getSubscriptionStatus(userId);
+
+    // Check current session limit status
+    const limitStatus = await this.sessionLimitService.checkLimit(
+      userId,
+      subscriptionStatus.hasHistoryAccess
+    );
+
+    return limitStatus;
   }
 }

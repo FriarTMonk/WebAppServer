@@ -2,15 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useTour } from '../contexts/TourContext';
+import { useRouter, usePathname } from 'next/navigation';
 import { apiGet } from '../lib/api';
+import { getTourForPage, getPageName } from '../config/tours';
 
 export function UserMenu() {
   const { user, logout, isAuthenticated, morphSession } = useAuth();
+  const { startTour } = useTour();
   const router = useRouter();
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [_hasOrganizations, setHasOrganizations] = useState(false);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [isSalesRep, setIsSalesRep] = useState(false);
   const [isOrgAdmin, setIsOrgAdmin] = useState(false);
   const [isCounselor, setIsCounselor] = useState(false);
   const [hasJournalAccess, setHasJournalAccess] = useState(false);
@@ -25,22 +30,24 @@ export function UserMenu() {
         .then(data => setHasOrganizations(Array.isArray(data) && data.length > 0))
         .catch(() => setHasOrganizations(false));
 
-      // Check if user is Platform Admin
+      // Check if user is Platform Admin or Sales Rep
       apiGet('/admin/health-check')
         .then(res => {
-          console.log('[UserMenu] Platform admin check response:', res.status);
+          console.log('[UserMenu] Admin/Sales check response:', res.status);
           if (res.ok) {
             return res.json();
           }
-          throw new Error('Not a platform admin');
+          throw new Error('Not a platform admin or sales rep');
         })
         .then(data => {
-          console.log('[UserMenu] Platform admin check data:', data);
+          console.log('[UserMenu] Admin/Sales check data:', data);
           setIsPlatformAdmin(data.isPlatformAdmin === true);
+          setIsSalesRep(data.isSalesRep === true);
         })
         .catch((err) => {
-          console.error('[UserMenu] Platform admin check error:', err);
+          console.error('[UserMenu] Admin/Sales check error:', err);
           setIsPlatformAdmin(false);
+          setIsSalesRep(false);
         });
 
       // Check if user is Organization Admin
@@ -109,6 +116,7 @@ export function UserMenu() {
       console.log('[UserMenu] Resetting admin states (not authenticated or no user)');
       setHasOrganizations(false);
       setIsPlatformAdmin(false);
+      setIsSalesRep(false);
       setIsOrgAdmin(false);
       setIsCounselor(false);
       setHasJournalAccess(false);
@@ -134,8 +142,18 @@ export function UserMenu() {
     );
   }
 
+  // Get tour for current page
+  const currentPageTour = getTourForPage(pathname);
+
+  const handleStartTour = () => {
+    if (currentPageTour) {
+      setIsOpen(false);
+      startTour(currentPageTour.tourId, currentPageTour.steps);
+    }
+  };
+
   return (
-    <div className="relative">
+    <div className="relative user-menu">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md"
@@ -151,6 +169,14 @@ export function UserMenu() {
           <div className="px-4 py-2 text-sm text-gray-700 border-b">
             {user?.email}
           </div>
+          {currentPageTour && (
+            <button
+              onClick={handleStartTour}
+              className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 font-medium border-b border-gray-200"
+            >
+              📖 Page Tour: {getPageName(currentPageTour.tourId)}
+            </button>
+          )}
           <button
             onClick={() => {
               setIsOpen(false);
@@ -188,6 +214,17 @@ export function UserMenu() {
               Counselor
             </button>
           )}
+          {isSalesRep && (
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                router.push('/admin/sales');
+              }}
+              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Sales Queue
+            </button>
+          )}
           {isOrgAdmin && !isPlatformAdmin && (
             <button
               onClick={() => {
@@ -210,6 +247,13 @@ export function UserMenu() {
               Admin
             </button>
           )}
+          <a
+            href={`mailto:support@mychristiancounselor.online?subject=Support%20Request&body=Please%20describe%20your%20issue%3A%0A%0A%0A%0AWhat%20were%20you%20trying%20to%20do%3F%0A%0A%0A%0AWhat%20happened%20instead%3F%0A%0A%0A%0ABrowser%2FDevice%20info%3A%0A`}
+            onClick={() => setIsOpen(false)}
+            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-t border-gray-200"
+          >
+            Contact Support
+          </a>
           {morphSession?.isMorphed ? (
             <div className="px-4 py-3 text-sm text-yellow-800 bg-yellow-50 border-t border-gray-200">
               <p className="font-semibold mb-1">Morphed Session Active</p>
@@ -220,7 +264,8 @@ export function UserMenu() {
               onClick={() => {
                 setIsOpen(false);
                 logout();
-                router.push('/');
+                // Use window.location for immediate navigation (bypass component checks)
+                window.location.href = '/';
               }}
               className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >

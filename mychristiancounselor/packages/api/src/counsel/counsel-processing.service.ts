@@ -5,6 +5,7 @@ import { SafetyService } from '../safety/safety.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { ScriptureEnrichmentService } from './scripture-enrichment.service';
 import { SessionService } from './session.service';
+import { SessionLimitService } from './session-limit.service';
 import { CounselResponse, BibleTranslation } from '@mychristiancounselor/shared';
 import { randomUUID } from 'crypto';
 
@@ -31,6 +32,7 @@ export class CounselProcessingService {
     private subscriptionService: SubscriptionService,
     private scriptureEnrichment: ScriptureEnrichmentService,
     private sessionService: SessionService,
+    private sessionLimitService: SessionLimitService,
   ) {}
 
   /**
@@ -41,13 +43,14 @@ export class CounselProcessingService {
    * 2. Detect crisis situations (early return if crisis detected)
    * 3. Detect grief situations (flag but continue)
    * 4. Extract theological themes
-   * 5. Get or create session
-   * 6. Store user message
-   * 7. Count clarifying questions
-   * 8. Retrieve relevant scriptures
-   * 9. Build conversation history
-   * 10. Generate AI response
-   * 11. Enrich response with scripture references
+   * 5. Enforce session limit (new sessions only, free users only)
+   * 6. Get or create session
+   * 7. Store user message
+   * 8. Count clarifying questions
+   * 9. Retrieve relevant scriptures
+   * 10. Build conversation history
+   * 11. Generate AI response
+   * 12. Enrich response with scripture references
    * 12. Store assistant message
    * 13. Return response with metadata
    *
@@ -102,7 +105,13 @@ export class CounselProcessingService {
     const themes = await this.counselingAi.extractTheologicalThemes(message);
     this.logger.debug(`Extracted themes: ${themes.join(', ')}`);
 
-    // 4. Get or create session using SessionService
+    // 4. Enforce session limit for new sessions (free users only)
+    // Only check limit when creating a NEW session (sessionId is undefined)
+    if (!sessionId && userId) {
+      await this.sessionLimitService.enforceLimit(userId, subscriptionStatus.hasHistoryAccess);
+    }
+
+    // 5. Get or create session using SessionService
     const canSaveSession = subscriptionStatus.hasHistoryAccess;
     const session = await this.sessionService.getOrCreateSession(
       sessionId,
@@ -113,8 +122,8 @@ export class CounselProcessingService {
       preferredTranslation || 'KJV'
     );
 
-    // 5. Store user message using SessionService
-    await this.sessionService.createUserMessage(session.id, message, canSaveSession);
+    // 5. Store user message using SessionService (pass session for temporary session tracking)
+    await this.sessionService.createUserMessage(session.id, message, canSaveSession, session);
 
     // 6. Count clarifying questions using SessionService
     const clarificationCount = this.sessionService.countClarifyingQuestions(session);
@@ -161,7 +170,8 @@ export class CounselProcessingService {
       aiResponse.requiresClarification,
       canSaveSession,
       griefResources,
-      crisisResources
+      crisisResources,
+      session
     );
 
     // 11a. Log detections for continuous improvement (non-blocking)
@@ -214,5 +224,45 @@ export class CounselProcessingService {
       griefResources,
       currentSessionQuestionCount: updatedQuestionCount,
     };
+  }
+
+  /**
+   * Create an empty session for a user
+   * Called when user lands on conversation page to count session immediately
+   *
+   * @param userId - User ID (optional for anonymous users)
+   * @param preferredTranslation - Preferred Bible translation
+   * @returns Session ID
+   */
+  async createEmptySession(
+    userId: string | undefined,
+    preferredTranslation: BibleTranslation
+  ): Promise<{ sessionId: string }> {
+    // 1. Get subscription status
+    const subscriptionStatus = userId
+      ? await this.subscriptionService.getSubscriptionStatus(userId)
+      : { hasHistoryAccess: false };
+
+    // 2. Enforce session limit for new sessions (free users only)
+    if (userId) {
+      await this.sessionLimitService.enforceLimit(userId, subscriptionStatus.hasHistoryAccess);
+    }
+
+    // 3. Create empty session
+    // All authenticated users get Session records (for counting)
+    // Messages only saved for subscribed users (hasHistoryAccess)
+    const canSaveSession = !!userId;
+    const session = await this.sessionService.getOrCreateSession(
+      undefined, // No existing sessionId
+      userId || null,
+      canSaveSession,
+      '', // Empty initial message
+      [], // No themes yet
+      preferredTranslation || 'KJV'
+    );
+
+    this.logger.debug(`Created empty session ${session.id} for user ${userId || 'anonymous'}`);
+
+    return { sessionId: session.id };
   }
 }

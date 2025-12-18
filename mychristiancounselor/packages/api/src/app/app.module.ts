@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
@@ -17,6 +17,11 @@ import { AiModule } from '../ai/ai.module';
 import { SlaModule } from '../sla/sla.module';
 import { HolidayModule } from '../holiday/holiday.module';
 import { HealthModule } from '../health/health.module';
+import { MetricsModule } from '../metrics/metrics.module';
+import { MetricsMiddleware } from '../metrics/metrics.middleware';
+import { WebhooksModule } from '../webhooks/webhooks.module';
+import { SalesModule } from '../sales/sales.module';
+import { ContentModule } from '../content/content.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CsrfGuard } from '../common/guards/csrf.guard';
 import { configValidationSchema } from '../config/config.validation';
@@ -49,6 +54,7 @@ import { winstonConfig } from '../common/logging/winston.config';
     // Winston logging
     WinstonModule.forRoot(winstonConfig),
     PrismaModule,
+    MetricsModule,
     HealthModule,
     AuthModule,
     OrganizationModule,
@@ -61,6 +67,9 @@ import { winstonConfig } from '../common/logging/winston.config';
     AiModule,
     SlaModule,
     HolidayModule,
+    WebhooksModule,
+    SalesModule,
+    ContentModule,
   ],
   providers: [
     {
@@ -77,4 +86,10 @@ import { winstonConfig } from '../common/logging/winston.config';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(MetricsMiddleware)
+      .forRoutes('*'); // Apply to all routes
+  }
+}

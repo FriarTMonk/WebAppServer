@@ -29,6 +29,16 @@ export class CounselController {
 
   @Public()
   @UseGuards(OptionalJwtAuthGuard)
+  @Post('sessions/create')
+  async createSession(@Body('preferredTranslation') preferredTranslation: string, @Request() req) {
+    // Extract userId if user is authenticated (optional)
+    const userId = req.user?.id;
+
+    return this.counselService.createEmptySession(userId, preferredTranslation || 'KJV');
+  }
+
+  @Public()
+  @UseGuards(OptionalJwtAuthGuard)
   @Post('ask')
   async ask(@Body() dto: CounselRequestDto, @Request() req) {
     // Extract userId if user is authenticated (optional)

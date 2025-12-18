@@ -52,7 +52,7 @@ export class AssignmentService {
     // Get wellbeing status for each member (will return mock data for now)
     const summaries: CounselorMemberSummary[] = await Promise.all(
       assignments.map(async (assignment) => {
-        // Get last conversation date
+        // Get last login (most recent session)
         const lastSession = await this.prisma.session.findFirst({
           where: {
             userId: assignment.memberId,
@@ -62,6 +62,22 @@ export class AssignmentService {
           },
           select: {
             createdAt: true,
+          },
+        });
+
+        // Get last active (most recent user message)
+        const lastMessage = await this.prisma.message.findFirst({
+          where: {
+            role: 'user',
+            session: {
+              userId: assignment.memberId,
+            },
+          },
+          orderBy: {
+            timestamp: 'desc',
+          },
+          select: {
+            timestamp: true,
           },
         });
 
@@ -103,7 +119,9 @@ export class AssignmentService {
         return {
           member: assignment.member,
           wellbeingStatus: wellbeingStatus as any,
-          lastConversationDate: lastSession?.createdAt,
+          lastLogin: lastSession?.createdAt,
+          lastActive: lastMessage?.timestamp,
+          lastConversationDate: lastSession?.createdAt, // Keep for backward compatibility
           totalConversations,
           observationCount,
           assignment: assignment as any,

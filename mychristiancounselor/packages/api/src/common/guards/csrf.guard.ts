@@ -50,6 +50,12 @@ export class CsrfGuard implements CanActivate {
       context.getClass(),
     ]);
 
+    // Skip CSRF validation for webhook endpoints (they're public and come from external services)
+    if (isPublic && request.url.includes('/webhooks/')) {
+      this.logger.log(`Allowing webhook request: ${method} ${request.url}`);
+      return true;
+    }
+
     // Validate origin for state-changing requests
     const isValidOrigin = this.validateOrigin(request);
 

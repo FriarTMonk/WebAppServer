@@ -13,7 +13,7 @@ export class AdminStatusController {
   constructor(private adminService: AdminService) {}
 
   /**
-   * Check if the current user is a platform admin
+   * Check if the current user is a platform admin or sales rep
    * This endpoint only requires authentication, not admin privileges
    */
   @Get('health-check')
@@ -21,6 +21,7 @@ export class AdminStatusController {
     const isPlatformAdmin = await this.adminService.isPlatformAdmin(user.id);
     return {
       isPlatformAdmin,
+      isSalesRep: user.isSalesRep || false,
       userId: user.id,
       message: 'Admin access verified',
     };

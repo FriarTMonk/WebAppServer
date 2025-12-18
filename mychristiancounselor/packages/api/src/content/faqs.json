@@ -1,0 +1,98 @@
+[
+  {
+    "id": "confidential",
+    "question": "Is this confidential?",
+    "answer": "Yes, absolutely. Your conversations are completely private and encrypted. We use bank-level encryption to protect your data and will never share your information with third parties.",
+    "category": "privacy",
+    "displayOrder": 1,
+    "isPublished": true
+  },
+  {
+    "id": "ai-vs-human",
+    "question": "Is AI counseling as good as human counseling?",
+    "answer": "Our AI counseling service is designed to provide biblical guidance and support for everyday challenges. While it can be incredibly helpful for scripture-based guidance and spiritual encouragement, it is not a replacement for professional mental health care or licensed therapy. For serious mental health concerns, we recommend speaking with a licensed professional.",
+    "category": "service",
+    "displayOrder": 2,
+    "isPublished": true
+  },
+  {
+    "id": "emergency-help",
+    "question": "What if I need emergency help?",
+    "answer": "If you are in crisis or experiencing a mental health emergency, please call 988 (Suicide & Crisis Lifeline) or 911 immediately. Our service is designed for guidance and support, not crisis intervention.",
+    "category": "service",
+    "displayOrder": 3,
+    "isPublished": true
+  },
+  {
+    "id": "ai-bible-knowledge",
+    "question": "How does the AI know the Bible?",
+    "answer": "Our AI is trained on the complete text of the Bible across multiple translations (KJV, NIV, ESV, NKJV, NLT, and more). It can reference specific verses, explain biblical principles, and provide scripture-based guidance for life's challenges.",
+    "category": "technical",
+    "displayOrder": 4,
+    "isPublished": true
+  },
+  {
+    "id": "denominations",
+    "question": "What denominations do you support?",
+    "answer": "We strive to provide guidance that is faithful to biblical principles while respecting the diversity within Christianity. Our service references multiple Bible translations and focuses on core Christian teachings that unite believers across denominations.",
+    "category": "service",
+    "displayOrder": 5,
+    "isPublished": true
+  },
+  {
+    "id": "pricing",
+    "question": "How much does it cost?",
+    "answer": "We offer three plans: (1) Free - Basic access with limited sessions, (2) Premium - $9.99/month or $99/year for unlimited access, and (3) Organization - Annual billing only with volume discounts: 2-10 users: $95/user/year, 11-100 users: $90/user/year, 101-250 users: $85/user/year, 251-500 users: $80/user/year, 501-750 users: $75/user/year, 751-1000 users: $70/user/year, 1000+ users: $65/user/year.",
+    "category": "pricing",
+    "displayOrder": 6,
+    "isPublished": true
+  },
+  {
+    "id": "cancellation",
+    "question": "Can I cancel anytime?",
+    "answer": "Yes! You can cancel your subscription at any time from your account settings. There are no long-term commitments or cancellation fees.",
+    "category": "pricing",
+    "displayOrder": 7,
+    "isPublished": true
+  },
+  {
+    "id": "question-types",
+    "question": "What kinds of questions can I ask?",
+    "answer": "You can ask about relationships, anxiety, decision-making, spiritual growth, biblical interpretation, prayer guidance, and any life challenge you're facing. Our AI provides compassionate, scripture-based guidance for a wide range of topics.",
+    "category": "service",
+    "displayOrder": 8,
+    "isPublished": true
+  },
+  {
+    "id": "verse-accuracy",
+    "question": "How accurate are the Bible verses referenced?",
+    "answer": "We prioritize accuracy in all biblical references. Each verse is pulled directly from verified Bible translations, and we provide the translation source (KJV, NIV, etc.) with each reference.",
+    "category": "technical",
+    "displayOrder": 9,
+    "isPublished": true
+  },
+  {
+    "id": "mobile-support",
+    "question": "Can I use this on my phone?",
+    "answer": "Yes! Our service is fully responsive and works on any device with a web browser - smartphones, tablets, laptops, and desktops.",
+    "category": "technical",
+    "displayOrder": 10,
+    "isPublished": true
+  },
+  {
+    "id": "data-sharing",
+    "question": "Do you share my data with anyone?",
+    "answer": "No. We do not sell, rent, or share your personal information or conversation data with third parties. Your privacy is paramount. See our Privacy Policy for complete details.",
+    "category": "privacy",
+    "displayOrder": 11,
+    "isPublished": true
+  },
+  {
+    "id": "disagree-guidance",
+    "question": "What if I disagree with the guidance given?",
+    "answer": "We encourage you to prayerfully consider all guidance and compare it with Scripture. If you receive guidance that concerns you or conflicts with your understanding of the Bible, please consult with your pastor or spiritual mentor.",
+    "category": "service",
+    "displayOrder": 12,
+    "isPublished": true
+  }
+]

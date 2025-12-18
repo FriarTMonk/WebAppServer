@@ -47,6 +47,12 @@ export class SupportController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('tickets/:ticketId')
+  async getTicket(@Request() req, @Param('ticketId') ticketId: string) {
+    return this.supportService.getTicket(ticketId, req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('tickets/:ticketId/reply')
   async replyToTicket(
     @Request() req,

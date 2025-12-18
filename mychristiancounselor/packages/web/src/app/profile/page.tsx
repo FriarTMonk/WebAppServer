@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAccessToken } from '../../lib/auth';
+import { TourButton } from '../../components/TourButton';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
@@ -174,7 +175,10 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">My Profile</h1>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Profile</h1>
+          <TourButton />
+        </div>
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
@@ -188,7 +192,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="bg-white rounded-lg shadow p-6 mb-6" data-tour="personal-info">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Personal Information</h2>
             {!isEditing && (
@@ -271,7 +275,7 @@ export default function ProfilePage() {
           )}
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="bg-white rounded-lg shadow p-6 mb-6" data-tour="bible-translation-prefs">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Bible Translation Preferences</h2>
             {!isEditing && (
@@ -363,7 +367,7 @@ export default function ProfilePage() {
           )}
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="bg-white rounded-lg shadow p-6 mb-6" data-tour="password-section">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Password</h2>
             {!isChangingPassword && (
@@ -451,7 +455,7 @@ export default function ProfilePage() {
         </div>
 
         {profile?.accountType === 'individual' && (
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="bg-white rounded-lg shadow p-6 mb-6" data-tour="subscription-section">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Subscription</h2>
             <p className="text-gray-600 mb-4">
               Manage your subscription and billing information
@@ -466,7 +470,7 @@ export default function ProfilePage() {
         )}
 
         {organizations.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="bg-white rounded-lg shadow p-6 mb-6" data-tour="organizations-section">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Organizations</h2>
             <div className="space-y-3">
               {organizations.map((org) => (
@@ -491,7 +495,7 @@ export default function ProfilePage() {
         )}
 
         {counselorAssignments.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6" data-tour="counselors-section">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">My Counselors</h2>
             <p className="text-sm text-gray-600 mb-4">
               Counselors who have been assigned to work with you across your organizations.
@@ -536,7 +540,7 @@ export default function ProfilePage() {
         )}
 
         {/* Danger Zone - Account Deletion */}
-        <div className="bg-red-50 border border-red-200 rounded-lg shadow p-6 mb-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg shadow p-6 mb-6" data-tour="danger-zone">
           <h2 className="text-xl font-semibold text-red-900 mb-4">Danger Zone</h2>
           <p className="text-red-800 mb-4">
             Once you delete your account, there is no going back. Your account will be deactivated immediately and permanently deleted after 30 days.

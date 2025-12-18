@@ -107,7 +107,7 @@ export default function OrgAdminOverviewPage() {
         {metrics && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Active Members Card */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-6" data-tour="active-members-card">
               <h3 className="text-sm font-medium text-gray-500 mb-2">Active Members</h3>
               <p className="text-3xl font-bold text-gray-900">{metrics.activeMembers}</p>
               <p className="mt-2 text-sm text-gray-600">
@@ -116,7 +116,7 @@ export default function OrgAdminOverviewPage() {
             </div>
 
             {/* Counseling Sessions Card */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-6" data-tour="counseling-sessions-card">
               <h3 className="text-sm font-medium text-gray-500 mb-2">Counseling Sessions</h3>
               <p className="text-3xl font-bold text-gray-900">{metrics.counselingSessions}</p>
               <p className="mt-2 text-sm text-gray-600">
@@ -125,7 +125,7 @@ export default function OrgAdminOverviewPage() {
             </div>
 
             {/* License Utilization Card */}
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-6" data-tour="license-utilization-card">
               <h3 className="text-sm font-medium text-gray-500 mb-2">License Utilization</h3>
               <div className="flex items-baseline gap-2">
                 <p className="text-3xl font-bold text-gray-900">{metrics.licenseUtilization.percentage}%</p>
@@ -162,6 +162,7 @@ export default function OrgAdminOverviewPage() {
               <button
                 onClick={() => router.push('/org-admin/members')}
                 className="w-full mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+                data-tour="view-members-button"
               >
                 View Members
               </button>

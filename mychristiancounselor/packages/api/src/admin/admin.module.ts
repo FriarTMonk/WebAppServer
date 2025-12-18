@@ -6,10 +6,11 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
 import { EmailModule } from '../email/email.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
+import { SalesModule } from '../sales/sales.module';
 import { MorphAuditMiddleware } from './middleware/morph-audit.middleware';
 
 @Module({
-  imports: [PrismaModule, AuthModule, EmailModule, SubscriptionModule],
+  imports: [PrismaModule, AuthModule, EmailModule, SubscriptionModule, SalesModule],
   providers: [AdminService, MorphAuditMiddleware],
   controllers: [AdminController, AdminStatusController],
   exports: [AdminService],

@@ -46,6 +46,9 @@ COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 # Copy built shared package to node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/packages/shared ./node_modules/@mychristiancounselor/shared
 
+# Copy content JSON files to root (where main.js __dirname resolves to)
+COPY --from=builder --chown=nestjs:nodejs /app/packages/api/src/content/*.json ./
+
 # Create logs directory
 RUN mkdir -p /app/logs && chown -R nestjs:nodejs /app/logs
 

@@ -22,5 +22,13 @@ export interface PlatformMetrics {
       resolution: number;
     };
   };
+  performance?: {
+    uptimeSeconds: number;
+    uptimePercentage: number;
+    avgResponseTimeMs: number;
+    totalRequests: number;
+    requestsPerMinute: number;
+    errorRate: number;
+  };
   timestamp: Date;
 }

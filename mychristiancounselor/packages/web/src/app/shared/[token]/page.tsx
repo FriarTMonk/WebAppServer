@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
 import { getAccessToken } from '../../../lib/auth';
 import { SessionNotesPanel } from '../../../components/SessionNotesPanel';
+import { MessageBubble } from '../../../components/MessageBubble';
+import { Message as SharedMessage } from '@mychristiancounselor/shared';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
@@ -182,49 +184,18 @@ export default function SharedConversationPage() {
               </p>
 
               <div className="space-y-4">
-                {session.messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`p-4 rounded-lg ${
-                      message.role === 'user'
-                        ? 'bg-blue-50 border border-blue-200'
-                        : 'bg-gray-50 border border-gray-200'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="font-semibold text-gray-900 capitalize">
-                        {message.role === 'assistant' ? 'Counselor' : message.role}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {formatDate(message.timestamp)}
-                      </span>
-                    </div>
-                    <p className="text-gray-700 whitespace-pre-wrap">{message.content}</p>
+                {session.messages.map((message) => {
+                  // Convert to Message type with proper timestamp
+                  const messageForBubble: SharedMessage = {
+                    ...message,
+                    sessionId: session.id,
+                    timestamp: new Date(message.timestamp),
+                  };
 
-                    {message.scriptureReferences && message.scriptureReferences.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-gray-300">
-                        <p className="text-sm font-semibold text-gray-700 mb-2">
-                          Scripture References:
-                        </p>
-                        {message.scriptureReferences.map((ref: any, index: number) => (
-                          <div key={index} className="text-sm text-gray-600 mb-2">
-                            <span className="font-semibold">
-                              {ref.book} {ref.chapter}:{ref.verseStart}
-                              {ref.verseEnd && ref.verseEnd !== ref.verseStart && `-${ref.verseEnd}`}
-                              {' '}({ref.translation})
-                            </span>
-                            {ref.theme && (
-                              <span className="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
-                                {ref.theme}
-                              </span>
-                            )}
-                            <p className="italic mt-1">{ref.text}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  return (
+                    <MessageBubble key={message.id} message={messageForBubble} comparisonMode={false} />
+                  );
+                })}
               </div>
             </div>
           </div>

@@ -220,13 +220,45 @@ export class OrganizationService {
     // Check permission
     await this.requirePermission(organizationId, userId, Permission.VIEW_MEMBERS);
 
-    return this.prisma.organizationMember.findMany({
+    const memberships = await this.prisma.organizationMember.findMany({
       where: { organizationId },
       include: {
         user: true,
         role: true,
       },
-    }) as any;
+    });
+
+    // Enrich members with lastLogin and lastActive
+    const enrichedMembers = await Promise.all(
+      memberships.map(async (m) => {
+        // Get last login (most recent session)
+        const lastSession = await this.prisma.session.findFirst({
+          where: { userId: m.userId },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true },
+        });
+
+        // Get last active (most recent user message)
+        const lastMessage = await this.prisma.message.findFirst({
+          where: {
+            role: 'user',
+            session: {
+              userId: m.userId,
+            },
+          },
+          orderBy: { timestamp: 'desc' },
+          select: { timestamp: true },
+        });
+
+        return {
+          ...m,
+          lastLogin: lastSession?.createdAt,
+          lastActive: lastMessage?.timestamp,
+        };
+      })
+    );
+
+    return enrichedMembers as any;
   }
 
   async updateMemberRole(
@@ -311,6 +343,23 @@ export class OrganizationService {
     await this.prisma.organizationMember.delete({
       where: { id: memberId },
     });
+
+    // Check if user has any remaining organizations
+    // If this was their last org, switch accountType back to 'individual'
+    const remainingMembershipCount = await this.prisma.organizationMember.count({
+      where: { userId: member.userId },
+    });
+
+    if (remainingMembershipCount === 0) {
+      // This was their last org - switch back to individual account type
+      await this.prisma.user.update({
+        where: { id: member.userId },
+        data: { accountType: 'individual' },
+      }).catch(err => {
+        this.logger.error(`Failed to update accountType for user ${member.userId}:`, err);
+        // Don't block member removal if accountType update fails
+      });
+    }
   }
 
   // ===== INVITATIONS =====
@@ -469,10 +518,20 @@ export class OrganizationService {
 
     if (membershipCount === 1) {
       // This is their first org - suspend individual subscription if they have one
-      await this.subscriptionService.suspendSubscription(userId, 'joined_first_organization').catch(err => {
-        this.logger.error(`Failed to suspend subscription for user ${userId}:`, err);
-        // Don't block org join if subscription suspension fails
-      });
+      // and update accountType to 'organization'
+      await Promise.all([
+        this.subscriptionService.suspendSubscription(userId, 'joined_first_organization').catch(err => {
+          this.logger.error(`Failed to suspend subscription for user ${userId}:`, err);
+          // Don't block org join if subscription suspension fails
+        }),
+        this.prisma.user.update({
+          where: { id: userId },
+          data: { accountType: 'organization' },
+        }).catch(err => {
+          this.logger.error(`Failed to update accountType for user ${userId}:`, err);
+          // Don't block org join if accountType update fails
+        }),
+      ]);
     }
 
     // Mark invitation as accepted

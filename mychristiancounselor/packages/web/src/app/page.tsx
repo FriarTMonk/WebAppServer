@@ -19,6 +19,7 @@ export default function LandingPage() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const [isContactDropdownOpen, setIsContactDropdownOpen] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // Redirect authenticated users to conversation view
   useEffect(() => {
@@ -34,9 +35,11 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-teal-700">MyChristianCounselor</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-teal-700">MyChristianCounselor</h1>
             </div>
-            <div className="flex items-center gap-4">
+
+            {/* Desktop Navigation - Hidden on Mobile */}
+            <div className="hidden lg:flex items-center gap-4">
               {/* Plans Dropdown */}
               <PlansMenu />
 
@@ -83,8 +86,92 @@ export default function LandingPage() {
                 Get Started
               </Link>
             </div>
+
+            {/* Hamburger Menu Button - Mobile Only */}
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="lg:hidden p-2 text-gray-700 hover:bg-gray-100 rounded-md"
+              aria-label="Menu"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
           </div>
         </div>
+
+        {/* Mobile Menu Panel */}
+        {showMobileMenu && (
+          <div
+            className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-50"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <div
+              className="absolute right-0 top-0 bottom-0 w-80 bg-white shadow-xl overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close Button */}
+              <div className="flex justify-between items-center p-4 border-b">
+                <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+                <button
+                  onClick={() => setShowMobileMenu(false)}
+                  className="p-2 text-gray-500 hover:text-gray-700"
+                  aria-label="Close menu"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Mobile Menu Content */}
+              <div className="p-4 space-y-4">
+                {/* Plans Section */}
+                <div className="border-b pb-4">
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Plans</h3>
+                  <PlansMenu />
+                </div>
+
+                {/* Contact Section */}
+                <div className="border-b pb-4">
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Contact Us</h3>
+                  <a
+                    href="mailto:sales@mychristiancounselor.online?subject=Sales%20Inquiry"
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    Sales Inquiry
+                  </a>
+                  <a
+                    href="mailto:support@mychristiancounselor.online?subject=Support%20Request"
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    Support
+                  </a>
+                </div>
+
+                {/* Auth Links */}
+                <div className="space-y-2">
+                  <Link
+                    href="/login"
+                    className="block w-full text-center text-gray-700 hover:text-teal-700 font-medium py-2 px-4 border border-gray-300 rounded-lg transition-colors"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="block w-full text-center bg-teal-600 text-white py-2 px-4 rounded-lg hover:bg-teal-700 font-medium transition-colors"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    Get Started
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
