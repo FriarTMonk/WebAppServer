@@ -29,6 +29,63 @@ export default function LandingPage() {
   }, [isAuthenticated, router]);
 
   return (
+    <>
+      {/* Structured Data for SEO - Helps Google understand your service */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'ProfessionalService',
+            name: 'MyChristianCounselor',
+            description: 'Online Christian counseling, biblical counseling, and AI-powered counseling tools available 24/7',
+            url: 'https://www.mychristiancounselor.online',
+            logo: 'https://www.mychristiancounselor.online/logo.png',
+            priceRange: '$$',
+            areaServed: {
+              '@type': 'Country',
+              name: 'United States',
+            },
+            availableLanguage: 'English',
+            serviceType: ['Christian Counseling', 'Biblical Counseling', 'AI Counseling', 'Faith-Based Therapy'],
+            provider: {
+              '@type': 'Organization',
+              name: 'MyChristianCounselor',
+              url: 'https://www.mychristiancounselor.online',
+              description: 'Christian counseling platform with AI-powered biblical guidance tools',
+            },
+            hasOfferCatalog: {
+              '@type': 'OfferCatalog',
+              name: 'Counseling Services',
+              itemListElement: [
+                {
+                  '@type': 'Offer',
+                  itemOffered: {
+                    '@type': 'Service',
+                    name: 'Christian Counseling Online',
+                    description: 'Scripture-based guidance and biblical counseling available 24/7',
+                  },
+                },
+                {
+                  '@type': 'Offer',
+                  itemOffered: {
+                    '@type': 'Service',
+                    name: 'AI Counseling Tools',
+                    description: 'AI-powered biblical guidance and counseling support',
+                  },
+                },
+              ],
+            },
+            offers: {
+              '@type': 'Offer',
+              description: 'Online Christian counseling with free trial',
+              priceCurrency: 'USD',
+              availability: 'https://schema.org/InStock',
+              url: 'https://www.mychristiancounselor.online/register',
+            },
+          }),
+        }}
+      />
     <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white">
       {/* Navigation */}
       <nav className="bg-white shadow-sm">
@@ -177,13 +234,13 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
         <h2 className="text-5xl font-extrabold text-gray-900 mb-6">
-          Biblical Counseling,
+          Christian Counseling & Biblical Guidance
           <br />
-          <span className="text-teal-600">Anytime You Need It</span>
+          <span className="text-teal-600">With AI-Powered Counseling Tools</span>
         </h2>
         <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-          Get compassionate, scripture-based guidance through life's challenges.
-          Available 24/7 with complete confidentiality.
+          Get compassionate Christian counseling online with AI-powered biblical guidance tools.
+          Scripture-based counseling available 24/7 with complete confidentiality.
         </p>
         <div className="flex justify-center gap-4">
           <Link
@@ -203,37 +260,40 @@ export default function LandingPage() {
 
       {/* Features Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+          Online Christian Counseling & Biblical Counseling Services
+        </h2>
         <div className="grid md:grid-cols-3 gap-8">
           <div className="bg-white p-8 rounded-lg shadow-md">
             <div className="text-4xl mb-4">📖</div>
             <h3 className="text-xl font-bold text-gray-900 mb-3">
-              Scripture-Based Guidance
+              Scripture-Based Biblical Counseling
             </h3>
             <p className="text-gray-600">
-              Every response is grounded in Biblical truth and Christian principles.
-              Multiple translations available for deeper study.
+              Every response from our AI counseling tools is grounded in Biblical truth and Christian principles.
+              Multiple Bible translations available for deeper spiritual study and faith-based guidance.
+            </p>
+          </div>
+
+          <div className="bg-white p-8 rounded-lg shadow-md">
+            <div className="text-4xl mb-4">🤖</div>
+            <h3 className="text-xl font-bold text-gray-900 mb-3">
+              AI-Powered Counseling Tools
+            </h3>
+            <p className="text-gray-600">
+              Advanced AI technology provides instant Christian counseling and biblical guidance.
+              Get scripture-based answers and faith-based counseling support anytime you need it.
             </p>
           </div>
 
           <div className="bg-white p-8 rounded-lg shadow-md">
             <div className="text-4xl mb-4">🔒</div>
             <h3 className="text-xl font-bold text-gray-900 mb-3">
-              Private & Confidential
+              Private & Confidential Support
             </h3>
             <p className="text-gray-600">
-              Your conversations are completely private. We use bank-level encryption
-              and never share your information.
-            </p>
-          </div>
-
-          <div className="bg-white p-8 rounded-lg shadow-md">
-            <div className="text-4xl mb-4">💬</div>
-            <h3 className="text-xl font-bold text-gray-900 mb-3">
-              24/7 Availability
-            </h3>
-            <p className="text-gray-600">
-              Get support whenever you need it - day or night. No appointments,
-              no waiting rooms, no judgment.
+              Your Christian counseling sessions are completely private and confidential.
+              Bank-level encryption protects your faith journey and personal information.
             </p>
           </div>
         </div>
@@ -348,5 +408,6 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
+    </>
   );
 }
