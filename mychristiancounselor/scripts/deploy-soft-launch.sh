@@ -18,7 +18,7 @@ REGION="us-east-2"
 API_SERVICE="api"
 WEB_SERVICE="web"
 API_VERSION="soft-launch-30"
-WEB_VERSION="soft-launch-30"
+WEB_VERSION="soft-launch-31"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}  MyChristianCounselor Soft Launch${NC}"
