@@ -190,6 +190,7 @@ export default function SharedConversationPage() {
                     ...message,
                     sessionId: session.id,
                     timestamp: new Date(message.timestamp),
+                    role: message.role as 'system' | 'user' | 'assistant',
                   };
 
                   return (

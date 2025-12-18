@@ -251,6 +251,7 @@ export default function MemberJournalPage() {
                       ...message,
                       sessionId: selectedConversation.id,
                       timestamp: new Date(message.timestamp),
+                      role: message.role as 'system' | 'user' | 'assistant',
                     };
 
                     return (

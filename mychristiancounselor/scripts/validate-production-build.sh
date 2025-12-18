@@ -27,11 +27,10 @@ fi
 # =============================================
 echo "Checking for localhost URLs in web build..."
 
-# Check for various localhost patterns
+# Check for various localhost patterns (excluding generic http://localhost which appears in webpack deps)
 LOCALHOST_PATTERNS=(
   "localhost:3697"
   "localhost:3699"
-  "http://localhost"
   "127.0.0.1:3697"
   "127.0.0.1:3699"
 )
