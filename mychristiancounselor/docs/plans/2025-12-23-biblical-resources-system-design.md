@@ -188,18 +188,37 @@ When duplicate detected:
 
 #### Mature Content Age-Gating
 
-Regardless of alignment tier, books tagged "Mature Content" are filtered by age:
+Regardless of alignment tier, books tagged "Mature Content" are filtered by account type:
 
-**Individual Users:**
+**Account Type Determination (Priority Order):**
+
+1. **Organization explicitly sets type** - Org admin assigns Child/Teen/Adult when creating subscription
+2. **Auto-categorize from birthday** - If birthday provided and org hasn't explicitly set type:
+   - Age <13: Child
+   - Age 13-17: Teen
+   - Age 18+: Adult
+3. **Default to Child** - If no birthday AND no org-set type: Default to Child (most restrictive)
+
+**Account Types:**
+- **Child** (<13 years old)
+- **Teen** (13-17 years old)
+- **Adult** (18+ years old)
+
+**Organization Mature Content Settings:**
+- Organization sets minimum account type threshold for mature content visibility
+- **Default: Teen** - Teen and Adult accounts can view mature content
+- **Override options:**
+  - Adult Only - Only Adult accounts can view mature content
+  - Teen+ (default) - Teen and Adult accounts can view mature content
+  - All Ages - Child, Teen, and Adult can view (rarely used)
+- Setting applies to all org members regardless of individual preferences
+- Tooltip in settings: "Some biblically-aligned books contain mature themes (sexuality, violence, deep theological topics). Choose which account types can access this content. Default: Teen (13+) and Adult accounts can view mature content."
+
+**Individual Users (No Organization):**
 - Birth date optional at registration
-- If null (not provided): Assume underage, hide mature content
-- If provided: Compare to mature content threshold
-
-**Organization-Managed Subscriptions:**
-- Account type required: Child (<13), Teen (13-17), Adult (18+)
-- Mature content visibility default: Teen (13+)
-- Organization can override threshold in settings
-- Tooltip explanation: "Some biblically-aligned books contain mature themes (sexuality, violence, deep theological topics). We filter these by age to provide age-appropriate guidance while keeping content biblically sound."
+- If provided: Auto-categorize by age (Child/Teen/Adult)
+- If not provided: Default to Child (most restrictive)
+- Mature content visible to Teen and Adult types (matches platform default)
 
 **Rationale:** If a young person seeks this content, better they find biblically-grounded information than secular alternatives.
 
@@ -692,7 +711,7 @@ interface Organization {
   offersVirtualServices: boolean;
 
   // Mature content settings
-  matureContentAgeThreshold: number; // Default: 16
+  matureContentAccountTypeThreshold: 'child' | 'teen' | 'adult'; // Default: 'teen' (Teen+ can view mature content)
 }
 ```
 
