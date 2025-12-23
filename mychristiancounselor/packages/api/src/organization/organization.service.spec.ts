@@ -101,6 +101,15 @@ describe('OrganizationService', () => {
       },
       user: {
         findUnique: jest.fn(),
+        update: jest.fn().mockResolvedValue(mockUser),
+      },
+      session: {
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+      },
+      message: {
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
       },
     };
 

@@ -5,6 +5,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../email/email.service';
 import { EmailRateLimitService } from '../email/email-rate-limit.service';
+import { SessionLimitService } from '../counsel/session-limit.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 import { createEmailServiceMock } from '../testing';
 import { UnauthorizedException, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 
@@ -48,6 +50,12 @@ describe('AuthService', () => {
               delete: jest.fn(),
               deleteMany: jest.fn(),
             },
+            session: {
+              create: jest.fn().mockResolvedValue({ id: 'session-123' }),
+              findMany: jest.fn(),
+              update: jest.fn(),
+              delete: jest.fn(),
+            },
           },
         },
         {
@@ -79,6 +87,32 @@ describe('AuthService', () => {
           useValue: {
             checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, retryAfter: 0 }),
             incrementRateLimit: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: SessionLimitService,
+          useValue: {
+            getRemainingSessionCount: jest.fn().mockResolvedValue(10),
+            canCreateSession: jest.fn().mockResolvedValue(true),
+            decrementSessionCount: jest.fn().mockResolvedValue(undefined),
+            checkLimit: jest.fn().mockResolvedValue({
+              allowed: true,
+              remaining: 10,
+              limit: 10,
+            }),
+          },
+        },
+        {
+          provide: SubscriptionService,
+          useValue: {
+            getActiveSubscription: jest.fn().mockResolvedValue(null),
+            hasActiveSubscription: jest.fn().mockResolvedValue(false),
+            getSubscriptionStatus: jest.fn().mockResolvedValue({
+              isSubscribed: false,
+              hasHistoryAccess: false,
+              maxSessions: 3,
+              maxClarifyingQuestions: 3,
+            }),
           },
         },
       ],
@@ -443,6 +477,7 @@ describe('AuthService', () => {
         data: {
           emailVerified: true,
           verificationToken: null,
+          verificationTokenExpiry: null,
         },
       });
     });

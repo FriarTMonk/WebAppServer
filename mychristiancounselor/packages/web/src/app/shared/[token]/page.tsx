@@ -4,31 +4,27 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
 import { getAccessToken } from '../../../lib/auth';
-import { SessionNotesPanel } from '../../../components/SessionNotesPanel';
-import { MessageBubble } from '../../../components/MessageBubble';
-import { Message as SharedMessage } from '@mychristiancounselor/shared';
+import { Conversation } from '../../../components/Conversation';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
-interface Message {
-  id: string;
-  role: string;
-  content: string;
-  timestamp: string;
-  scriptureReferences: any[];
-}
-
-interface Session {
-  id: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-  messages: Message[];
-  notes: any[];
-}
-
 interface ShareData {
-  session: Session;
+  session: {
+    id: string;
+    title: string;
+    createdAt: string;
+    updatedAt: string;
+    topics?: any;
+    messages: Array<{
+      id: string;
+      role: string;
+      content: string;
+      timestamp: string;
+      scriptureReferences: any[];
+      griefResources?: any[];
+      crisisResources?: any[];
+    }>;
+  };
   canView: boolean;
   canAddNotes: boolean;
   sharedBy: string;
@@ -147,72 +143,29 @@ export default function SharedConversationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Header with share info */}
-        <div className="mb-6">
-          <button
-            onClick={() => router.back()}
-            className="text-blue-600 hover:text-blue-700 flex items-center gap-2 mb-4"
-          >
-            ← Back
-          </button>
-
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-blue-800 font-medium">
-                  📖 Shared Conversation {!canAddNotes && '(Read-Only)'}
-                </p>
-                <p className="text-xs text-blue-700 mt-1">
-                  Shared by user ID: {sharedBy}
-                  {expiresAt && ` • Expires: ${formatDate(expiresAt)}`}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main content area with conversation and notes side by side */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Conversation Messages (2/3 width) */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">{session.title}</h1>
-              <p className="text-sm text-gray-600 mb-6">
-                Started: {formatDate(session.createdAt)} • Last updated: {formatDate(session.updatedAt)}
-              </p>
-
-              <div className="space-y-4">
-                {session.messages.map((message) => {
-                  // Convert to Message type with proper timestamp
-                  const messageForBubble: SharedMessage = {
-                    ...message,
-                    sessionId: session.id,
-                    timestamp: new Date(message.timestamp),
-                    role: message.role as 'system' | 'user' | 'assistant',
-                  };
-
-                  return (
-                    <MessageBubble key={message.id} message={messageForBubble} comparisonMode={false} />
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Session Notes Panel (1/3 width) */}
-          <div className="lg:col-span-1">
-            {user && (
-              <SessionNotesPanel
-                sessionId={session.id}
-                currentUserId={user.id}
-                userRole={canAddNotes ? 'user' : 'viewer'}
-              />
-            )}
-          </div>
+    <div>
+      {/* Share info banner */}
+      <div className="bg-blue-50 border-b border-blue-200 p-4 no-print">
+        <div className="max-w-7xl mx-auto">
+          <p className="text-sm text-blue-800 font-medium">
+            📖 Shared Conversation {!canAddNotes && '(Read-Only)'}
+          </p>
+          <p className="text-xs text-blue-700 mt-1">
+            Shared by user ID: {sharedBy}
+            {expiresAt && ` • Expires: ${formatDate(expiresAt)}`}
+          </p>
         </div>
       </div>
+
+      <Conversation
+        conversation={session}
+        userRole="viewer"
+        currentUserId={user?.id || ''}
+        canAddNotes={canAddNotes}
+        onBack={() => router.back()}
+        showPrintButton={false}
+        backButtonText="← Back"
+      />
     </div>
   );
 }

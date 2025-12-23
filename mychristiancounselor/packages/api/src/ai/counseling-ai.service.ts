@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
 import { withRetry } from '../common/utils/retry.util';
 import { SYSTEM_PROMPT, USER_PROMPT_TEMPLATE } from './prompts/system-prompt';
 import { ScriptureReference } from '@mychristiancounselor/shared';
+import { BedrockService } from './bedrock.service';
 
 /**
  * CounselingAiService - AI operations for Christian counseling features
@@ -21,15 +21,12 @@ import { ScriptureReference } from '@mychristiancounselor/shared';
 @Injectable()
 export class CounselingAiService {
   private readonly logger = new Logger(CounselingAiService.name);
-  private openai: OpenAI;
 
-  constructor(private configService: ConfigService) {
-    // Initialize OpenAI for counseling features
-    const openaiKey = this.configService.get<string>('OPENAI_API_KEY');
-    if (!openaiKey) {
-      throw new Error('OPENAI_API_KEY is not configured');
-    }
-    this.openai = new OpenAI({ apiKey: openaiKey });
+  constructor(
+    private configService: ConfigService,
+    private bedrock: BedrockService
+  ) {
+    this.logger.log('✅ CounselingAiService initialized with AWS Bedrock (HIPAA-compliant)');
   }
 
   /**
@@ -162,27 +159,17 @@ You'll have opportunities for more specific questions after this.`;
 
     const enhancedSystemPrompt = SYSTEM_PROMPT + questionLimitGuidance;
 
-    const completion = await withRetry(
-      () => this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: enhancedSystemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        response_format: { type: 'json_object' },
+    const parsed = await withRetry(
+      () => this.bedrock.jsonCompletion('sonnet', [
+        { role: 'system', content: enhancedSystemPrompt },
+        { role: 'user', content: userPrompt },
+      ], {
         temperature: 0.7,
         max_tokens: 800,
       }),
       { maxAttempts: 3, initialDelayMs: 1000 },
       this.logger
     );
-
-    const response = completion.choices[0].message.content;
-    if (!response) {
-      throw new Error('No response from OpenAI');
-    }
-
-    const parsed = JSON.parse(response);
 
     // The JSON format uses 'guidance' or 'clarifyingQuestion', not 'content'
     const content = parsed.requiresClarification
@@ -249,16 +236,20 @@ You'll have opportunities for more specific questions after this.`;
 
     // Regular expression to match Bible verse patterns
     // Matches: "John 3:16", "1 Corinthians 13:4-7", "Genesis 1:1-3", etc.
-    const bibleVersePattern = /\b(\d\s)?([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s(\d+):(\d+)(?:-(\d+))?/g;
+    // Uses lookbehind and alternation: numbered books allow 2 words, others allow 1 word only
+    const bibleVersePattern = /(?<=^|\s)(?:(\d)\s([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)|([A-Z][a-z]+))\s(\d+):(\d+)(?:-(\d+))?/g;
 
     let match;
     while ((match = bibleVersePattern.exec(text)) !== null) {
-      const bookPrefix = match[1] ? match[1].trim() : '';
-      const bookName = match[2];
-      const book = bookPrefix ? `${bookPrefix} ${bookName}` : bookName;
-      const chapter = parseInt(match[3], 10);
-      const verseStart = parseInt(match[4], 10);
-      const verseEnd = match[5] ? parseInt(match[5], 10) : undefined;
+      // Group 1 & 2: numbered book (e.g., "1 Corinthians")
+      // Group 3: non-numbered book (e.g., "John")
+      const book = match[1]
+        ? `${match[1]} ${match[2]}` // Numbered book
+        : match[3]; // Non-numbered book
+
+      const chapter = parseInt(match[4], 10);
+      const verseStart = parseInt(match[5], 10);
+      const verseEnd = match[6] ? parseInt(match[6], 10) : undefined;
 
       references.push({
         book: book.trim(),
@@ -309,18 +300,18 @@ KEY DISTINCTION: Spiritual desperation (seeking God in hard times) is NOT a cris
 
 Respond with ONLY "true" or "false" and nothing else.`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
+      const response = await this.bedrock.chatCompletion('haiku', [
+        { role: 'user', content: prompt }
+      ], {
         temperature: 0.1, // Low temperature for consistent detection
         max_tokens: 10,
       });
 
-      const response = completion.choices[0].message.content?.trim().toLowerCase();
+      const result = response.trim().toLowerCase();
       this.logger.debug(`[CRISIS DETECTION] Message: ${message.substring(0, 100)}`);
-      this.logger.debug(`[CRISIS DETECTION] AI Response: ${response}`);
-      this.logger.debug(`[CRISIS DETECTION] Result: ${response === 'true'}`);
-      return response === 'true';
+      this.logger.debug(`[CRISIS DETECTION] AI Response: ${result}`);
+      this.logger.debug(`[CRISIS DETECTION] Result: ${result === 'true'}`);
+      return result === 'true';
     } catch (error) {
       this.logger.error('AI crisis detection error:', error);
       // Fall back to false to avoid false positives
@@ -373,18 +364,18 @@ Be VERY conservative. When in doubt, respond "false". Only respond "true" if the
 
 Respond with ONLY "true" or "false" and nothing else.`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
+      const response = await this.bedrock.chatCompletion('haiku', [
+        { role: 'user', content: prompt }
+      ], {
         temperature: 0.1, // Low temperature for consistent detection
         max_tokens: 10,
       });
 
-      const response = completion.choices[0].message.content?.trim().toLowerCase();
+      const result = response.trim().toLowerCase();
       this.logger.debug(`[GRIEF DETECTION] Message: ${message.substring(0, 100)}`);
-      this.logger.debug(`[GRIEF DETECTION] AI Response: ${response}`);
-      this.logger.debug(`[GRIEF DETECTION] Result: ${response === 'true'}`);
-      return response === 'true';
+      this.logger.debug(`[GRIEF DETECTION] AI Response: ${result}`);
+      this.logger.debug(`[GRIEF DETECTION] Result: ${result === 'true'}`);
+      return result === 'true';
     } catch (error) {
       this.logger.error('AI grief detection error:', error);
       return false;

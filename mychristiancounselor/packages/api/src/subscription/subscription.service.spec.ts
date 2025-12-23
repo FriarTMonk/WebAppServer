@@ -408,7 +408,7 @@ describe('SubscriptionService', () => {
   });
 
   describe('getMaxClarifyingQuestions', () => {
-    it('should return 9 for subscribed user', async () => {
+    it('should return 6 for subscribed user', async () => {
       const user = createUserFixture({
         subscriptionStatus: 'active',
         organizationMemberships: [],
@@ -417,7 +417,7 @@ describe('SubscriptionService', () => {
 
       const result = await service.getMaxClarifyingQuestions(user.id);
 
-      expect(result).toBe(9);
+      expect(result).toBe(6);
     });
 
     it('should return 3 for unsubscribed user', async () => {
@@ -438,7 +438,7 @@ describe('SubscriptionService', () => {
       expect(result).toBe(0);
     });
 
-    it('should return 9 for organization member', async () => {
+    it('should return 6 for organization member', async () => {
       const user = createUserFixture({
         subscriptionStatus: 'none',
         organizationMemberships: [createMembershipFixture()],
@@ -447,7 +447,7 @@ describe('SubscriptionService', () => {
 
       const result = await service.getMaxClarifyingQuestions(user.id);
 
-      expect(result).toBe(9);
+      expect(result).toBe(6);
     });
   });
 

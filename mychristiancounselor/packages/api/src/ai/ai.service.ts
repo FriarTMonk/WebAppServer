@@ -1,8 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
-import Anthropic from '@anthropic-ai/sdk';
 import { PrismaService } from '../prisma/prisma.service';
+import { BedrockService } from './bedrock.service';
 import { withRetry } from '../common/utils/retry.util';
 import { SYSTEM_PROMPT, USER_PROMPT_TEMPLATE } from './prompts/system-prompt';
 import { ScriptureReference } from '@mychristiancounselor/shared';
@@ -48,30 +47,15 @@ class RateLimiter {
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
-  private openai: OpenAI;
-  private readonly anthropic: Anthropic;
   private readonly rateLimiter: RateLimiter;
 
   constructor(
     private configService: ConfigService,
-    private prisma: PrismaService
+    private prisma: PrismaService,
+    private bedrock: BedrockService
   ) {
-    // Initialize OpenAI for counseling features
-    const openaiKey = this.configService.get<string>('OPENAI_API_KEY');
-    if (!openaiKey) {
-      throw new Error('OPENAI_API_KEY is not configured');
-    }
-    this.openai = new OpenAI({ apiKey: openaiKey });
-
-    // Initialize Anthropic for support ticket features
-    const anthropicKey = this.configService.get<string>('ANTHROPIC_API_KEY');
-    if (!anthropicKey) {
-      throw new Error('ANTHROPIC_API_KEY is not configured');
-    }
-    this.anthropic = new Anthropic({
-      apiKey: anthropicKey,
-    });
     this.rateLimiter = new RateLimiter(10); // 10 calls per minute
+    this.logger.log('✅ AiService initialized with AWS Bedrock (HIPAA-compliant)');
   }
 
   // ============================================================================
@@ -121,27 +105,17 @@ ${currentQuestionCount >= maxClarifyingQuestions
 
     const enhancedSystemPrompt = SYSTEM_PROMPT + questionLimitGuidance;
 
-    const completion = await withRetry(
-      () => this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: enhancedSystemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        response_format: { type: 'json_object' },
+    const parsed = await withRetry(
+      () => this.bedrock.jsonCompletion('sonnet', [
+        { role: 'system', content: enhancedSystemPrompt },
+        { role: 'user', content: userPrompt },
+      ], {
         temperature: 0.7,
         max_tokens: 800,
       }),
       { maxAttempts: 3, initialDelayMs: 1000 },
       this.logger
     );
-
-    const response = completion.choices[0].message.content;
-    if (!response) {
-      throw new Error('No response from OpenAI');
-    }
-
-    const parsed = JSON.parse(response);
 
     // The JSON format uses 'guidance' or 'clarifyingQuestion', not 'content'
     const content = parsed.requiresClarification
@@ -199,16 +173,20 @@ ${currentQuestionCount >= maxClarifyingQuestions
 
     // Regular expression to match Bible verse patterns
     // Matches: "John 3:16", "1 Corinthians 13:4-7", "Genesis 1:1-3", etc.
-    const bibleVersePattern = /\b(\d\s)?([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s(\d+):(\d+)(?:-(\d+))?/g;
+    // Uses lookbehind and alternation: numbered books allow 2 words, others allow 1 word only
+    const bibleVersePattern = /(?<=^|\s)(?:(\d)\s([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)|([A-Z][a-z]+))\s(\d+):(\d+)(?:-(\d+))?/g;
 
     let match;
     while ((match = bibleVersePattern.exec(text)) !== null) {
-      const bookPrefix = match[1] ? match[1].trim() : '';
-      const bookName = match[2];
-      const book = bookPrefix ? `${bookPrefix} ${bookName}` : bookName;
-      const chapter = parseInt(match[3], 10);
-      const verseStart = parseInt(match[4], 10);
-      const verseEnd = match[5] ? parseInt(match[5], 10) : undefined;
+      // Group 1 & 2: numbered book (e.g., "1 Corinthians")
+      // Group 3: non-numbered book (e.g., "John")
+      const book = match[1]
+        ? `${match[1]} ${match[2]}` // Numbered book
+        : match[3]; // Non-numbered book
+
+      const chapter = parseInt(match[4], 10);
+      const verseStart = parseInt(match[5], 10);
+      const verseEnd = match[6] ? parseInt(match[6], 10) : undefined;
 
       references.push({
         book: book.trim(),
@@ -256,15 +234,14 @@ KEY DISTINCTION: Spiritual desperation (seeking God in hard times) is NOT a cris
 
 Respond with ONLY "true" or "false" and nothing else.`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
+      const response = await this.bedrock.chatCompletion('haiku', [
+        { role: 'user', content: prompt }
+      ], {
         temperature: 0.1, // Low temperature for consistent detection
         max_tokens: 10,
       });
 
-      const response = completion.choices[0].message.content?.trim().toLowerCase();
-      return response === 'true';
+      return response.trim().toLowerCase() === 'true';
     } catch (error) {
       this.logger.error('AI crisis detection error:', error);
       // Fall back to false to avoid false positives
@@ -314,15 +291,14 @@ Be VERY conservative. When in doubt, respond "false". Only respond "true" if the
 
 Respond with ONLY "true" or "false" and nothing else.`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
+      const response = await this.bedrock.chatCompletion('haiku', [
+        { role: 'user', content: prompt }
+      ], {
         temperature: 0.1, // Low temperature for consistent detection
         max_tokens: 10,
       });
 
-      const response = completion.choices[0].message.content?.trim().toLowerCase();
-      return response === 'true';
+      return response.trim().toLowerCase() === 'true';
     } catch (error) {
       this.logger.error('AI grief detection error:', error);
       return false;
@@ -357,19 +333,13 @@ Return ONLY the priority level (urgent/high/medium/low/feature) with no explanat
 
       this.logger.debug('Detecting priority for ticket', { title });
 
-      const response = await this.anthropic.messages.create({
-        model: 'claude-3-5-haiku-20241022',
+      const response = await this.bedrock.chatCompletion('haiku', [
+        { role: 'user', content: prompt }
+      ], {
         max_tokens: 10,
-        messages: [{ role: 'user', content: prompt }],
       });
 
-      // Extract text from response
-      const content = response.content[0];
-      if (content.type !== 'text') {
-        throw new Error('Unexpected response type from Claude API');
-      }
-
-      const priority = content.text.trim().toLowerCase();
+      const priority = response.trim().toLowerCase();
 
       // Validate priority
       const validPriorities = ['urgent', 'high', 'medium', 'low', 'feature'];
@@ -436,20 +406,11 @@ Only include scores above 40. Return empty array [] if no matches.`;
         candidateCount: limitedCandidates.length,
       });
 
-      const response = await this.anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+      const results = await this.bedrock.jsonCompletion('sonnet', [
+        { role: 'user', content: prompt }
+      ], {
         max_tokens: 500,
-        messages: [{ role: 'user', content: prompt }],
       });
-
-      // Extract text from response
-      const content = response.content[0];
-      if (content.type !== 'text') {
-        throw new Error('Unexpected response type from Claude API');
-      }
-
-      // Parse JSON response
-      const results = JSON.parse(content.text);
 
       // Validate and map results
       if (!Array.isArray(results)) {

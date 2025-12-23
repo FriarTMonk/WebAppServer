@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Anthropic from '@anthropic-ai/sdk';
 import { PrismaService } from '../prisma/prisma.service';
+import { BedrockService } from './bedrock.service';
 
 interface TicketForSimilarity {
   id: string;
@@ -57,22 +57,15 @@ class RateLimiter {
 @Injectable()
 export class SupportAiService {
   private readonly logger = new Logger(SupportAiService.name);
-  private readonly anthropic: Anthropic;
   private readonly rateLimiter: RateLimiter;
 
   constructor(
     private configService: ConfigService,
-    private prisma: PrismaService
+    private prisma: PrismaService,
+    private bedrock: BedrockService
   ) {
-    // Initialize Anthropic for support ticket features
-    const anthropicKey = this.configService.get<string>('ANTHROPIC_API_KEY');
-    if (!anthropicKey) {
-      throw new Error('ANTHROPIC_API_KEY is not configured');
-    }
-    this.anthropic = new Anthropic({
-      apiKey: anthropicKey,
-    });
     this.rateLimiter = new RateLimiter(10); // 10 calls per minute
+    this.logger.log('✅ SupportAiService initialized with AWS Bedrock (HIPAA-compliant)');
   }
 
   /**
@@ -99,19 +92,13 @@ Return ONLY the priority level (urgent/high/medium/low/feature) with no explanat
 
       this.logger.debug('Detecting priority for ticket', { title });
 
-      const response = await this.anthropic.messages.create({
-        model: 'claude-3-5-haiku-20241022',
+      const response = await this.bedrock.chatCompletion('haiku', [
+        { role: 'user', content: prompt }
+      ], {
         max_tokens: 10,
-        messages: [{ role: 'user', content: prompt }],
       });
 
-      // Extract text from response
-      const content = response.content[0];
-      if (content.type !== 'text') {
-        throw new Error('Unexpected response type from Claude API');
-      }
-
-      const priority = content.text.trim().toLowerCase();
+      const priority = response.trim().toLowerCase();
 
       // Validate priority
       const validPriorities = ['urgent', 'high', 'medium', 'low', 'feature'];
@@ -178,20 +165,11 @@ Only include scores above 40. Return empty array [] if no matches.`;
         candidateCount: limitedCandidates.length,
       });
 
-      const response = await this.anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+      const results = await this.bedrock.jsonCompletion('sonnet', [
+        { role: 'user', content: prompt }
+      ], {
         max_tokens: 500,
-        messages: [{ role: 'user', content: prompt }],
       });
-
-      // Extract text from response
-      const content = response.content[0];
-      if (content.type !== 'text') {
-        throw new Error('Unexpected response type from Claude API');
-      }
-
-      // Parse JSON response
-      const results = JSON.parse(content.text);
 
       // Validate and map results
       if (!Array.isArray(results)) {

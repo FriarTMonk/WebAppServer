@@ -3,6 +3,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AiService } from './ai.service';
 import { CounselingAiService } from './counseling-ai.service';
 import { SupportAiService } from './support-ai.service';
+import { BedrockService } from './bedrock.service';
 import { AiScheduler } from './ai.scheduler';
 import { PrismaModule } from '../prisma/prisma.module';
 
@@ -11,7 +12,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     PrismaModule,
     ScheduleModule.forRoot(),
   ],
-  providers: [AiService, CounselingAiService, SupportAiService, AiScheduler],
-  exports: [AiService, CounselingAiService, SupportAiService],
+  providers: [BedrockService, AiService, CounselingAiService, SupportAiService, AiScheduler],
+  exports: [BedrockService, AiService, CounselingAiService, SupportAiService],
 })
 export class AiModule {}

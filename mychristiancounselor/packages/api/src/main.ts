@@ -1,6 +1,4 @@
-// Polyfill crypto for @nestjs/schedule
-import * as cryptoModule from 'crypto';
-(global as any).crypto = cryptoModule;
+// Node.js 20+ has native global.crypto, no polyfill needed
 
 // Initialize Sentry as early as possible
 import { initializeSentry } from './common/sentry/sentry.config';
