@@ -21,8 +21,15 @@ export function TestimonialsSection() {
   useEffect(() => {
     const fetchTestimonials = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-        const response = await fetch(`${apiUrl}/content/testimonials`);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+        const response = await fetch(`${apiUrl}/content/testimonials`, {
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           throw new Error('Failed to load testimonials');

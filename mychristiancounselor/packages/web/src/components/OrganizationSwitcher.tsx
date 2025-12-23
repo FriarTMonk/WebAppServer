@@ -12,17 +12,19 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
  * Shows "Individual" if the user is not a member of any organization.
  */
 export function OrganizationSwitcher() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [organizationName, setOrganizationName] = useState<string>('Individual');
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !hasLoaded) {
       loadOrganization();
-    } else {
-      // Reset to Individual when user logs out
+    } else if (!isAuthenticated) {
+      // Reset when user logs out
       setOrganizationName('Individual');
+      setHasLoaded(false);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, hasLoaded]);
 
   const loadOrganization = async () => {
     const token = getAccessToken();
@@ -48,9 +50,11 @@ export function OrganizationSwitcher() {
       } else {
         setOrganizationName('Individual');
       }
+      setHasLoaded(true);
     } catch (error) {
       console.error('Failed to load organizations:', error);
       setOrganizationName('Individual');
+      setHasLoaded(true);
     }
   };
 

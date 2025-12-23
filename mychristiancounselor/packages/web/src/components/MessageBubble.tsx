@@ -14,11 +14,30 @@ export function MessageBubble({ message, comparisonMode = false }: MessageBubble
   const isSystem = message.role === 'system';
   const { isSpeaking, isSupported, speak, stop, isPaused, pause, resume } = useTextToSpeech();
 
+  // Handle content as string or object
+  const getContentText = (content: any): string => {
+    if (typeof content === 'string') return content;
+    if (content && typeof content === 'object' && 'text' in content) return content.text;
+    return '';
+  };
+
+  const contentText = getContentText(message.content);
+
+  // Debug logging
+  console.log('[MessageBubble] Rendering:', {
+    role: message.role,
+    isUser,
+    isSystem,
+    contentType: typeof message.content,
+    contentLength: contentText.length,
+    scriptureCount: message.scriptureReferences.length,
+  });
+
   const handleSpeak = () => {
     if (isSpeaking) {
       stop();
     } else {
-      speak(message.content);
+      speak(contentText);
     }
   };
 
@@ -37,14 +56,14 @@ export function MessageBubble({ message, comparisonMode = false }: MessageBubble
       <div
         className={`max-w-[80%] rounded-lg p-4 ${
           isUser
-            ? 'bg-primary-600 text-white'
+            ? 'bg-purple-700 text-white'
             : isSystem
             ? 'bg-red-50 border border-red-200 text-red-900'
             : 'bg-white border border-gray-200 text-gray-900'
         }`}
       >
         <div className="flex justify-between items-start gap-2">
-          <div className="whitespace-pre-wrap flex-1">{message.content}</div>
+          <div className="whitespace-pre-wrap flex-1">{contentText}</div>
 
           {/* Text-to-Speech Button - Only for AI messages */}
           {!isUser && isSupported && (
