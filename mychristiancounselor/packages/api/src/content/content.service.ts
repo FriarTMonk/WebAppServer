@@ -40,7 +40,8 @@ export class ContentService {
    */
   getFaqs(): FAQ[] {
     if (!this.faqsCache) {
-      const faqsPath = join(__dirname, 'faqs.json');
+      // Webpack bundles everything and copies assets to packages/api/dist/content
+      const faqsPath = join(process.cwd(), 'packages', 'api', 'dist', 'content', 'faqs.json');
       const faqsData = readFileSync(faqsPath, 'utf-8');
       const allFaqs: FAQ[] = JSON.parse(faqsData);
 
@@ -58,7 +59,8 @@ export class ContentService {
    */
   getTestimonials(): Testimonial[] {
     if (!this.testimonialsCache) {
-      const testimonialsPath = join(__dirname, 'testimonials.json');
+      // Webpack bundles everything and copies assets to packages/api/dist/content
+      const testimonialsPath = join(process.cwd(), 'packages', 'api', 'dist', 'content', 'testimonials.json');
       const testimonialsData = readFileSync(testimonialsPath, 'utf-8');
       const allTestimonials: Testimonial[] = JSON.parse(testimonialsData);
 
