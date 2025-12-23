@@ -24,11 +24,12 @@ export class BedrockService {
   private readonly bedrockClient: BedrockRuntimeClient;
   private readonly region: string;
 
-  // Claude 4.5 model IDs on AWS Bedrock (from your console)
+  // Claude 4.5 model IDs using cross-region inference profiles
+  // Cross-region inference profiles (global.* prefix) support on-demand throughput
   private readonly MODELS = {
-    SONNET: 'anthropic.claude-sonnet-4-5-20250929-v1:0',
-    HAIKU: 'anthropic.claude-haiku-4-5-20251001-v1:0',
-    OPUS: 'anthropic.claude-opus-4-5-20251101-v1:0',
+    SONNET: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0',
+    HAIKU: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+    OPUS: 'global.anthropic.claude-opus-4-5-20251101-v1:0',
   };
 
   constructor(private configService: ConfigService) {
@@ -208,7 +209,15 @@ export class BedrockService {
     }
 
     try {
-      return JSON.parse(textContent.text);
+      // Strip markdown code fences if present (```json ... ```)
+      let jsonText = textContent.text.trim();
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.replace(/^```json\s*\n?/, '').replace(/\n?```\s*$/, '');
+      } else if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/^```\s*\n?/, '').replace(/\n?```\s*$/, '');
+      }
+
+      return JSON.parse(jsonText);
     } catch (error) {
       this.logger.error(`Failed to parse JSON response: ${textContent.text}`);
       throw new Error('Model did not return valid JSON');
