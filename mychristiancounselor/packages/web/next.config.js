@@ -2,6 +2,8 @@
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { composePlugins, withNx } = require('@nx/next');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const path = require('path');
 
 /**
  * @type {import('@nx/next/plugins/with-nx').WithNxOptions}
@@ -12,6 +14,10 @@ const nextConfig = {
   nx: {},
   // Enable standalone output for Docker deployments
   output: 'standalone',
+  // Configure Turbopack root directory to silence lockfile warning
+  turbopack: {
+    root: path.resolve(__dirname, '../..'),
+  },
 };
 
 const plugins = [
