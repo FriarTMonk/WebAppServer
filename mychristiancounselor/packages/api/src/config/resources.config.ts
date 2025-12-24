@@ -13,6 +13,32 @@ export interface ResourcesConfig {
     readonly currentVersion: string; // e.g., "1.0.0"
   };
 
+  readonly aiEvaluation: {
+    // AI Model configurations
+    readonly models: {
+      readonly primary: {
+        readonly name: string;
+        readonly maxTokens: number;
+        readonly temperature: number;
+      };
+      readonly escalation: {
+        readonly name: string;
+        readonly maxTokens: number;
+        readonly temperature: number;
+      };
+    };
+
+    // Base prompt template
+    readonly basePrompt: string;
+
+    // Score thresholds (mirrored from evaluation for convenience)
+    readonly thresholds: {
+      readonly notAligned: number;
+      readonly globallyAligned: number;
+      readonly borderlineRange: number;
+    };
+  };
+
   readonly ageGating: {
     // Account type thresholds (configurable per org)
     readonly defaultMatureContentThreshold: 'child' | 'teen' | 'adult'; // Default: teen
@@ -56,6 +82,55 @@ export const resourcesConfig: ResourcesConfig = {
     primaryModel: 'claude-sonnet-4-20250514',
     escalationModel: 'claude-opus-4-20250514',
     currentVersion: '1.0.0',
+  },
+  aiEvaluation: {
+    models: {
+      primary: {
+        name: 'claude-sonnet-4-20250514',
+        maxTokens: 4096,
+        temperature: 0.0,
+      },
+      escalation: {
+        name: 'claude-opus-4-20250514',
+        maxTokens: 4096,
+        temperature: 0.0,
+      },
+    },
+    basePrompt: `You are a theological expert evaluating Christian literature for biblical alignment. Analyze the following book and provide a comprehensive evaluation.
+
+Book Title: {{title}}
+Author: {{author}}
+Genre: {{genre}}
+
+Content to Analyze:
+{{content}}
+
+Provide your evaluation as a JSON object with the following structure:
+{
+  "biblicalAlignmentScore": <number 0-100>,
+  "theologicalSummary": "<brief summary of theological position>",
+  "doctrineCategoryScores": [
+    {
+      "category": "<doctrine name>",
+      "score": <number 0-100>,
+      "notes": "<specific observations>"
+    }
+  ],
+  "denominationalTags": ["<denomination1>", "<denomination2>"],
+  "matureContent": <boolean>,
+  "matureContentReason": "<reason if true>",
+  "scriptureComparisonNotes": "<how well it aligns with Scripture>",
+  "theologicalStrengths": ["<strength1>", "<strength2>"],
+  "theologicalConcerns": ["<concern1>", "<concern2>"],
+  "scoringReasoning": "<detailed explanation of the score>"
+}
+
+Focus on alignment with core Christian doctrines, scriptural accuracy, and theological soundness.`,
+    thresholds: {
+      notAligned: 70,
+      globallyAligned: 90,
+      borderlineRange: 3,
+    },
   },
   ageGating: {
     defaultMatureContentThreshold: 'teen',
