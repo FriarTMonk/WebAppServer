@@ -7,56 +7,66 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User account
 model User {
-  id                     String    @id @default(uuid())
-  email                  String    @unique
-  passwordHash           String
-  firstName              String?
-  lastName               String?
-  emailVerified          Boolean   @default(false)
-  verificationToken      String?   @unique
-  resetToken             String?   @unique
-  resetTokenExpiry       DateTime?
-  isActive               Boolean   @default(true)
-  isPlatformAdmin        Boolean   @default(false) // Global platform admin access
-  accountType            String    @default("individual") // 'individual' or 'organization'
-  preferredTranslation   String?   @default("KJV") // User's preferred Bible translation
-  comparisonTranslations String[]  @default(["ESV", "NASB", "NIV", "NKJV"]) // For comparison mode
-
-  // Individual subscription fields (denormalized for fast access)
-  subscriptionStatus String    @default("none") // 'none' | 'active' | 'canceled' | 'past_due'
-  subscriptionTier   String? // 'basic' | 'premium'
-  subscriptionStart  DateTime? // When current subscription started
-  subscriptionEnd    DateTime? // When subscription ended (for canceled)
-  stripeCustomerId   String?   @unique // Stripe customer ID
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  refreshTokens           RefreshToken[]
-  sessions                Session[]
-  organizationMemberships OrganizationMember[]
-  invitationsCreated      OrganizationInvitation[] @relation("CreatedByUser")
-  invitationsReceived     OrganizationInvitation[] @relation("InvitedUser")
-  adminActionsGiven       AdminAuditLog[]          @relation("AdminActions")
-  adminActionsReceived    AdminAuditLog[]          @relation("ActionsReceived")
-  sessionNotesAuthored    SessionNote[]            @relation("SessionNotesAuthored")
-  subscriptions           Subscription[]
-
-  // New counselor relations
-  counselorAssignments    CounselorAssignment[]    @relation("CounselorAssignments")
-  memberAssignments       CounselorAssignment[]    @relation("MemberAssignments")
-  observationsAuthored    CounselorObservation[]   @relation("ObservationsAuthored")
-  observationsReceived    CounselorObservation[]   @relation("ObservationsReceived")
-  coverageGrantsGiven     CounselorCoverageGrant[] @relation("CoverageGrantsGiven")
-  coverageGrantsReceived  CounselorCoverageGrant[] @relation("CoverageGrantsReceived")
-  coverageGrantsForMember CounselorCoverageGrant[] @relation("CoverageGrantsForMember")
-  wellbeingStatus         MemberWellbeingStatus?
-  notificationsReceived   Notification[]           @relation("NotificationsReceived")
-  notificationsSent       Notification[]           @relation("NotificationsSent")
-  holidaysCreated         Holiday[]                @relation("HolidaysCreated")
+  id                                                   String                   @id @default(uuid())
+  email                                                String                   @unique
+  passwordHash                                         String
+  firstName                                            String?
+  lastName                                             String?
+  emailVerified                                        Boolean                  @default(false)
+  verificationToken                                    String?                  @unique
+  resetToken                                           String?                  @unique
+  resetTokenExpiry                                     DateTime?
+  isActive                                             Boolean                  @default(true)
+  createdAt                                            DateTime                 @default(now())
+  updatedAt                                            DateTime                 @updatedAt
+  accountType                                          String                   @default("individual")
+  isPlatformAdmin                                      Boolean                  @default(false)
+  comparisonTranslations                               String[]                 @default(["ESV", "NASB", "NIV", "NKJV"])
+  preferredTranslation                                 String?                  @default("KJV")
+  stripeCustomerId                                     String?                  @unique
+  subscriptionEnd                                      DateTime?
+  subscriptionStart                                    DateTime?
+  subscriptionStatus                                   String                   @default("none")
+  subscriptionTier                                     String?
+  birthDate                                            DateTime?
+  city                                                 String?
+  state                                                String?
+  zipCode                                              String?
+  adminActionsGiven                                    AdminAuditLog[]          @relation("AdminActions")
+  adminActionsReceived                                 AdminAuditLog[]          @relation("ActionsReceived")
+  submittedBooks                                       Book[]                   @relation("BookSubmitter")
+  bookEndorsements                                     BookEndorsement[]
+  counselorAssignments                                 CounselorAssignment[]    @relation("CounselorAssignments")
+  memberAssignments                                    CounselorAssignment[]    @relation("MemberAssignments")
+  coverageGrantsReceived                               CounselorCoverageGrant[] @relation("CoverageGrantsReceived")
+  coverageGrantsForMember                              CounselorCoverageGrant[] @relation("CoverageGrantsForMember")
+  coverageGrantsGiven                                  CounselorCoverageGrant[] @relation("CoverageGrantsGiven")
+  observationsAuthored                                 CounselorObservation[]   @relation("ObservationsAuthored")
+  observationsReceived                                 CounselorObservation[]   @relation("ObservationsReceived")
+  externalOrgsAdded                                    ExternalOrganization[]
+  holidaysCreated                                      Holiday[]                @relation("HolidaysCreated")
+  wellbeingStatus                                      MemberWellbeingStatus?
+  notificationsReceived                                Notification[]           @relation("NotificationsReceived")
+  notificationsSent                                    Notification[]           @relation("NotificationsSent")
+  invitationsReceived                                  OrganizationInvitation[] @relation("InvitedUser")
+  invitationsCreated                                   OrganizationInvitation[] @relation("CreatedByUser")
+  organizationMemberships                              OrganizationMember[]
+  refreshTokens                                        RefreshToken[]
+  SalesNote                                            SalesNote[]
+  SalesOpportunity_SalesOpportunity_assignedToIdToUser SalesOpportunity[]       @relation("SalesOpportunity_assignedToIdToUser")
+  SalesOpportunity_SalesOpportunity_createdByIdToUser  SalesOpportunity[]       @relation("SalesOpportunity_createdByIdToUser")
+  sessions                                             Session[]
+  sessionNotesAuthored                                 SessionNote[]            @relation("SessionNotesAuthored")
+  subscriptions                                        Subscription[]
+  SupportTicket_SupportTicket_assignedToIdToUser       SupportTicket[]          @relation("SupportTicket_assignedToIdToUser")
+  SupportTicket_SupportTicket_closedByIdToUser         SupportTicket[]          @relation("SupportTicket_closedByIdToUser")
+  SupportTicket_SupportTicket_createdByIdToUser        SupportTicket[]          @relation("SupportTicket_createdByIdToUser")
+  SupportTicket_SupportTicket_resolvedByIdToUser       SupportTicket[]          @relation("SupportTicket_resolvedByIdToUser")
+  TicketAttachment                                     TicketAttachment[]
+  TicketLink                                           TicketLink[]
+  TicketMessage                                        TicketMessage[]
+  readingList                                          UserReadingList[]
 
   @@index([email])
   @@index([verificationToken])
@@ -66,7 +76,6 @@ model User {
   @@index([subscriptionStatus])
 }
 
-// JWT refresh tokens (server-side storage)
 model RefreshToken {
   id        String   @id @default(uuid())
   userId    String
@@ -75,8 +84,7 @@ model RefreshToken {
   createdAt DateTime @default(now())
   ipAddress String?
   userAgent String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([token])
@@ -84,86 +92,93 @@ model RefreshToken {
   @@index([createdAt])
 }
 
-// Organization (church, ministry, counseling center)
 model Organization {
-  id                   String    @id @default(uuid())
-  name                 String
-  description          String?   @db.Text
-  licenseType          String? // 'Family', 'Small', 'Medium', 'Large'
-  licenseStatus        String    @default("trial") // 'trial', 'active', 'expired', 'cancelled', 'archived'
-  licenseExpiresAt     DateTime?
-  maxMembers           Int       @default(10)
-  isSystemOrganization Boolean   @default(false) // true for Platform Admin org
-  archivedAt           DateTime? // When the organization was archived
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-
-  // Relations
-  members              OrganizationMember[]
-  invitations          OrganizationInvitation[]
-  roles                OrganizationRole[]
-  auditLogs            AdminAuditLog[]
-  metricSnapshots      MetricSnapshot[]
-  counselorAssignments CounselorAssignment[]
-  contract             OrganizationContract?
+  id                                String                   @id @default(uuid())
+  name                              String
+  description                       String?
+  licenseType                       String?
+  licenseStatus                     String                   @default("trial")
+  licenseExpiresAt                  DateTime?
+  maxMembers                        Int                      @default(10)
+  createdAt                         DateTime                 @default(now())
+  updatedAt                         DateTime                 @updatedAt
+  isSystemOrganization              Boolean                  @default(false)
+  address                           String?
+  archivedAt                        DateTime?
+  city                              String?
+  country                           String?
+  latitude                          Float?
+  longitude                         Float?
+  matureContentAccountTypeThreshold String                   @default("teen")
+  offersVirtualServices             Boolean                  @default(false)
+  organizationTypes                 String[]
+  specialtyTags                     String[]
+  state                             String?
+  zipCode                           String?
+  auditLogs                         AdminAuditLog[]
+  submittedBooks                    Book[]                   @relation("BookSubmittingOrg")
+  bookEndorsements                  BookEndorsement[]
+  counselorAssignments              CounselorAssignment[]
+  externalOrgRecommendations        ExternalOrganization[]
+  metricSnapshots                   MetricSnapshot[]
+  contract                          OrganizationContract?
+  invitations                       OrganizationInvitation[]
+  members                           OrganizationMember[]
+  roles                             OrganizationRole[]
+  SalesOpportunity                  SalesOpportunity[]
+  SupportTicket                     SupportTicket[]
 
   @@index([licenseStatus])
   @@index([licenseExpiresAt])
   @@index([isSystemOrganization])
 }
 
-// User membership in organization
 model OrganizationMember {
-  id             String   @id @default(uuid())
+  id             String           @id @default(uuid())
   organizationId String
   userId         String
   roleId         String
-  joinedAt       DateTime @default(now())
-
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role         OrganizationRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  joinedAt       DateTime         @default(now())
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role           OrganizationRole @relation(fields: [roleId], references: [id])
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, userId])
   @@index([organizationId])
   @@index([userId])
 }
 
-// Flexible role system
 model OrganizationRole {
-  id             String   @id @default(uuid())
+  id             String               @id @default(uuid())
   organizationId String
-  name           String // 'Owner', 'Counselor', 'Member', or custom
+  name           String
   description    String?
-  isSystemRole   Boolean  @default(false) // true for Owner, Counselor, Member
-  permissions    Json     @default("[]") // Array of permission strings
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  members      OrganizationMember[]
+  isSystemRole   Boolean              @default(false)
+  permissions    Json                 @default("[]")
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  members        OrganizationMember[]
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, name])
   @@index([organizationId])
 }
 
-// Organization invitations
 model OrganizationInvitation {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   organizationId String
   email          String
   roleId         String
   invitedById    String
-  token          String   @unique
-  status         String   @default("pending") // 'pending', 'accepted', 'expired', 'cancelled'
+  token          String       @unique
+  status         String       @default("pending")
   expiresAt      DateTime
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  invitedBy    User         @relation("CreatedByUser", fields: [invitedById], references: [id], onDelete: Cascade)
-  acceptedBy   User?        @relation("InvitedUser", fields: [acceptedById], references: [id], onDelete: SetNull)
-  acceptedById String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  acceptedById   String?
+  acceptedBy     User?        @relation("InvitedUser", fields: [acceptedById], references: [id])
+  invitedBy      User         @relation("CreatedByUser", fields: [invitedById], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([email])
@@ -172,20 +187,18 @@ model OrganizationInvitation {
   @@index([expiresAt])
 }
 
-// Admin audit log for morphing and sensitive operations
 model AdminAuditLog {
-  id             String   @id @default(uuid())
-  adminUserId    String // The platform admin performing action
-  action         String // 'morph_start', 'morph_end', 'update_license', 'delete_user', etc.
-  targetUserId   String? // User being acted upon (if applicable)
-  targetOrgId    String? // Organization being acted upon (if applicable)
-  morphSessionId String? // Links all actions during a morph session
-  metadata       Json     @default("{}") // Additional context (IP, changes made, etc.)
-  createdAt      DateTime @default(now())
-
-  adminUser  User          @relation("AdminActions", fields: [adminUserId], references: [id])
-  targetUser User?         @relation("ActionsReceived", fields: [targetUserId], references: [id])
-  targetOrg  Organization? @relation(fields: [targetOrgId], references: [id])
+  id             String        @id @default(uuid())
+  adminUserId    String
+  action         String
+  targetUserId   String?
+  targetOrgId    String?
+  morphSessionId String?
+  metadata       Json          @default("{}")
+  createdAt      DateTime      @default(now())
+  adminUser      User          @relation("AdminActions", fields: [adminUserId], references: [id])
+  targetOrg      Organization? @relation(fields: [targetOrgId], references: [id])
+  targetUser     User?         @relation("ActionsReceived", fields: [targetUserId], references: [id])
 
   @@index([adminUserId])
   @@index([morphSessionId])
@@ -193,16 +206,14 @@ model AdminAuditLog {
   @@index([createdAt])
 }
 
-// Pre-aggregated metrics (computed by background job)
 model MetricSnapshot {
-  id             String   @id @default(uuid())
-  snapshotType   String // 'daily', 'weekly', 'monthly'
-  snapshotDate   DateTime // Date this snapshot represents
-  organizationId String? // null for platform-wide metrics
-  metrics        Json // Flexible JSON containing all computed metrics
-  createdAt      DateTime @default(now())
-
-  organization Organization? @relation(fields: [organizationId], references: [id])
+  id             String        @id @default(uuid())
+  snapshotType   String
+  snapshotDate   DateTime
+  organizationId String?
+  metrics        Json
+  createdAt      DateTime      @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
   @@unique([snapshotType, snapshotDate, organizationId])
   @@index([snapshotDate])
@@ -211,21 +222,20 @@ model MetricSnapshot {
 
 model Session {
   id                   String         @id @default(uuid())
-  userId               String? // null for anonymous users
+  userId               String?
   title                String
-  topics               Json           @default("[]") // Theological topics/themes discussed (array of strings)
-  status               String         @default("active") // 'active' | 'completed' | 'archived'
-  preferredTranslation String         @default("ASV") // Bible translation preference (KJV or ASV)
-  questionCount        Int            @default(0) // Number of clarifying questions asked
-  archivedAt           DateTime? // When session was archived
-  deletedAt            DateTime? // Scheduled deletion date (30 days after archive)
+  status               String         @default("active")
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
+  preferredTranslation String         @default("ASV")
+  topics               Json           @default("[]")
+  archivedAt           DateTime?
+  deletedAt            DateTime?
+  questionCount        Int            @default(0)
   messages             Message[]
+  user                 User?          @relation(fields: [userId], references: [id])
   notes                SessionNote[]
   shares               SessionShare[]
-
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([userId])
@@ -235,34 +245,31 @@ model Session {
 model Message {
   id                       String   @id @default(uuid())
   sessionId                String
-  role                     String // 'user' | 'assistant' | 'system'
-  content                  String   @db.Text
+  role                     String
+  content                  String
   scriptureReferences      Json     @default("[]")
   constitutionalReferences Json     @default("[]")
-  isClarifyingQuestion     Boolean  @default(false) // True if this assistant message was a clarifying question
   timestamp                DateTime @default(now())
-
-  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  isClarifyingQuestion     Boolean  @default(false)
+  session                  Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
   @@index([timestamp])
 }
 
-// Session notes for collaborative journaling
 model SessionNote {
   id         String    @id @default(uuid())
   sessionId  String
   authorId   String
-  authorName String // Cached for display (denormalized)
-  authorRole String // 'user' | 'counselor' | 'viewer'
-  content    String    @db.Text
-  isPrivate  Boolean   @default(false) // Private notes visible only to counselor
-  deletedAt  DateTime? // Soft delete - scheduled for permanent deletion 30 days after set
+  authorName String
+  authorRole String
+  content    String
+  isPrivate  Boolean   @default(false)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
-
-  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  author  User    @relation("SessionNotesAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+  deletedAt  DateTime?
+  author     User      @relation("SessionNotesAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+  session    Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
   @@index([authorId])
@@ -270,87 +277,75 @@ model SessionNote {
   @@index([deletedAt])
 }
 
-// Bible Translation metadata
 model BibleTranslation {
-  code        String   @id @unique // 'KJV', 'ASV'
-  name        String // Short name
-  fullName    String // Full name
-  description String?  @db.Text
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-
-  verses BibleVerse[]
+  code        String       @id @unique
+  name        String
+  fullName    String
+  description String?
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  verses      BibleVerse[]
 
   @@index([isActive])
 }
 
-// Individual Bible verses across all translations
 model BibleVerse {
-  id              String @id @default(uuid())
-  translationCode String // Foreign key to BibleTranslation
-  book            String // e.g., 'John', 'Genesis'
+  id              String           @id @default(uuid())
+  translationCode String
+  book            String
   chapter         Int
   verse           Int
-  text            String @db.Text
-  strongs         Json?  @default("[]") // Array of Strong's number annotations
+  text            String
+  strongs         Json?            @default("[]")
+  translation     BibleTranslation @relation(fields: [translationCode], references: [code], onDelete: Cascade)
 
-  translation BibleTranslation @relation(fields: [translationCode], references: [code], onDelete: Cascade)
-
-  // Ensure no duplicate verses per translation
   @@unique([translationCode, book, chapter, verse])
-  // Optimize verse lookups
   @@index([translationCode, book, chapter, verse])
   @@index([book])
 }
 
-// Individual user subscriptions (for billing history and audit trail)
 model Subscription {
   id                   String    @id @default(uuid())
   userId               String
-  status               String // 'active' | 'canceled' | 'past_due' | 'incomplete'
-  tier                 String    @default("basic") // 'basic' | 'premium'
+  status               String
+  tier                 String    @default("basic")
   startDate            DateTime  @default(now())
   endDate              DateTime?
-  stripeSubscriptionId String?   @unique // Stripe subscription ID
+  stripeSubscriptionId String?   @unique
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
 }
 
-// Session sharing for collaboration
 model SessionShare {
-  id               String    @id @default(uuid())
+  id               String               @id @default(uuid())
   sessionId        String
-  shareToken       String    @unique
-  sharedBy         String // User ID who created the share
-  sharedWith       String? // Email or user ID of recipient
-  organizationId   String? // If shared within organization
-  allowNotesAccess Boolean   @default(false) // If true, recipients can add notes
-  createdAt        DateTime  @default(now())
+  shareToken       String               @unique
+  sharedBy         String
+  sharedWith       String?
+  organizationId   String?
+  createdAt        DateTime             @default(now())
   expiresAt        DateTime?
-
-  session  Session              @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  accesses SessionShareAccess[]
+  allowNotesAccess Boolean              @default(false)
+  session          Session              @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  accesses         SessionShareAccess[]
 
   @@index([sessionId])
   @@index([shareToken])
 }
 
-// Track which users have accessed which shared sessions
 model SessionShareAccess {
-  id              String    @id @default(uuid())
+  id              String       @id @default(uuid())
   shareId         String
   userId          String
-  firstAccessedAt DateTime  @default(now())
-  lastAccessedAt  DateTime  @default(now())
-  isDismissed     Boolean   @default(false)
+  firstAccessedAt DateTime     @default(now())
+  lastAccessedAt  DateTime     @default(now())
+  isDismissed     Boolean      @default(false)
   dismissedAt     DateTime?
-
-  share SessionShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  share           SessionShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
 
   @@unique([shareId, userId])
   @@index([userId])
@@ -358,20 +353,18 @@ model SessionShareAccess {
   @@index([isDismissed])
 }
 
-// Counselor-member assignment for pastoral care relationships
 model CounselorAssignment {
-  id             String    @id @default(uuid())
-  counselorId    String // User with Counselor role
-  memberId       String // User being counseled
+  id             String       @id @default(uuid())
+  counselorId    String
+  memberId       String
   organizationId String
-  status         String    @default("active") // 'active' | 'inactive'
-  assignedBy     String // Admin who made assignment
-  assignedAt     DateTime  @default(now())
+  status         String       @default("active")
+  assignedBy     String
+  assignedAt     DateTime     @default(now())
   endedAt        DateTime?
-
-  counselor    User         @relation("CounselorAssignments", fields: [counselorId], references: [id], onDelete: Cascade)
-  member       User         @relation("MemberAssignments", fields: [memberId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  counselor      User         @relation("CounselorAssignments", fields: [counselorId], references: [id], onDelete: Cascade)
+  member         User         @relation("MemberAssignments", fields: [memberId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([counselorId, memberId, organizationId])
   @@index([counselorId, status])
@@ -379,25 +372,22 @@ model CounselorAssignment {
   @@index([organizationId])
 }
 
-// Private counselor notes - only visible to authoring counselor
 model CounselorObservation {
   id          String    @id @default(uuid())
   counselorId String
   memberId    String
-  content     String    @db.Text
-  deletedAt   DateTime? // Soft delete - scheduled for permanent deletion 30 days after set
+  content     String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-
-  counselor User @relation("ObservationsAuthored", fields: [counselorId], references: [id], onDelete: Cascade)
-  member    User @relation("ObservationsReceived", fields: [memberId], references: [id], onDelete: Cascade)
+  deletedAt   DateTime?
+  counselor   User      @relation("ObservationsAuthored", fields: [counselorId], references: [id], onDelete: Cascade)
+  member      User      @relation("ObservationsReceived", fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([counselorId, memberId])
   @@index([createdAt])
   @@index([deletedAt])
 }
 
-// Temporary access permissions for workload sharing
 model CounselorCoverageGrant {
   id                 String    @id @default(uuid())
   primaryCounselorId String
@@ -406,66 +396,60 @@ model CounselorCoverageGrant {
   grantedAt          DateTime  @default(now())
   expiresAt          DateTime?
   revokedAt          DateTime?
-
-  primaryCounselor User @relation("CoverageGrantsGiven", fields: [primaryCounselorId], references: [id], onDelete: Cascade)
-  backupCounselor  User @relation("CoverageGrantsReceived", fields: [backupCounselorId], references: [id], onDelete: Cascade)
-  member           User @relation("CoverageGrantsForMember", fields: [memberId], references: [id], onDelete: Cascade)
+  backupCounselor    User      @relation("CoverageGrantsReceived", fields: [backupCounselorId], references: [id], onDelete: Cascade)
+  member             User      @relation("CoverageGrantsForMember", fields: [memberId], references: [id], onDelete: Cascade)
+  primaryCounselor   User      @relation("CoverageGrantsGiven", fields: [primaryCounselorId], references: [id], onDelete: Cascade)
 
   @@index([backupCounselorId, revokedAt])
   @@index([primaryCounselorId])
   @@index([memberId])
 }
 
-// AI-generated and counselor-overridden wellbeing status
 model MemberWellbeingStatus {
   id                String   @id @default(uuid())
   memberId          String   @unique
-  status            String // 'green' | 'yellow' | 'red'
-  aiSuggestedStatus String // What AI detected
-  overriddenBy      String? // Counselor who overrode
-  summary           String   @db.Text // AI-generated 7-day summary
+  status            String
+  aiSuggestedStatus String
+  overriddenBy      String?
+  summary           String
   lastAnalyzedAt    DateTime @default(now())
   updatedAt         DateTime @updatedAt
-
-  member User @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member            User     @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([lastAnalyzedAt])
 }
 
-// Ticker-tape notifications and counselor-member messaging
 model Notification {
   id          String    @id @default(uuid())
   recipientId String
-  senderId    String? // Null for system notifications
-  type        String // 'system' | 'message' | 'alert'
-  category    String // 'assignment' | 'note_added' | 'status_change' | 'direct_message'
-  title       String // Brief header
-  message     String    @db.Text
-  linkTo      String? // Optional URL to navigate to
+  senderId    String?
+  type        String
+  category    String
+  title       String
+  message     String
+  linkTo      String?
   isRead      Boolean   @default(false)
   isDismissed Boolean   @default(false)
   createdAt   DateTime  @default(now())
-  expiresAt   DateTime? // Auto-dismiss after date
-
-  recipient User  @relation("NotificationsReceived", fields: [recipientId], references: [id], onDelete: Cascade)
-  sender    User? @relation("NotificationsSent", fields: [senderId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime?
+  recipient   User      @relation("NotificationsReceived", fields: [recipientId], references: [id], onDelete: Cascade)
+  sender      User?     @relation("NotificationsSent", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([recipientId, isRead, isDismissed])
   @@index([createdAt])
   @@index([recipientId, createdAt])
 }
 
-// Email activity log for tracking Postmark deliveries, opens, clicks, bounces
 model EmailLog {
   id             String    @id @default(uuid())
   userId         String?
   recipientEmail String
-  emailType      String // 'verification' | 'password_reset' | 'session_share' | 'note_added' | 'counselor_assignment' | 'org_invite' | 'billing'
-  postmarkId     String?   @unique // Postmark message ID for webhook correlation
-  status         String // 'sent' | 'delivered' | 'bounced' | 'opened' | 'failed'
+  emailType      String
+  postmarkId     String?   @unique
+  status         String
   bounceReason   String?
-  metadata       Json      @default("{}") // Additional context (session ID, note ID, etc.)
+  metadata       Json      @default("{}")
   sentAt         DateTime  @default(now())
   deliveredAt    DateTime?
   openedAt       DateTime?
@@ -480,12 +464,11 @@ model EmailLog {
   @@index([postmarkId])
 }
 
-// Rate limiting for email operations (prevents abuse)
 model EmailRateLimit {
   id             String   @id @default(uuid())
-  identifier     String // email address or IP address
-  identifierType String // 'email' | 'ip'
-  operation      String // 'verification_resend' | 'password_reset'
+  identifier     String
+  identifierType String
+  operation      String
   attemptCount   Int      @default(1)
   windowStart    DateTime @default(now())
   expiresAt      DateTime
@@ -495,40 +478,439 @@ model EmailRateLimit {
   @@index([expiresAt])
 }
 
-// Organization contract tracking for billing reminders (sales-assisted)
 model OrganizationContract {
-  id               String    @id @default(uuid())
-  organizationId   String    @unique
+  id               String       @id @default(uuid())
+  organizationId   String       @unique
   contractStart    DateTime
   contractEnd      DateTime
   renewalDate      DateTime
-  amount           Decimal   @db.Decimal(10, 2)
-  paymentTerms     String?   @db.Text
-  status           String    @default("active") // 'active' | 'expired' | 'cancelled'
+  amount           Decimal      @db.Decimal(10, 2)
+  paymentTerms     String?
+  status           String       @default("active")
   lastReminderSent DateTime?
   lastInvoiceSent  DateTime?
-  notes            String?   @db.Text
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  notes            String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([renewalDate])
   @@index([status])
   @@index([organizationId])
 }
 
-// Holiday tracking for SLA business hours calculation
 model Holiday {
   id          String   @id @default(uuid())
-  name        String // "New Year's Day", "Christmas", etc.
-  date        DateTime // The holiday date
-  isRecurring Boolean  @default(false) // Annual holidays
+  name        String
+  date        DateTime
+  isRecurring Boolean  @default(false)
   createdById String
   createdAt   DateTime @default(now())
-
-  createdBy User @relation("HolidaysCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy   User     @relation("HolidaysCreated", fields: [createdById], references: [id])
 
   @@unique([name, date])
   @@index([date])
+}
+
+model Book {
+  id                        String                        @id @default(uuid())
+  isbn                      String?                       @unique
+  title                     String
+  author                    String
+  publisher                 String?
+  publicationYear           Int?
+  description               String?
+  coverImageUrl             String?
+  evaluationStatus          String                        @default("pending")
+  biblicalAlignmentScore    Int?
+  visibilityTier            String?
+  evaluationVersion         String?
+  theologicalSummary        String?
+  denominationalTags        String[]
+  genreTag                  String?
+  matureContent             Boolean                       @default(false)
+  matureContentReason       String?
+  scriptureComparisonNotes  String?
+  theologicalStrengths      String[]
+  theologicalConcerns       String[]
+  scoringReasoning          String?
+  analysisLevel             String?
+  aiModel                   String?
+  pdfStoragePath            String?
+  pdfStorageTier            String?
+  pdfLicenseType            String?
+  pdfUploadedAt             DateTime?
+  createdAt                 DateTime                      @default(now())
+  updatedAt                 DateTime                      @updatedAt
+  submittedById             String
+  submittedByOrganizationId String
+  submittedBy               User                          @relation("BookSubmitter", fields: [submittedById], references: [id])
+  submittedByOrganization   Organization                  @relation("BookSubmittingOrg", fields: [submittedByOrganizationId], references: [id])
+  endorsements              BookEndorsement[]
+  conversationMentions      ConversationResourceMention[]
+  doctrineCategoryScores    DoctrineCategoryScore[]
+  evaluationHistory         EvaluationRecord[]
+  purchaseLinks             PurchaseLink[]
+  userReadingLists          UserReadingList[]
+
+  @@index([biblicalAlignmentScore])
+  @@index([visibilityTier])
+  @@index([evaluationStatus])
+}
+
+model EvaluationRecord {
+  id            String   @id @default(uuid())
+  bookId        String
+  version       String
+  score         Int
+  changedFrom   Int?
+  evaluatedAt   DateTime @default(now())
+  aiModel       String
+  analysisLevel String
+  book          Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([bookId])
+}
+
+model DoctrineCategoryScore {
+  id       String  @id @default(uuid())
+  bookId   String
+  category String
+  score    Int
+  notes    String?
+  book     Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, category])
+}
+
+model PurchaseLink {
+  id        String  @id @default(uuid())
+  bookId    String
+  retailer  String
+  url       String
+  isPrimary Boolean @default(false)
+  book      Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
+}
+
+model BookEndorsement {
+  id             String       @id @default(uuid())
+  bookId         String
+  organizationId String
+  endorsedAt     DateTime     @default(now())
+  endorsedById   String
+  book           Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  endorsedBy     User         @relation(fields: [endorsedById], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, organizationId])
+}
+
+model UserReadingList {
+  id             String    @id @default(uuid())
+  userId         String
+  bookId         String
+  status         String
+  progress       Int?
+  personalNotes  String?
+  personalRating Int?
+  dateStarted    DateTime?
+  dateFinished   DateTime?
+  addedAt        DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  book           Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([userId, status])
+}
+
+model ExternalOrganization {
+  id                          String                        @id @default(uuid())
+  name                        String
+  organizationTypes           String[]
+  specialtyTags               String[]
+  address                     String
+  city                        String
+  state                       String
+  zipCode                     String
+  country                     String
+  latitude                    Float?
+  longitude                   Float?
+  phone                       String?
+  email                       String?
+  website                     String?
+  hours                       String?
+  recommendedByOrganizationId String
+  recommendationNote          String
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime                      @updatedAt
+  addedById                   String
+  conversationMentions        ConversationResourceMention[]
+  addedBy                     User                          @relation(fields: [addedById], references: [id])
+  recommendedBy               Organization                  @relation(fields: [recommendedByOrganizationId], references: [id], onDelete: Cascade)
+
+  @@index([recommendedByOrganizationId])
+  @@index([city, state])
+}
+
+model ConversationResourceMention {
+  id             String                @id @default(uuid())
+  conversationId String
+  messageId      String?
+  resourceType   String
+  bookId         String?
+  externalOrgId  String?
+  contextSnippet String?
+  mentionedAt    DateTime              @default(now())
+  book           Book?                 @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  externalOrg    ExternalOrganization? @relation(fields: [externalOrgId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+model SafetyDetectionFeedback {
+  id                  String    @id
+  sessionId           String?
+  messageId           String?
+  userId              String?
+  detectionType       String
+  detectionMethod     String
+  confidenceLevel     String
+  messageContent      String
+  isAccurate          Boolean?
+  feedbackNote        String?
+  detectedAt          DateTime  @default(now())
+  feedbackSubmittedAt DateTime?
+
+  @@index([confidenceLevel])
+  @@index([detectedAt])
+  @@index([detectionMethod])
+  @@index([detectionType])
+  @@index([isAccurate])
+}
+
+model SalesNote {
+  id               String           @id
+  opportunityId    String
+  authorId         String
+  content          String
+  isPrivate        Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime
+  User             User             @relation(fields: [authorId], references: [id])
+  SalesOpportunity SalesOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([createdAt])
+  @@index([opportunityId])
+}
+
+model SalesOpportunity {
+  id                                       String        @id
+  title                                    String
+  description                              String
+  createdById                              String
+  assignedToId                             String?
+  contactName                              String
+  contactEmail                             String
+  contactPhone                             String?
+  companyName                              String?
+  organizationId                           String?
+  stage                                    SalesStage
+  leadSource                               LeadSource
+  dealValue                                Decimal       @db.Decimal(10, 2)
+  probability                              Int
+  priorityScore                            Float         @default(0)
+  estimatedCloseDate                       DateTime?
+  firstContactAt                           DateTime?
+  proposalSentAt                           DateTime?
+  negotiationStartedAt                     DateTime?
+  wonAt                                    DateTime?
+  lostAt                                   DateTime?
+  lastActivityAt                           DateTime?
+  nextFollowUpAt                           DateTime?
+  followUpNotes                            String?
+  lossReason                               LossReason?
+  lossNotes                                String?
+  createdAt                                DateTime      @default(now())
+  updatedAt                                DateTime
+  SalesNote                                SalesNote[]
+  User_SalesOpportunity_assignedToIdToUser User?         @relation("SalesOpportunity_assignedToIdToUser", fields: [assignedToId], references: [id])
+  User_SalesOpportunity_createdByIdToUser  User          @relation("SalesOpportunity_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                             Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([assignedToId])
+  @@index([createdAt])
+  @@index([createdById])
+  @@index([estimatedCloseDate])
+  @@index([leadSource])
+  @@index([organizationId])
+  @@index([priorityScore])
+  @@index([stage])
+}
+
+model SupportTicket {
+  id                                                               String             @id
+  title                                                            String
+  description                                                      String
+  createdById                                                      String
+  assignedToId                                                     String?
+  organizationId                                                   String?
+  category                                                         String
+  status                                                           String             @default("open")
+  priority                                                         String             @default("medium")
+  workPriorityScore                                                Float              @default(0)
+  tags                                                             String[]           @default([])
+  isEscalated                                                      Boolean            @default(false)
+  escalatedAt                                                      DateTime?
+  escalatedById                                                    String?
+  escalatedFromOrgId                                               String?
+  escalationRejectedAt                                             DateTime?
+  escalationRejectedById                                           String?
+  escalationRejectionReason                                        String?
+  slaDeadline                                                      DateTime?
+  resolvedAt                                                       DateTime?
+  resolvedById                                                     String?
+  resolution                                                       String?
+  closedAt                                                         DateTime?
+  closedById                                                       String?
+  rejectionReason                                                  String?
+  aiDetectedPriority                                               Boolean            @default(false)
+  responseSLADeadline                                              DateTime?
+  resolutionSLADeadline                                            DateTime?
+  responseSLAStatus                                                SLAStatus          @default(on_track)
+  resolutionSLAStatus                                              SLAStatus?         @default(on_track)
+  slaPausedAt                                                      DateTime?
+  slaPausedReason                                                  String?
+  totalPausedMinutes                                               Int                @default(0)
+  actualResponseTime                                               Int?
+  actualResolutionTime                                             Int?
+  responseSLAMet                                                   Boolean?
+  resolutionSLAMet                                                 Boolean?
+  createdAt                                                        DateTime           @default(now())
+  updatedAt                                                        DateTime
+  User_SupportTicket_assignedToIdToUser                            User?              @relation("SupportTicket_assignedToIdToUser", fields: [assignedToId], references: [id])
+  User_SupportTicket_closedByIdToUser                              User?              @relation("SupportTicket_closedByIdToUser", fields: [closedById], references: [id])
+  User_SupportTicket_createdByIdToUser                             User               @relation("SupportTicket_createdByIdToUser", fields: [createdById], references: [id])
+  Organization                                                     Organization?      @relation(fields: [organizationId], references: [id])
+  User_SupportTicket_resolvedByIdToUser                            User?              @relation("SupportTicket_resolvedByIdToUser", fields: [resolvedById], references: [id])
+  TicketAttachment                                                 TicketAttachment[]
+  TicketLink_TicketLink_sourceTicketIdToSupportTicket              TicketLink[]       @relation("TicketLink_sourceTicketIdToSupportTicket")
+  TicketLink_TicketLink_targetTicketIdToSupportTicket              TicketLink[]       @relation("TicketLink_targetTicketIdToSupportTicket")
+  TicketMessage                                                    TicketMessage[]
+  TicketSimilarity_TicketSimilarity_similarTicketIdToSupportTicket TicketSimilarity[] @relation("TicketSimilarity_similarTicketIdToSupportTicket")
+  TicketSimilarity_TicketSimilarity_sourceTicketIdToSupportTicket  TicketSimilarity[] @relation("TicketSimilarity_sourceTicketIdToSupportTicket")
+
+  @@index([assignedToId])
+  @@index([createdAt])
+  @@index([organizationId])
+  @@index([priority])
+  @@index([resolutionSLADeadline])
+  @@index([resolutionSLAStatus])
+  @@index([responseSLADeadline])
+  @@index([responseSLAStatus])
+  @@index([status])
+  @@index([workPriorityScore])
+}
+
+model TicketAttachment {
+  id            String         @id
+  ticketId      String
+  messageId     String?
+  fileName      String
+  filePath      String
+  fileSize      Int
+  mimeType      String
+  uploadedById  String
+  createdAt     DateTime       @default(now())
+  TicketMessage TicketMessage? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  SupportTicket SupportTicket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  User          User           @relation(fields: [uploadedById], references: [id])
+
+  @@index([messageId])
+  @@index([ticketId])
+}
+
+model TicketLink {
+  id                                                     String        @id
+  sourceTicketId                                         String
+  targetTicketId                                         String
+  relationship                                           String
+  aiSuggested                                            Boolean       @default(false)
+  createdById                                            String
+  createdAt                                              DateTime      @default(now())
+  User                                                   User          @relation(fields: [createdById], references: [id])
+  SupportTicket_TicketLink_sourceTicketIdToSupportTicket SupportTicket @relation("TicketLink_sourceTicketIdToSupportTicket", fields: [sourceTicketId], references: [id], onDelete: Cascade)
+  SupportTicket_TicketLink_targetTicketIdToSupportTicket SupportTicket @relation("TicketLink_targetTicketIdToSupportTicket", fields: [targetTicketId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceTicketId, targetTicketId, relationship])
+  @@index([sourceTicketId])
+  @@index([targetTicketId])
+}
+
+model TicketMessage {
+  id               String             @id
+  ticketId         String
+  authorId         String
+  authorRole       String
+  content          String
+  isInternal       Boolean            @default(false)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  TicketAttachment TicketAttachment[]
+  User             User               @relation(fields: [authorId], references: [id])
+  SupportTicket    SupportTicket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([ticketId])
+}
+
+model TicketSimilarity {
+  id                                                            String        @id
+  sourceTicketId                                                String
+  similarTicketId                                               String
+  similarityScore                                               Float
+  matchType                                                     String
+  analyzedAt                                                    DateTime      @default(now())
+  expiresAt                                                     DateTime
+  SupportTicket_TicketSimilarity_similarTicketIdToSupportTicket SupportTicket @relation("TicketSimilarity_similarTicketIdToSupportTicket", fields: [similarTicketId], references: [id], onDelete: Cascade)
+  SupportTicket_TicketSimilarity_sourceTicketIdToSupportTicket  SupportTicket @relation("TicketSimilarity_sourceTicketIdToSupportTicket", fields: [sourceTicketId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceTicketId, similarTicketId, matchType])
+  @@index([expiresAt])
+  @@index([sourceTicketId, matchType, expiresAt])
+}
+
+enum LeadSource {
+  email
+  website
+  referral
+  cold_outreach
+  event
+  partner
+}
+
+enum LossReason {
+  budget
+  timing
+  competitor
+  no_response
+  not_qualified
+  other
+}
+
+enum SLAStatus {
+  on_track
+  approaching
+  critical
+  breached
+}
+
+enum SalesStage {
+  prospect
+  qualified
+  proposal
+  negotiation
+  won
+  lost
 }

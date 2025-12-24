@@ -1,0 +1,1 @@
+-- Empty migration (SupportTicket model removed)
