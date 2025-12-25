@@ -65,5 +65,14 @@ describe('StorageOrchestratorService', () => {
 
       expect(result.year).toBeUndefined();
     });
+
+    it('should return undefined for unreasonable years in PDF metadata', async () => {
+      // PDF with unreasonable year (year 0500)
+      const pdfBuffer = Buffer.from('%PDF-1.4\n1 0 obj\n<</CreationDate(D:05001231120000)>>\nendobj\n');
+
+      const result = await service.extractPdfMetadata(pdfBuffer);
+
+      expect(result.year).toBeUndefined();
+    });
   });
 });

@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { S3StorageProvider } from '../providers/storage/s3-storage.provider';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as crypto from 'crypto';
-import * as fs from 'fs/promises';
 
 @Injectable()
 export class StorageOrchestratorService {
@@ -26,10 +25,15 @@ export class StorageOrchestratorService {
     // Convert buffer to string to search for CreationDate or ModDate
     const pdfString = buffer.toString('binary');
 
-    // Match PDF date format: D:YYYYMMDDHHmmSS
+    // PDF date format per ISO 32000-1:2008 spec: D:YYYYMMDDHHmmSSOHH'mm'
+    // We extract only the year (YYYY) as that's sufficient for publication date validation
     const dateMatch = pdfString.match(/\/(?:CreationDate|ModDate)\(D:(\d{4})/);
     if (dateMatch) {
-      year = parseInt(dateMatch[1], 10);
+      const parsedYear = parseInt(dateMatch[1], 10);
+      // Validate year is reasonable (PDF format introduced in 1993)
+      if (parsedYear >= 1990 && parsedYear <= 2100) {
+        year = parsedYear;
+      }
     }
 
     return { hash, year };
