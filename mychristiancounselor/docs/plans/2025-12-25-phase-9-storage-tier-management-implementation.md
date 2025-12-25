@@ -16,6 +16,8 @@
 - Create: `packages/api/prisma/migrations/20251225140000_add_pdf_validation_fields/migration.sql`
 - Modify: `packages/api/prisma/schema.prisma`
 
+**⚠️ IMPORTANT: Follow PRISMA-SAFE-PROCESS.md - NEVER drop tables!**
+
 **Step 1: Add fields to Book model in schema**
 
 Edit `packages/api/prisma/schema.prisma`, find the Book model and add:
@@ -29,28 +31,43 @@ model Book {
 }
 ```
 
-**Step 2: Create migration**
+**Step 2: Create migration (WITHOUT applying)**
 
 Run: `npx prisma migrate dev --name add_pdf_validation_fields --create-only`
 
-**Step 3: Review migration SQL**
+This creates the migration file WITHOUT applying it to the database.
 
-The generated migration should contain:
+**Step 3: CRITICAL - Review migration SQL for safety**
+
+Open: `packages/api/prisma/migrations/20251225140000_add_pdf_validation_fields/migration.sql`
+
+**Check for:**
+- ✅ ALTER TABLE ADD COLUMN statements (safe)
+- ❌ DROP TABLE statements (DANGEROUS - STOP if present)
+- ❌ DROP COLUMN statements (DANGEROUS - STOP if present)
+
+Expected migration content:
 ```sql
 -- AlterTable
 ALTER TABLE "Book" ADD COLUMN "pdfFileHash" TEXT;
 ALTER TABLE "Book" ADD COLUMN "pdfMetadataYear" INTEGER;
 ```
 
-**Step 4: Apply migration**
+**If you see any DROP statements, STOP and ask for approval!**
+
+**Step 4: Apply migration (only if Step 3 passed)**
 
 Run: `npx prisma migrate deploy`
+
+Expected output: Migration applied successfully
 
 **Step 5: Generate Prisma Client**
 
 Run: `npx prisma generate`
 
-**Step 6: Verify fields exist**
+Expected: Client generated with new fields
+
+**Step 6: Verify fields exist in database**
 
 Run: `psql -d <database> -c "\d \"Book\"" | grep -E "(pdfFileHash|pdfMetadataYear)"`
 Expected: Both fields listed
@@ -59,7 +76,12 @@ Expected: Both fields listed
 
 ```bash
 git add packages/api/prisma/schema.prisma packages/api/prisma/migrations/
-git commit -m "feat(db): add PDF validation fields for hash and metadata year"
+git commit -m "feat(db): add PDF validation fields for hash and metadata year
+
+Following PRISMA-SAFE-PROCESS.md:
+- Used --create-only to review before applying
+- Verified no DROP statements in migration
+- Only adds columns (safe operation)"
 ```
 
 ---
