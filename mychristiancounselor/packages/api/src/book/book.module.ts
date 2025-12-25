@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { HttpModule } from '@nestjs/axios';
 import { PrismaModule } from '../prisma/prisma.module';
+import { BookController } from './book.controller';
 import { BookOrchestratorService } from './book-orchestrator.service';
 import { DuplicateDetectorService } from './services/duplicate-detector.service';
 import { VisibilityCheckerService } from './services/visibility-checker.service';
@@ -21,6 +22,7 @@ import { queueConfig } from '../config/queue.config';
       name: queueConfig.evaluationQueue.name,
     }),
   ],
+  controllers: [BookController],
   providers: [
     BookOrchestratorService,
     DuplicateDetectorService,
