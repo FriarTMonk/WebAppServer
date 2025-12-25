@@ -75,7 +75,7 @@ describe('BookController', () => {
 
         mockOrchestratorService.createBook.mockResolvedValue(expectedResult);
 
-        const result = await controller.createBook(mockUser, mockRequest, dto, undefined);
+        const result = await controller.createBook(mockUser, mockRequest, dto);
 
         expect(result).toEqual(expectedResult);
         expect(orchestratorService.createBook).toHaveBeenCalledWith(
@@ -98,7 +98,7 @@ describe('BookController', () => {
 
         mockOrchestratorService.createBook.mockResolvedValue(expectedResult);
 
-        const result = await controller.createBook(mockUser, mockRequest, dto, undefined);
+        const result = await controller.createBook(mockUser, mockRequest, dto);
 
         expect(result).toEqual(expectedResult);
         expect(result.status).toBe('existing');
@@ -119,7 +119,7 @@ describe('BookController', () => {
 
         mockOrchestratorService.createBook.mockResolvedValue(expectedResult);
 
-        const result = await controller.createBook(mockUser, mockRequest, dto, undefined);
+        const result = await controller.createBook(mockUser, mockRequest, dto);
 
         expect(result).toEqual(expectedResult);
         expect(orchestratorService.createBook).toHaveBeenCalledWith(
@@ -145,7 +145,7 @@ describe('BookController', () => {
 
         mockOrchestratorService.createBook.mockResolvedValue(expectedResult);
 
-        const result = await controller.createBook(mockUser, mockRequest, dto, undefined);
+        const result = await controller.createBook(mockUser, mockRequest, dto);
 
         expect(result).toEqual(expectedResult);
         expect(orchestratorService.createBook).toHaveBeenCalledWith(
@@ -173,7 +173,7 @@ describe('BookController', () => {
 
         mockOrchestratorService.createBook.mockResolvedValue(expectedResult);
 
-        const result = await controller.createBook(mockUser, mockRequest, dto, undefined);
+        const result = await controller.createBook(mockUser, mockRequest, dto);
 
         expect(result).toEqual(expectedResult);
         expect(orchestratorService.createBook).toHaveBeenCalledWith(
@@ -181,73 +181,6 @@ describe('BookController', () => {
           'org-123',
           dto,
         );
-      });
-    });
-
-    describe('with PDF upload', () => {
-      it('should handle PDF upload with public domain license', async () => {
-        const dto = {
-          title: 'Classic Book',
-          author: 'Author Name',
-          pdfLicenseType: 'public_domain' as const,
-        };
-
-        const mockFile = {
-          fieldname: 'pdf',
-          originalname: 'book.pdf',
-          encoding: '7bit',
-          mimetype: 'application/pdf',
-          buffer: Buffer.from('mock pdf content'),
-          size: 1024,
-        } as Express.Multer.File;
-
-        const expectedResult = {
-          id: 'book-202',
-          status: 'pending' as const,
-          message: "Your book has been submitted for evaluation. You'll receive an email when complete.",
-        };
-
-        mockOrchestratorService.createBook.mockResolvedValue(expectedResult);
-
-        const result = await controller.createBook(mockUser, mockRequest, dto, mockFile);
-
-        expect(result).toEqual(expectedResult);
-        expect(orchestratorService.createBook).toHaveBeenCalledWith(
-          'user-123',
-          'org-123',
-          dto,
-        );
-      });
-
-      it('should accept all PDF license types', async () => {
-        const licenseTypes = ['public_domain', 'creative_commons', 'publisher_permission', 'analysis_only'];
-
-        for (const licenseType of licenseTypes) {
-          const dto = {
-            title: 'Test Book',
-            author: 'Test Author',
-            pdfLicenseType: licenseType as any,
-          };
-
-          const mockFile = {
-            originalname: 'book.pdf',
-            mimetype: 'application/pdf',
-            buffer: Buffer.from('mock pdf'),
-            size: 1024,
-          } as Express.Multer.File;
-
-          const expectedResult = {
-            id: `book-${licenseType}`,
-            status: 'pending' as const,
-            message: "Your book has been submitted for evaluation. You'll receive an email when complete.",
-          };
-
-          mockOrchestratorService.createBook.mockResolvedValue(expectedResult);
-
-          const result = await controller.createBook(mockUser, mockRequest, dto, mockFile);
-
-          expect(result).toEqual(expectedResult);
-        }
       });
     });
 
@@ -350,7 +283,7 @@ describe('BookController', () => {
 
         mockOrchestratorService.createBook.mockResolvedValue(expectedResult);
 
-        const result = await controller.createBook(mockUser, mockRequest, dto, undefined);
+        const result = await controller.createBook(mockUser, mockRequest, dto);
 
         expect(result).toHaveProperty('id');
         expect(result).toHaveProperty('status');

@@ -3,14 +3,11 @@ import {
   IsOptional,
   IsInt,
   IsUrl,
-  IsEnum,
   ValidateIf,
   Min,
   Max,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
-
-export type PdfLicenseType = 'public_domain' | 'creative_commons' | 'publisher_permission' | 'analysis_only';
 
 export class CreateBookDto {
   // Lookup methods (mutually exclusive with manual entry)
@@ -50,9 +47,4 @@ export class CreateBookDto {
   @IsOptional()
   @IsUrl()
   coverImageUrl?: string;
-
-  // PDF upload fields
-  @IsOptional()
-  @IsEnum(['public_domain', 'creative_commons', 'publisher_permission', 'analysis_only'])
-  pdfLicenseType?: PdfLicenseType;
 }
