@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Book" ADD COLUMN IF NOT EXISTS "pdfFileHash" TEXT;
+ALTER TABLE "Book" ADD COLUMN IF NOT EXISTS "pdfMetadataYear" INTEGER;

@@ -689,6 +689,8 @@ model Book {
   pdfFileSize               Int?                    // File size in bytes
   pdfLicenseType            PdfLicenseType?
   pdfStorageTier            PdfStorageTier?
+  pdfFileHash               String?                 // SHA-256 hash for duplicate detection
+  pdfMetadataYear           Int?                    // Year extracted from PDF metadata
   createdAt                 DateTime                @default(now())
   updatedAt                 DateTime                @updatedAt
   submittedById             String
