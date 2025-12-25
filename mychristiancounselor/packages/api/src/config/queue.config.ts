@@ -23,6 +23,23 @@ export interface QueueConfig {
       readonly opus: number;
     };
   };
+  readonly pdfMigrationQueue: {
+    readonly name: string;
+    readonly concurrency: number;
+    readonly attempts: number;
+    readonly backoff: {
+      readonly type: 'exponential';
+      readonly delay: number;
+    };
+    readonly removeOnComplete: {
+      readonly age: number;
+      readonly count: number;
+    };
+    readonly removeOnFail: {
+      readonly age: number;
+      readonly count: number;
+    };
+  };
 }
 
 export const queueConfig: QueueConfig = {
@@ -46,6 +63,23 @@ export const queueConfig: QueueConfig = {
     concurrency: {
       sonnet: 5,
       opus: 2,
+    },
+  },
+  pdfMigrationQueue: {
+    name: 'pdf-migration',
+    concurrency: 3,
+    attempts: 3,
+    backoff: {
+      type: 'exponential' as const,
+      delay: 1000,
+    },
+    removeOnComplete: {
+      age: 86400, // 24 hours
+      count: 1000,
+    },
+    removeOnFail: {
+      age: 604800, // 7 days
+      count: 500,
     },
   },
 };
