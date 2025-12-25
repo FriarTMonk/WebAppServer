@@ -685,6 +685,10 @@ model Book {
   aiModel                   String
   pdfStoragePath            String?
   pdfUploadedAt             DateTime?
+  pdfFilePath               String?                 // Path to PDF file on disk
+  pdfFileSize               Int?                    // File size in bytes
+  pdfLicenseType            PdfLicenseType?
+  pdfStorageTier            PdfStorageTier?
   createdAt                 DateTime                @default(now())
   updatedAt                 DateTime                @updatedAt
   submittedById             String
@@ -692,8 +696,6 @@ model Book {
   evaluationStatus          BookEvaluationStatus
   visibilityTier            BookVisibilityTier
   analysisLevel             BookAnalysisLevel
-  pdfStorageTier            PdfStorageTier?
-  pdfLicenseType            PdfLicenseType?
   submittedBy               User                    @relation("BooksSubmitted", fields: [submittedById], references: [id])
   submittedByOrganization   Organization            @relation("BooksSubmittedByOrg", fields: [submittedByOrganizationId], references: [id])
   endorsements              BookEndorsement[]
@@ -763,6 +765,7 @@ model PurchaseLink {
   retailer  String
   url       String
   isPrimary Boolean @default(false)
+  price     String?
   book      Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
   @@index([bookId])

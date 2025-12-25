@@ -1,4 +1,6 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
@@ -6,6 +8,7 @@ import { MetadataAggregatorService } from './providers/metadata/metadata-aggrega
 import { DuplicateDetectorService } from './services/duplicate-detector.service';
 import { queueConfig } from '../config/queue.config';
 import { BookMetadata } from '@mychristiancounselor/shared';
+import { PdfLicenseType, BookEvaluationStatus } from '@prisma/client';
 
 interface CreateBookInput {
   isbn?: string;
@@ -22,6 +25,14 @@ interface BookCreationResult {
   id: string;
   status: 'pending' | 'existing';
   message: string;
+}
+
+interface PdfUploadResult {
+  id: string;
+  status: 'uploaded' | 'queued_for_evaluation';
+  message: string;
+  pdfFileSize?: number;
+  pdfUploadedAt?: Date;
 }
 
 @Injectable()
@@ -152,5 +163,157 @@ export class BookOrchestratorService {
     await this.prisma.bookEndorsement.create({
       data: { bookId, organizationId, endorsedById: userId },
     });
+  }
+
+  /**
+   * Upload PDF file for a book.
+   * Validates file, checks permissions, stores file, updates metadata,
+   * and triggers re-evaluation if needed.
+   */
+  async uploadPdf(
+    bookId: string,
+    file: Express.Multer.File | undefined,
+    userId: string,
+    organizationId: string,
+    pdfLicenseType?: string,
+  ): Promise<PdfUploadResult> {
+    this.logger.log(`Uploading PDF for book ${bookId} by user ${userId}, org ${organizationId}`);
+
+    // Validate file exists
+    if (!file) {
+      throw new BadRequestException('PDF file is required');
+    }
+
+    // Validate file size (100MB limit)
+    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+    if (file.size > MAX_FILE_SIZE) {
+      throw new BadRequestException('PDF file must be less than 100MB');
+    }
+
+    // Validate file type
+    const isPdf = file.mimetype === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      throw new BadRequestException('Only PDF files are allowed');
+    }
+
+    // Check PDF magic number (first 4 bytes should be %PDF)
+    if (file.buffer.slice(0, 4).toString() !== '%PDF') {
+      throw new BadRequestException('File is not a valid PDF');
+    }
+
+    // Validate pdfLicenseType if provided
+    let validatedLicenseType: PdfLicenseType | undefined = undefined;
+    if (pdfLicenseType) {
+      const validLicenseTypes = Object.values(PdfLicenseType);
+      if (!validLicenseTypes.includes(pdfLicenseType as PdfLicenseType)) {
+        throw new BadRequestException(
+          `Invalid pdfLicenseType. Must be one of: ${validLicenseTypes.join(', ')}`
+        );
+      }
+      validatedLicenseType = pdfLicenseType as PdfLicenseType;
+    }
+
+    // Check if book exists
+    const book = await this.prisma.book.findUnique({
+      where: { id: bookId },
+      select: {
+        id: true,
+        submittedByOrganizationId: true,
+        evaluationStatus: true,
+        pdfFilePath: true,
+      },
+    });
+
+    if (!book) {
+      throw new NotFoundException('Book not found');
+    }
+
+    // Check authorization: only org admins from submitting org can upload
+    if (book.submittedByOrganizationId !== organizationId) {
+      throw new ForbiddenException('Only organization admins from the submitting organization can upload PDFs');
+    }
+
+    // Delete old PDF file if it exists
+    if (book.pdfFilePath) {
+      try {
+        await fs.unlink(book.pdfFilePath);
+        this.logger.log(`Deleted old PDF file: ${book.pdfFilePath}`);
+      } catch (error) {
+        this.logger.warn(`Failed to delete old PDF file: ${error.message}`);
+      }
+    }
+
+    // Create temp directory if it doesn't exist
+    const tempDir = path.join(process.cwd(), 'uploads', 'temp', 'pdfs');
+    try {
+      await fs.mkdir(tempDir, { recursive: true });
+      this.logger.log(`Ensured PDF directory exists: ${tempDir}`);
+    } catch (error) {
+      this.logger.error(`Failed to create PDF directory: ${error.message}`, error.stack);
+      throw new BadRequestException('Failed to prepare storage directory for PDF');
+    }
+
+    // Generate filename: {bookId}-{timestamp}.pdf
+    const timestamp = Date.now();
+    const filename = `${bookId}-${timestamp}.pdf`;
+    const filePath = path.join(tempDir, filename);
+
+    // Write file to disk
+    try {
+      await fs.writeFile(filePath, file.buffer);
+      this.logger.log(`Saved PDF to: ${filePath}`);
+    } catch (error) {
+      this.logger.error(`Failed to write PDF file: ${error.message}`, error.stack);
+      throw new BadRequestException('Failed to save PDF file');
+    }
+
+    // Determine if we need to re-evaluate
+    const needsReEvaluation = book.evaluationStatus === BookEvaluationStatus.completed;
+    const newStatus: BookEvaluationStatus = needsReEvaluation
+      ? BookEvaluationStatus.pending
+      : book.evaluationStatus;
+
+    // Update book record with PDF metadata
+    const uploadedAt = new Date();
+    await this.prisma.book.update({
+      where: { id: bookId },
+      data: {
+        pdfFilePath: filePath,
+        pdfFileSize: file.size,
+        pdfUploadedAt: uploadedAt,
+        pdfLicenseType: validatedLicenseType,
+        evaluationStatus: newStatus,
+      },
+    });
+
+    // Queue re-evaluation if needed
+    if (needsReEvaluation) {
+      await this.evaluationQueue.add(
+        'evaluate-book',
+        { bookId: book.id },
+        {
+          priority: 2, // Normal priority
+          attempts: queueConfig.defaultJobOptions.attempts,
+          backoff: queueConfig.defaultJobOptions.backoff,
+        }
+      );
+      this.logger.log(`Re-evaluation job queued for book ${book.id}`);
+
+      return {
+        id: bookId,
+        status: 'queued_for_evaluation',
+        message: 'PDF uploaded successfully and queued for re-evaluation',
+        pdfFileSize: file.size,
+        pdfUploadedAt: uploadedAt,
+      };
+    }
+
+    return {
+      id: bookId,
+      status: 'uploaded',
+      message: 'PDF uploaded successfully',
+      pdfFileSize: file.size,
+      pdfUploadedAt: uploadedAt,
+    };
   }
 }

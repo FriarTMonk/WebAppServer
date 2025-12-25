@@ -84,3 +84,6 @@ packages/api/test-*.ts
 packages/api/test-*.js
 packages/api/verify-*.ts
 packages/api/verify-*.js
+
+# PDF uploads temporary storage
+uploads/

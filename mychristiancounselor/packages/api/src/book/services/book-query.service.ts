@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { VisibilityCheckerService } from './visibility-checker.service';
 import {
   BookQueryDto,
   BookListItemDto,
   BookListResponseDto,
+  BookDetailDto,
 } from '../dto';
 import { resourcesConfig } from '../../config/resources.config';
 
@@ -316,5 +317,138 @@ export class BookQueryService {
     const thresholdIndex = typeOrder.indexOf(threshold);
 
     return userTypeIndex >= thresholdIndex;
+  }
+
+  async findBookById(
+    bookId: string,
+    userId?: string,
+  ): Promise<BookDetailDto> {
+    this.logger.log(
+      `Finding book by ID: ${bookId}, userId: ${userId || 'anonymous'}`,
+    );
+
+    // Fetch book with all related data
+    const book = await this.prisma.book.findUnique({
+      where: { id: bookId },
+      include: {
+        doctrineCategoryScores: {
+          select: {
+            category: true,
+            score: true,
+            notes: true,
+          },
+          orderBy: {
+            category: 'asc',
+          },
+        },
+        purchaseLinks: {
+          select: {
+            retailer: true,
+            url: true,
+            isPrimary: true,
+            price: true,
+          },
+          orderBy: {
+            isPrimary: 'desc',
+          },
+        },
+        endorsements: {
+          select: {
+            organizationId: true,
+          },
+        },
+        evaluationHistory: {
+          select: {
+            evaluatedAt: true,
+          },
+          orderBy: {
+            evaluatedAt: 'desc',
+          },
+          take: 1,
+        },
+        _count: {
+          select: {
+            endorsements: true,
+          },
+        },
+      },
+    });
+
+    // Book not found
+    if (!book) {
+      throw new NotFoundException('Book not found');
+    }
+
+    // Check access using VisibilityCheckerService
+    if (userId) {
+      // Check if user is platform admin first (admins can see all books)
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { isPlatformAdmin: true },
+      });
+
+      const isPlatformAdmin = user?.isPlatformAdmin ?? false;
+
+      // Platform admins bypass all visibility restrictions
+      if (!isPlatformAdmin) {
+        // Regular users - delegate to visibility checker
+        const canAccess = await this.visibilityChecker.canAccess(
+          userId,
+          bookId,
+          'book',
+        );
+
+        if (!canAccess) {
+          throw new ForbiddenException('You do not have access to this book');
+        }
+      }
+    } else {
+      // Anonymous users can only access globally_aligned books without mature content
+      if (book.visibilityTier !== 'globally_aligned') {
+        throw new ForbiddenException('You do not have access to this book');
+      }
+
+      if (book.matureContent) {
+        throw new ForbiddenException('You do not have access to this book');
+      }
+    }
+
+    // Map to DTO
+    const bookDto: BookDetailDto = {
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      isbn: book.isbn ?? undefined,
+      publisher: book.publisher ?? undefined,
+      publicationYear: book.publicationYear ?? undefined,
+      description: book.description ?? undefined,
+      coverImageUrl: book.coverImageUrl ?? undefined,
+      evaluationStatus: book.evaluationStatus,
+      biblicalAlignmentScore: book.biblicalAlignmentScore ?? undefined,
+      visibilityTier: book.visibilityTier,
+      matureContent: book.matureContent,
+      evaluatedAt: book.evaluationHistory[0]?.evaluatedAt,
+      theologicalSummary: book.theologicalSummary ?? undefined,
+      scriptureComparisonNotes: book.scriptureComparisonNotes ?? undefined,
+      denominationalTags: book.denominationalTags,
+      theologicalStrengths: book.theologicalStrengths,
+      theologicalConcerns: book.theologicalConcerns,
+      doctrineCategoryScores: book.doctrineCategoryScores.map((score) => ({
+        category: score.category,
+        score: score.score,
+        notes: score.notes ?? undefined,
+      })),
+      purchaseLinks: book.purchaseLinks.map((link) => ({
+        retailer: link.retailer,
+        url: link.url,
+        isPrimary: link.isPrimary,
+        price: link.price ?? undefined,
+      })),
+      endorsementCount: book._count.endorsements,
+      createdAt: book.createdAt,
+      updatedAt: book.updatedAt,
+    };
+
+    return bookDto;
   }
 }
