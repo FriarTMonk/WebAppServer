@@ -2,11 +2,13 @@ import { Test } from '@nestjs/testing';
 import { EvaluationOrchestratorService } from './evaluation-orchestrator.service';
 import { EvaluationScorerService } from './evaluation-scorer.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { S3StorageProvider } from '../providers/storage/s3-storage.provider';
 
 describe('EvaluationOrchestratorService', () => {
   let orchestrator: EvaluationOrchestratorService;
   let scorer: EvaluationScorerService;
   let prisma: PrismaService;
+  let storageProvider: S3StorageProvider;
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
@@ -33,12 +35,19 @@ describe('EvaluationOrchestratorService', () => {
             },
           },
         },
+        {
+          provide: S3StorageProvider,
+          useValue: {
+            upload: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     orchestrator = module.get<EvaluationOrchestratorService>(EvaluationOrchestratorService);
     scorer = module.get<EvaluationScorerService>(EvaluationScorerService);
     prisma = module.get<PrismaService>(PrismaService);
+    storageProvider = module.get<S3StorageProvider>(S3StorageProvider);
   });
 
   it('should evaluate with description for non-borderline score', async () => {
@@ -325,5 +334,130 @@ describe('EvaluationOrchestratorService', () => {
       ],
       skipDuplicates: true,
     });
+  });
+
+  it('should store PDF in active tier for globally aligned books', async () => {
+    const mockBook = {
+      id: 'book-id',
+      title: 'Test Book',
+      author: 'Test Author',
+      description: 'Test description',
+      pdfStoragePath: null,
+    };
+
+    const mockEvalResult = {
+      score: 95, // Globally aligned (>= 90)
+      summary: 'Excellent book',
+      doctrineCategoryScores: [],
+      denominationalTags: [],
+      matureContent: false,
+      strengths: [],
+      concerns: [],
+      reasoning: 'Well aligned',
+      scripture: 'Solid',
+      modelUsed: 'claude-sonnet-4-20250514',
+      analysisLevel: 'description',
+    };
+
+    const mockPdfBuffer = Buffer.from('mock pdf content');
+
+    jest.spyOn(prisma.book, 'findUnique').mockResolvedValue(mockBook as any);
+    jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
+    jest.spyOn(storageProvider, 'upload').mockResolvedValue('active/books/book-id.pdf');
+    jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
+    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
+
+    await orchestrator.evaluateBook('book-id', mockPdfBuffer);
+
+    expect(storageProvider.upload).toHaveBeenCalledWith('book-id', mockPdfBuffer, 'active');
+    expect(prisma.book.update).toHaveBeenCalledWith({
+      where: { id: 'book-id' },
+      data: expect.objectContaining({
+        pdfStoragePath: 'active/books/book-id.pdf',
+        pdfStorageTier: 'active',
+        pdfUploadedAt: expect.any(Date),
+      }),
+    });
+  });
+
+  it('should store PDF in archived tier for lower-tier books', async () => {
+    const mockBook = {
+      id: 'book-id',
+      title: 'Test Book',
+      author: 'Test Author',
+      description: 'Test description',
+      pdfStoragePath: null,
+    };
+
+    const mockEvalResult = {
+      score: 75, // Conceptually aligned (< 90)
+      summary: 'Good book',
+      doctrineCategoryScores: [],
+      denominationalTags: [],
+      matureContent: false,
+      strengths: [],
+      concerns: [],
+      reasoning: 'Decent alignment',
+      scripture: 'Mixed',
+      modelUsed: 'claude-sonnet-4-20250514',
+      analysisLevel: 'description',
+    };
+
+    const mockPdfBuffer = Buffer.from('mock pdf content');
+
+    jest.spyOn(prisma.book, 'findUnique').mockResolvedValue(mockBook as any);
+    jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
+    jest.spyOn(storageProvider, 'upload').mockResolvedValue('archived/books/book-id.pdf');
+    jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
+    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
+
+    await orchestrator.evaluateBook('book-id', mockPdfBuffer);
+
+    expect(storageProvider.upload).toHaveBeenCalledWith('book-id', mockPdfBuffer, 'archived');
+    expect(prisma.book.update).toHaveBeenCalledWith({
+      where: { id: 'book-id' },
+      data: expect.objectContaining({
+        pdfStoragePath: 'archived/books/book-id.pdf',
+        pdfStorageTier: 'archived',
+        pdfUploadedAt: expect.any(Date),
+      }),
+    });
+  });
+
+  it('should not store PDF when pdfBuffer is not provided', async () => {
+    const mockBook = {
+      id: 'book-id',
+      title: 'Test Book',
+      author: 'Test Author',
+      description: 'Test description',
+      pdfStoragePath: null,
+    };
+
+    const mockEvalResult = {
+      score: 95,
+      summary: 'Good book',
+      doctrineCategoryScores: [],
+      denominationalTags: [],
+      matureContent: false,
+      strengths: [],
+      concerns: [],
+      reasoning: 'Well aligned',
+      scripture: 'Solid',
+      modelUsed: 'claude-sonnet-4-20250514',
+      analysisLevel: 'description',
+    };
+
+    jest.spyOn(prisma.book, 'findUnique').mockResolvedValue(mockBook as any);
+    jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
+    jest.spyOn(storageProvider, 'upload').mockResolvedValue('active/books/book-id.pdf');
+    jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
+    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
+
+    await orchestrator.evaluateBook('book-id');
+
+    expect(storageProvider.upload).not.toHaveBeenCalled();
   });
 });

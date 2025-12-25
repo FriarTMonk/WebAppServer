@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EvaluationScorerService } from './evaluation-scorer.service';
+import { S3StorageProvider } from '../providers/storage/s3-storage.provider';
 import { resourcesConfig } from '../../config/resources.config';
 
 @Injectable()
@@ -10,13 +11,14 @@ export class EvaluationOrchestratorService {
   constructor(
     private readonly scorer: EvaluationScorerService,
     private readonly prisma: PrismaService,
+    private readonly storageProvider: S3StorageProvider,
   ) {}
 
   /**
    * Unix philosophy: Compose scorer service via pipeline
-   * Pipeline: Get Book → Determine Content → Evaluate → Check Borderline → Escalate if needed → Save Results
+   * Pipeline: Get Book → Determine Content → Evaluate → Check Borderline → Escalate if needed → Save Results → Store PDF
    */
-  async evaluateBook(bookId: string): Promise<void> {
+  async evaluateBook(bookId: string, pdfBuffer?: Buffer): Promise<void> {
     this.logger.log(`Starting evaluation for book ${bookId}`);
 
     // Pipe 1: Get book data
@@ -68,7 +70,27 @@ export class EvaluationOrchestratorService {
     // Pipe 6: Save results
     await this.saveEvaluationResults(bookId, finalResult);
 
-    // Pipe 7: Send notification (TODO: implement notification service)
+    // Pipe 7: Store PDF if provided
+    if (pdfBuffer) {
+      const tier = finalResult.score >= resourcesConfig.evaluation.globallyAlignedThreshold
+        ? 'active'
+        : 'archived';
+
+      this.logger.log(`Storing PDF for book ${bookId} in ${tier} tier`);
+
+      const storagePath = await this.storageProvider.upload(bookId, pdfBuffer, tier);
+
+      await this.prisma.book.update({
+        where: { id: bookId },
+        data: {
+          pdfStoragePath: storagePath,
+          pdfStorageTier: tier,
+          pdfUploadedAt: new Date(),
+        },
+      });
+    }
+
+    // Pipe 8: Send notification (TODO: implement notification service)
     this.logger.log(`Evaluation complete for book ${bookId}`);
   }
 
