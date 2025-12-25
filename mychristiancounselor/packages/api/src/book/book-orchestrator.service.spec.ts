@@ -2,14 +2,14 @@ import { Test } from '@nestjs/testing';
 import { BookOrchestratorService } from './book-orchestrator.service';
 import { MetadataAggregatorService } from './providers/metadata/metadata-aggregator.service';
 import { DuplicateDetectorService } from './services/duplicate-detector.service';
-import { EvaluationOrchestratorService } from './services/evaluation-orchestrator.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { queueConfig } from '../config/queue.config';
 
 describe('BookOrchestratorService', () => {
   let orchestrator: BookOrchestratorService;
   let metadataService: MetadataAggregatorService;
   let duplicateDetector: DuplicateDetectorService;
-  let evaluationOrchestrator: EvaluationOrchestratorService;
+  let evaluationQueue: any;
   let prisma: PrismaService;
 
   beforeEach(async () => {
@@ -25,8 +25,10 @@ describe('BookOrchestratorService', () => {
           useValue: { findDuplicate: jest.fn() },
         },
         {
-          provide: EvaluationOrchestratorService,
-          useValue: { evaluateBook: jest.fn().mockResolvedValue(undefined) },
+          provide: `BullQueue_${queueConfig.evaluationQueue.name}`,
+          useValue: {
+            add: jest.fn().mockResolvedValue(undefined),
+          },
         },
         {
           provide: PrismaService,
@@ -41,7 +43,7 @@ describe('BookOrchestratorService', () => {
     orchestrator = module.get<BookOrchestratorService>(BookOrchestratorService);
     metadataService = module.get<MetadataAggregatorService>(MetadataAggregatorService);
     duplicateDetector = module.get<DuplicateDetectorService>(DuplicateDetectorService);
-    evaluationOrchestrator = module.get<EvaluationOrchestratorService>(EvaluationOrchestratorService);
+    evaluationQueue = module.get(`BullQueue_${queueConfig.evaluationQueue.name}`);
     prisma = module.get<PrismaService>(PrismaService);
   });
 
@@ -72,7 +74,18 @@ describe('BookOrchestratorService', () => {
     expect(metadataService.lookup).toHaveBeenCalledWith('9780060652920');
     expect(duplicateDetector.findDuplicate).toHaveBeenCalledWith(metadata);
     expect(prisma.book.create).toHaveBeenCalled();
-    expect(evaluationOrchestrator.evaluateBook).toHaveBeenCalledWith('new-book-id');
+    expect(evaluationQueue.add).toHaveBeenCalledWith(
+      'evaluate-book',
+      { bookId: 'new-book-id' },
+      expect.objectContaining({
+        priority: 2,
+        attempts: 3,
+        backoff: expect.objectContaining({
+          type: 'exponential',
+          delay: 1000,
+        }),
+      })
+    );
   });
 
   it('should handle duplicate books', async () => {

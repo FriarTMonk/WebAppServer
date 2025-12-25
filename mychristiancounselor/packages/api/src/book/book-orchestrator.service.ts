@@ -1,8 +1,10 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { MetadataAggregatorService } from './providers/metadata/metadata-aggregator.service';
 import { DuplicateDetectorService } from './services/duplicate-detector.service';
-import { EvaluationOrchestratorService } from './services/evaluation-orchestrator.service';
+import { queueConfig } from '../config/queue.config';
 import { BookMetadata } from '@mychristiancounselor/shared';
 
 interface CreateBookInput {
@@ -29,7 +31,8 @@ export class BookOrchestratorService {
   constructor(
     private readonly metadataService: MetadataAggregatorService,
     private readonly duplicateDetector: DuplicateDetectorService,
-    private readonly evaluationOrchestrator: EvaluationOrchestratorService,
+    @InjectQueue(queueConfig.evaluationQueue.name)
+    private readonly evaluationQueue: Queue,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -77,11 +80,19 @@ export class BookOrchestratorService {
     // Pipe 4: Add endorsement
     await this.addEndorsement(book.id, organizationId, userId);
 
-    // Pipe 5: Trigger evaluation asynchronously (fire-and-forget)
-    // User gets immediate response, evaluation happens in background
-    this.evaluationOrchestrator.evaluateBook(book.id).catch(error => {
-      this.logger.error(`Evaluation failed for book ${book.id}:`, error);
-    });
+    // Pipe 5: Queue evaluation job
+    // User gets immediate response, evaluation happens via job processor
+    await this.evaluationQueue.add(
+      'evaluate-book',
+      { bookId: book.id },
+      {
+        priority: 2, // Normal priority
+        attempts: queueConfig.defaultJobOptions.attempts,
+        backoff: queueConfig.defaultJobOptions.backoff,
+      }
+    );
+
+    this.logger.log(`Evaluation job queued for book ${book.id}`);
 
     return {
       id: book.id,
