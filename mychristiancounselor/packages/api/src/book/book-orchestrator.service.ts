@@ -2,6 +2,7 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MetadataAggregatorService } from './providers/metadata/metadata-aggregator.service';
 import { DuplicateDetectorService } from './services/duplicate-detector.service';
+import { EvaluationOrchestratorService } from './services/evaluation-orchestrator.service';
 import { BookMetadata } from '@mychristiancounselor/shared';
 
 interface CreateBookInput {
@@ -28,6 +29,7 @@ export class BookOrchestratorService {
   constructor(
     private readonly metadataService: MetadataAggregatorService,
     private readonly duplicateDetector: DuplicateDetectorService,
+    private readonly evaluationOrchestrator: EvaluationOrchestratorService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -75,8 +77,11 @@ export class BookOrchestratorService {
     // Pipe 4: Add endorsement
     await this.addEndorsement(book.id, organizationId, userId);
 
-    // Pipe 5: Queue for evaluation (next task)
-    // TODO: Queue evaluation job
+    // Pipe 5: Trigger evaluation asynchronously (fire-and-forget)
+    // User gets immediate response, evaluation happens in background
+    this.evaluationOrchestrator.evaluateBook(book.id).catch(error => {
+      this.logger.error(`Evaluation failed for book ${book.id}:`, error);
+    });
 
     return {
       id: book.id,

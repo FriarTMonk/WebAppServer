@@ -2,12 +2,14 @@ import { Test } from '@nestjs/testing';
 import { BookOrchestratorService } from './book-orchestrator.service';
 import { MetadataAggregatorService } from './providers/metadata/metadata-aggregator.service';
 import { DuplicateDetectorService } from './services/duplicate-detector.service';
+import { EvaluationOrchestratorService } from './services/evaluation-orchestrator.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 describe('BookOrchestratorService', () => {
   let orchestrator: BookOrchestratorService;
   let metadataService: MetadataAggregatorService;
   let duplicateDetector: DuplicateDetectorService;
+  let evaluationOrchestrator: EvaluationOrchestratorService;
   let prisma: PrismaService;
 
   beforeEach(async () => {
@@ -23,6 +25,10 @@ describe('BookOrchestratorService', () => {
           useValue: { findDuplicate: jest.fn() },
         },
         {
+          provide: EvaluationOrchestratorService,
+          useValue: { evaluateBook: jest.fn().mockResolvedValue(undefined) },
+        },
+        {
           provide: PrismaService,
           useValue: {
             book: { create: jest.fn() },
@@ -35,6 +41,7 @@ describe('BookOrchestratorService', () => {
     orchestrator = module.get<BookOrchestratorService>(BookOrchestratorService);
     metadataService = module.get<MetadataAggregatorService>(MetadataAggregatorService);
     duplicateDetector = module.get<DuplicateDetectorService>(DuplicateDetectorService);
+    evaluationOrchestrator = module.get<EvaluationOrchestratorService>(EvaluationOrchestratorService);
     prisma = module.get<PrismaService>(PrismaService);
   });
 
@@ -65,6 +72,7 @@ describe('BookOrchestratorService', () => {
     expect(metadataService.lookup).toHaveBeenCalledWith('9780060652920');
     expect(duplicateDetector.findDuplicate).toHaveBeenCalledWith(metadata);
     expect(prisma.book.create).toHaveBeenCalled();
+    expect(evaluationOrchestrator.evaluateBook).toHaveBeenCalledWith('new-book-id');
   });
 
   it('should handle duplicate books', async () => {
