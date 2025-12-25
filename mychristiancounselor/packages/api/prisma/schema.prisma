@@ -715,6 +715,7 @@ model Book {
   @@index([genreTag])
   @@index([isbn])
   @@index([createdAt])
+  @@index([pdfFileHash])
 }
 
 model BookEvaluation {
