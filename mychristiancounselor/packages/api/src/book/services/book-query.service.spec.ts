@@ -102,7 +102,7 @@ describe('BookQueryService', () => {
         expect(result.books[0].id).toBe('1');
         expect(result.books[0].visibilityTier).toBe('globally_aligned');
         expect(result.books[0].matureContent).toBe(false);
-        expect(result.total).toBe(3); // Returns database count, not filtered count
+        expect(result.total).toBe(1); // Returns visible book count, not database count
       });
 
       it('should filter by search term', async () => {
@@ -234,12 +234,90 @@ describe('BookQueryService', () => {
         expect(result.books).toHaveLength(2);
         expect(result.books[0].id).toBe('1');
         expect(result.books[1].id).toBe('2');
-        expect(result.total).toBe(3); // Database count
+        expect(result.total).toBe(2); // Visible book count
         // Verify no N+1 queries - visibilityChecker.canAccess should not be called
         expect(visibilityChecker.canAccess).not.toHaveBeenCalled();
-        // User is fetched twice: once for mature content check, once for batch filtering
-        // This is still much better than N+1 (which would be 2 + N calls)
-        expect(prisma.user.findUnique).toHaveBeenCalledTimes(2);
+        // User is fetched three times: once for platform admin check, once for mature content check, once for batch filtering
+        // This is still much better than N+1 (which would be 3 + N calls)
+        expect(prisma.user.findUnique).toHaveBeenCalledTimes(3);
+      });
+
+      it('should allow platform admins to see all books including not_aligned', async () => {
+        const userId = 'platform-admin-123';
+        const mockPlatformAdmin = {
+          id: userId,
+          accountType: 'organization',
+          birthDate: new Date('1990-01-01'),
+          isPlatformAdmin: true,
+          organizationMembers: [],
+        };
+        const mockBooks = [
+          {
+            id: '1',
+            title: 'Globally Aligned Book',
+            author: 'Author 1',
+            publisher: 'Publisher 1',
+            publicationYear: 2023,
+            description: 'Description 1',
+            coverImageUrl: 'http://example.com/cover1.jpg',
+            biblicalAlignmentScore: 95,
+            visibilityTier: 'globally_aligned',
+            genreTag: 'theology',
+            matureContent: false,
+            _count: { endorsements: 5 },
+            endorsements: [],
+          },
+          {
+            id: '2',
+            title: 'Not Aligned Book',
+            author: 'Author 2',
+            publisher: 'Publisher 2',
+            publicationYear: 2023,
+            description: 'Description 2',
+            coverImageUrl: 'http://example.com/cover2.jpg',
+            biblicalAlignmentScore: 40,
+            visibilityTier: 'not_aligned',
+            genreTag: 'devotional',
+            matureContent: false,
+            _count: { endorsements: 1 },
+            endorsements: [],
+          },
+          {
+            id: '3',
+            title: 'Conceptually Aligned Book',
+            author: 'Author 3',
+            publisher: 'Publisher 3',
+            publicationYear: 2023,
+            description: 'Description 3',
+            coverImageUrl: 'http://example.com/cover3.jpg',
+            biblicalAlignmentScore: 85,
+            visibilityTier: 'conceptually_aligned',
+            genreTag: 'pastoral',
+            matureContent: false,
+            _count: { endorsements: 2 },
+            endorsements: [{ organizationId: 'org1' }],
+          },
+        ];
+
+        (prisma.book.findMany as jest.Mock).mockResolvedValue(mockBooks);
+        (prisma.book.count as jest.Mock).mockResolvedValue(3);
+        (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockPlatformAdmin);
+
+        const result = await service.findBooks({}, userId);
+
+        // Platform admin should see all 3 books including not_aligned
+        expect(result.books).toHaveLength(3);
+        expect(result.books[0].id).toBe('1');
+        expect(result.books[1].id).toBe('2');
+        expect(result.books[2].id).toBe('3');
+        expect(result.total).toBe(3);
+
+        // Verify not_aligned filter was not applied in WHERE clause
+        const callArgs = (prisma.book.findMany as jest.Mock).mock.calls[0][0];
+        const hasNotAlignedFilter = callArgs.where.AND.some(
+          (filter: any) => filter.visibilityTier?.not === 'not_aligned',
+        );
+        expect(hasNotAlignedFilter).toBe(false);
       });
 
       it('should respect visibilityTier filter', async () => {

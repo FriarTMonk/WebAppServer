@@ -34,6 +34,16 @@ export class BookQueryService {
       `Finding books with query: ${JSON.stringify(query)}, userId: ${userId || 'anonymous'}`,
     );
 
+    // Check if user is platform admin (for WHERE clause optimization)
+    let isPlatformAdmin = false;
+    if (userId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { isPlatformAdmin: true },
+      });
+      isPlatformAdmin = user?.isPlatformAdmin ?? false;
+    }
+
     // Build where clause for filtering
     const where = await this.buildWhereClause(
       search,
@@ -41,6 +51,7 @@ export class BookQueryService {
       genre,
       showMatureContent,
       userId,
+      isPlatformAdmin,
     );
 
     // Execute queries in parallel
@@ -87,7 +98,7 @@ export class BookQueryService {
 
     return {
       books: bookDtos,
-      total, // Return database count for proper pagination
+      total: visibleBooks.length, // Return count of visible books for accurate pagination
       skip,
       take,
     };
@@ -99,15 +110,20 @@ export class BookQueryService {
     genre?: string,
     showMatureContent?: boolean,
     userId?: string,
+    isPlatformAdmin?: boolean,
   ): Promise<any> {
     const where: any = {
       AND: [
         // Only show evaluated books
         { evaluationStatus: 'completed' },
-        // Exclude not_aligned books
-        { visibilityTier: { not: 'not_aligned' } },
       ],
     };
+
+    // Exclude not_aligned books for non-platform-admins
+    // Platform admins can see all books including not_aligned for oversight
+    if (!isPlatformAdmin) {
+      where.AND.push({ visibilityTier: { not: 'not_aligned' } });
+    }
 
     // Search filter (title or author)
     if (search) {
@@ -250,6 +266,11 @@ export class BookQueryService {
         (book) =>
           book.visibilityTier === 'globally_aligned' && !book.matureContent,
       );
+    }
+
+    // Platform admins can see ALL books (including not_aligned) for evaluation oversight
+    if (user.isPlatformAdmin) {
+      return books;
     }
 
     const userOrgIds = user.organizationMembers?.map(m => m.organizationId) || [];
