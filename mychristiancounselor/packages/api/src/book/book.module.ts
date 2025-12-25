@@ -6,6 +6,7 @@ import { BookController } from './book.controller';
 import { BookOrchestratorService } from './book-orchestrator.service';
 import { DuplicateDetectorService } from './services/duplicate-detector.service';
 import { VisibilityCheckerService } from './services/visibility-checker.service';
+import { BookQueryService } from './services/book-query.service';
 import { EvaluationScorerService } from './services/evaluation-scorer.service';
 import { EvaluationOrchestratorService } from './services/evaluation-orchestrator.service';
 import { MetadataAggregatorService } from './providers/metadata/metadata-aggregator.service';
@@ -27,6 +28,7 @@ import { queueConfig } from '../config/queue.config';
     BookOrchestratorService,
     DuplicateDetectorService,
     VisibilityCheckerService,
+    BookQueryService,
     EvaluationScorerService,
     EvaluationOrchestratorService,
     MetadataAggregatorService,
@@ -38,6 +40,7 @@ import { queueConfig } from '../config/queue.config';
     BookOrchestratorService,
     DuplicateDetectorService,
     VisibilityCheckerService,
+    BookQueryService,
     EvaluationOrchestratorService,
   ],
 })

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BookController } from './book.controller';
 import { BookOrchestratorService } from './book-orchestrator.service';
+import { BookQueryService } from './services/book-query.service';
 import { BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { IsOrgAdminGuard } from '../admin/guards/is-org-admin.guard';
@@ -8,6 +9,7 @@ import { IsOrgAdminGuard } from '../admin/guards/is-org-admin.guard';
 describe('BookController', () => {
   let controller: BookController;
   let orchestratorService: BookOrchestratorService;
+  let queryService: BookQueryService;
 
   const mockUser = {
     id: 'user-123',
@@ -32,6 +34,10 @@ describe('BookController', () => {
     createBook: jest.fn(),
   };
 
+  const mockQueryService = {
+    findBooks: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [BookController],
@@ -39,6 +45,10 @@ describe('BookController', () => {
         {
           provide: BookOrchestratorService,
           useValue: mockOrchestratorService,
+        },
+        {
+          provide: BookQueryService,
+          useValue: mockQueryService,
         },
       ],
     })
@@ -50,6 +60,7 @@ describe('BookController', () => {
 
     controller = module.get<BookController>(BookController);
     orchestratorService = module.get<BookOrchestratorService>(BookOrchestratorService);
+    queryService = module.get<BookQueryService>(BookQueryService);
   });
 
   afterEach(() => {
@@ -58,6 +69,118 @@ describe('BookController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  describe('listBooks', () => {
+    it('should return paginated list of books for anonymous users', async () => {
+      const mockResponse = {
+        books: [
+          {
+            id: 'book-1',
+            title: 'Test Book',
+            author: 'Test Author',
+            publisher: 'Test Publisher',
+            publicationYear: 2023,
+            description: 'Test Description',
+            coverImageUrl: 'http://example.com/cover.jpg',
+            biblicalAlignmentScore: 95,
+            visibilityTier: 'globally_aligned',
+            genreTag: 'theology',
+            matureContent: false,
+            endorsementCount: 5,
+          },
+        ],
+        total: 1,
+        skip: 0,
+        take: 20,
+      };
+
+      mockQueryService.findBooks.mockResolvedValue(mockResponse);
+
+      const result = await controller.listBooks({}, undefined);
+
+      expect(result).toEqual(mockResponse);
+      expect(queryService.findBooks).toHaveBeenCalledWith({}, undefined);
+    });
+
+    it('should return paginated list of books for authenticated users', async () => {
+      const mockResponse = {
+        books: [
+          {
+            id: 'book-1',
+            title: 'Test Book',
+            author: 'Test Author',
+            biblicalAlignmentScore: 95,
+            visibilityTier: 'conceptually_aligned',
+            matureContent: false,
+            endorsementCount: 3,
+          },
+        ],
+        total: 1,
+        skip: 0,
+        take: 20,
+      };
+
+      mockQueryService.findBooks.mockResolvedValue(mockResponse);
+
+      const result = await controller.listBooks({}, mockUser);
+
+      expect(result).toEqual(mockResponse);
+      expect(queryService.findBooks).toHaveBeenCalledWith({}, 'user-123');
+    });
+
+    it('should pass query parameters to service', async () => {
+      const query = {
+        search: 'theology',
+        visibilityTier: 'globally_aligned' as const,
+        genre: 'systematic',
+        showMatureContent: false,
+        skip: 10,
+        take: 5,
+      };
+
+      const mockResponse = {
+        books: [],
+        total: 0,
+        skip: 10,
+        take: 5,
+      };
+
+      mockQueryService.findBooks.mockResolvedValue(mockResponse);
+
+      const result = await controller.listBooks(query, mockUser);
+
+      expect(result).toEqual(mockResponse);
+      expect(queryService.findBooks).toHaveBeenCalledWith(query, 'user-123');
+    });
+
+    it('should handle search filter', async () => {
+      const query = { search: 'C.S. Lewis' };
+      mockQueryService.findBooks.mockResolvedValue({
+        books: [],
+        total: 0,
+        skip: 0,
+        take: 20,
+      });
+
+      await controller.listBooks(query, undefined);
+
+      expect(queryService.findBooks).toHaveBeenCalledWith(query, undefined);
+    });
+
+    it('should handle pagination parameters', async () => {
+      const query = { skip: 20, take: 10 };
+      mockQueryService.findBooks.mockResolvedValue({
+        books: [],
+        total: 0,
+        skip: 20,
+        take: 10,
+      });
+
+      await controller.listBooks(query, mockUser);
+
+      expect(queryService.findBooks).toHaveBeenCalledWith(query, 'user-123');
+    });
   });
 
   describe('createBook', () => {
