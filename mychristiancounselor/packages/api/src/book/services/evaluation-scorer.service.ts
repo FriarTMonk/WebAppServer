@@ -14,11 +14,13 @@ export class EvaluationScorerService implements IEvaluationScorer {
     });
   }
 
-  async evaluate(input: EvaluationInput): Promise<EvaluationResult> {
+  async evaluate(input: EvaluationInput & { useEscalationModel?: boolean }): Promise<EvaluationResult> {
     this.logger.log(`Evaluating book: ${input.metadata.title}`);
 
-    // Use primary model (Sonnet) for initial evaluation
-    const modelConfig = resourcesConfig.aiEvaluation.models.primary;
+    // Use escalation model (Opus) if requested, otherwise primary (Sonnet)
+    const modelConfig = input.useEscalationModel
+      ? resourcesConfig.aiEvaluation.models.escalation
+      : resourcesConfig.aiEvaluation.models.primary;
 
     // Build prompt with variable interpolation
     const prompt = this.buildPrompt(input);
