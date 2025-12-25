@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { WinstonModule } from 'nest-winston';
+import { BullModule } from '@nestjs/bullmq';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CounselModule } from '../counsel/counsel.module';
 import { AuthModule } from '../auth/auth.module';
@@ -22,10 +23,12 @@ import { MetricsMiddleware } from '../metrics/metrics.middleware';
 import { WebhooksModule } from '../webhooks/webhooks.module';
 import { SalesModule } from '../sales/sales.module';
 import { ContentModule } from '../content/content.module';
+import { BookModule } from '../book/book.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CsrfGuard } from '../common/guards/csrf.guard';
 import { configValidationSchema } from '../config/config.validation';
 import { winstonConfig } from '../common/logging/winston.config';
+import { getBullModuleOptions } from '../config/queue.config';
 
 @Module({
   imports: [
@@ -38,6 +41,8 @@ import { winstonConfig } from '../common/logging/winston.config';
       },
     }),
     ScheduleModule.forRoot(),
+    // BullMQ job queue
+    BullModule.forRoot(getBullModuleOptions()),
     // Rate limiting: 100 requests per minute per IP
     ThrottlerModule.forRoot([
       {
@@ -70,6 +75,7 @@ import { winstonConfig } from '../common/logging/winston.config';
     WebhooksModule,
     SalesModule,
     ContentModule,
+    BookModule,
   ],
   providers: [
     {
