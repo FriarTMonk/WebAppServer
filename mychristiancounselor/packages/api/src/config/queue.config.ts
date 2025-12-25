@@ -45,9 +45,9 @@ export interface QueueConfig {
 export const queueConfig: QueueConfig = {
   redis: {
     host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379'),
+    port: parseInt(process.env.REDIS_PORT || '6379', 10) || 6379,
     password: process.env.REDIS_PASSWORD,
-    db: parseInt(process.env.REDIS_DB || '0'),
+    db: parseInt(process.env.REDIS_DB || '0', 10) || 0,
   },
   defaultJobOptions: {
     attempts: 3,
@@ -67,11 +67,11 @@ export const queueConfig: QueueConfig = {
   },
   pdfMigrationQueue: {
     name: 'pdf-migration',
-    concurrency: 3,
-    attempts: 3,
+    concurrency: parseInt(process.env.PDF_MIGRATION_CONCURRENCY || '3', 10) || 3,
+    attempts: parseInt(process.env.PDF_MIGRATION_ATTEMPTS || '3', 10) || 3,
     backoff: {
       type: 'exponential' as const,
-      delay: 1000,
+      delay: parseInt(process.env.PDF_MIGRATION_BACKOFF_DELAY || '1000', 10) || 1000,
     },
     removeOnComplete: {
       age: 86400, // 24 hours
