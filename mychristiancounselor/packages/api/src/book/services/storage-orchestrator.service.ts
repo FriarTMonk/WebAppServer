@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { S3StorageProvider } from '../providers/storage/s3-storage.provider';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as crypto from 'crypto';
@@ -37,5 +37,60 @@ export class StorageOrchestratorService {
     }
 
     return { hash, year };
+  }
+
+  /**
+   * Validate PDF upload against existing PDF (prevents gaming)
+   * Checks: Hash duplication, publication date comparison
+   */
+  async validatePdfUpload(bookId: string, newPdfBuffer: Buffer): Promise<void> {
+    const book = await this.prisma.book.findUnique({
+      where: { id: bookId },
+      select: { pdfFileHash: true, pdfMetadataYear: true },
+    });
+
+    // No existing PDF - always accept
+    if (!book.pdfFileHash) {
+      return;
+    }
+
+    // Extract metadata from new PDF
+    const newMetadata = await this.extractPdfMetadata(newPdfBuffer);
+
+    // Step 1: Hash check (fast rejection)
+    if (newMetadata.hash === book.pdfFileHash) {
+      throw new BadRequestException('This PDF is identical to the existing file');
+    }
+
+    // Step 2: Date comparison
+    const existingYear = book.pdfMetadataYear;
+    const newYear = newMetadata.year;
+
+    if (!existingYear && !newYear) {
+      // Both undated - hash should have caught duplicate, but reject anyway
+      throw new BadRequestException('Cannot determine publication year from PDF metadata');
+    }
+
+    if (!existingYear && newYear) {
+      // New has date, existing doesn't - accept dated version
+      return;
+    }
+
+    if (existingYear && !newYear) {
+      // Existing has date, new doesn't - reject
+      throw new BadRequestException('Cannot replace dated PDF with undated PDF');
+    }
+
+    if (existingYear && newYear) {
+      if (newYear > existingYear) {
+        // Newer edition - accept
+        return;
+      } else {
+        // Same or older edition - reject
+        throw new BadRequestException(
+          `Only newer editions can replace existing PDFs (uploaded: ${newYear}, current: ${existingYear})`
+        );
+      }
+    }
   }
 }

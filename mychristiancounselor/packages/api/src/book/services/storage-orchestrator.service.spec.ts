@@ -75,4 +75,74 @@ describe('StorageOrchestratorService', () => {
       expect(result.year).toBeUndefined();
     });
   });
+
+  describe('validatePdfUpload', () => {
+    const mockBook = {
+      id: 'book-123',
+      pdfFileHash: 'existing-hash',
+      pdfMetadataYear: 2020,
+    };
+
+    beforeEach(() => {
+      prisma.book.findUnique.mockResolvedValue(mockBook as any);
+    });
+
+    it('should accept upload if no existing PDF', async () => {
+      prisma.book.findUnique.mockResolvedValue({ id: 'book-123', pdfFileHash: null } as any);
+      const newPdf = Buffer.from('new pdf');
+
+      await expect(service.validatePdfUpload('book-123', newPdf)).resolves.not.toThrow();
+    });
+
+    it('should reject if hash matches existing PDF', async () => {
+      const existingHash = crypto.createHash('sha256').update(Buffer.from('same')).digest('hex');
+      prisma.book.findUnique.mockResolvedValue({ pdfFileHash: existingHash } as any);
+      const newPdf = Buffer.from('same');
+
+      await expect(service.validatePdfUpload('book-123', newPdf))
+        .rejects.toThrow('This PDF is identical to the existing file');
+    });
+
+    it('should accept if new PDF has date and existing does not', async () => {
+      prisma.book.findUnique.mockResolvedValue({
+        pdfFileHash: 'different-hash',
+        pdfMetadataYear: null
+      } as any);
+      const newPdf = Buffer.from('%PDF-1.4\n<</CreationDate(D:20230515)>>');
+
+      await expect(service.validatePdfUpload('book-123', newPdf)).resolves.not.toThrow();
+    });
+
+    it('should reject if existing has date but new does not', async () => {
+      prisma.book.findUnique.mockResolvedValue({
+        pdfFileHash: 'different-hash',
+        pdfMetadataYear: 2020
+      } as any);
+      const newPdf = Buffer.from('%PDF-1.4\n<</Title(Test)>>');
+
+      await expect(service.validatePdfUpload('book-123', newPdf))
+        .rejects.toThrow('Cannot replace dated PDF with undated PDF');
+    });
+
+    it('should accept if new year > existing year', async () => {
+      prisma.book.findUnique.mockResolvedValue({
+        pdfFileHash: 'different-hash',
+        pdfMetadataYear: 2020
+      } as any);
+      const newPdf = Buffer.from('%PDF-1.4\n<</CreationDate(D:20230515)>>');
+
+      await expect(service.validatePdfUpload('book-123', newPdf)).resolves.not.toThrow();
+    });
+
+    it('should reject if new year <= existing year', async () => {
+      prisma.book.findUnique.mockResolvedValue({
+        pdfFileHash: 'different-hash',
+        pdfMetadataYear: 2023
+      } as any);
+      const newPdf = Buffer.from('%PDF-1.4\n<</CreationDate(D:20200515)>>');
+
+      await expect(service.validatePdfUpload('book-123', newPdf))
+        .rejects.toThrow('Only newer editions can replace existing PDFs');
+    });
+  });
 });
