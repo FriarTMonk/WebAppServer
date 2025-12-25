@@ -102,7 +102,7 @@ describe('BookQueryService', () => {
         expect(result.books[0].id).toBe('1');
         expect(result.books[0].visibilityTier).toBe('globally_aligned');
         expect(result.books[0].matureContent).toBe(false);
-        expect(result.total).toBe(1);
+        expect(result.total).toBe(3); // Returns database count, not filtered count
       });
 
       it('should filter by search term', async () => {
@@ -162,8 +162,21 @@ describe('BookQueryService', () => {
     });
 
     describe('authenticated users', () => {
-      it('should return books user has access to via visibility checker', async () => {
+      it('should return books user has access to via batch filtering', async () => {
         const userId = 'user-123';
+        const mockUser = {
+          id: userId,
+          accountType: 'adult',
+          birthDate: new Date('1990-01-01'),
+          organizationMembers: [
+            {
+              organizationId: 'org1',
+              organization: {
+                matureContentAccountTypeThreshold: 'teen',
+              },
+            },
+          ],
+        };
         const mockBooks = [
           {
             id: '1',
@@ -214,17 +227,19 @@ describe('BookQueryService', () => {
 
         (prisma.book.findMany as jest.Mock).mockResolvedValue(mockBooks);
         (prisma.book.count as jest.Mock).mockResolvedValue(3);
-        (visibilityChecker.canAccess as jest.Mock)
-          .mockResolvedValueOnce(true) // Book 1 - global, accessible
-          .mockResolvedValueOnce(true) // Book 2 - org book, user has access
-          .mockResolvedValueOnce(false); // Book 3 - org book, user lacks access
+        (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
         const result = await service.findBooks({}, userId);
 
         expect(result.books).toHaveLength(2);
         expect(result.books[0].id).toBe('1');
         expect(result.books[1].id).toBe('2');
-        expect(visibilityChecker.canAccess).toHaveBeenCalledTimes(3);
+        expect(result.total).toBe(3); // Database count
+        // Verify no N+1 queries - visibilityChecker.canAccess should not be called
+        expect(visibilityChecker.canAccess).not.toHaveBeenCalled();
+        // User is fetched twice: once for mature content check, once for batch filtering
+        // This is still much better than N+1 (which would be 2 + N calls)
+        expect(prisma.user.findUnique).toHaveBeenCalledTimes(2);
       });
 
       it('should respect visibilityTier filter', async () => {

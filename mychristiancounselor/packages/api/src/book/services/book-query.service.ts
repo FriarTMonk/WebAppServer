@@ -6,6 +6,7 @@ import {
   BookListItemDto,
   BookListResponseDto,
 } from '../dto';
+import { resourcesConfig } from '../../config/resources.config';
 
 @Injectable()
 export class BookQueryService {
@@ -86,7 +87,7 @@ export class BookQueryService {
 
     return {
       books: bookDtos,
-      total: visibleBooks.length, // Return count of visible books
+      total, // Return database count for proper pagination
       skip,
       take,
     };
@@ -228,18 +229,71 @@ export class BookQueryService {
       );
     }
 
-    // For authenticated users, check each book's visibility
-    const visibilityChecks = await Promise.all(
-      books.map(async (book) => {
-        const canAccess = await this.visibilityChecker.canAccess(
-          userId,
-          book.id,
-          'book',
-        );
-        return canAccess ? book : null;
-      }),
-    );
+    // Fetch user once with organization memberships for batch filtering
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        organizationMembers: {
+          select: {
+            organizationId: true,
+            organization: {
+              select: { matureContentAccountTypeThreshold: true }
+            }
+          },
+        },
+      },
+    });
 
-    return visibilityChecks.filter((book) => book !== null);
+    if (!user) {
+      // If user not found, treat as anonymous
+      return books.filter(
+        (book) =>
+          book.visibilityTier === 'globally_aligned' && !book.matureContent,
+      );
+    }
+
+    const userOrgIds = user.organizationMembers?.map(m => m.organizationId) || [];
+    const canViewMature = this.canViewMatureContentBatch(user);
+
+    // Filter books in-memory using pre-fetched user data
+    return books.filter((book) => {
+      // Rule 1: not_aligned = hidden (already filtered in WHERE clause, but double-check)
+      if (book.visibilityTier === 'not_aligned') {
+        return false;
+      }
+
+      // Rule 2: Age-gating for mature content
+      if (book.matureContent && !canViewMature) {
+        return false;
+      }
+
+      // Rule 3: globally_aligned = everyone (who can view mature if needed)
+      if (book.visibilityTier === 'globally_aligned') {
+        return true;
+      }
+
+      // Rule 4: conceptually_aligned = org members only
+      if (book.visibilityTier === 'conceptually_aligned') {
+        const bookOrgIds = book.endorsements?.map((e: any) => e.organizationId) || [];
+        return userOrgIds.some(id => bookOrgIds.includes(id));
+      }
+
+      return false;
+    });
+  }
+
+  private canViewMatureContentBatch(user: any): boolean {
+    // Data-driven age-gating (inline version for batch processing)
+    const accountType = user.accountType || this.inferAccountType(user.birthDate);
+
+    // Check user's org settings, fallback to platform default
+    const threshold = user.organizationMembers?.[0]?.organization?.matureContentAccountTypeThreshold
+      || resourcesConfig.ageGating.defaultMatureContentThreshold;
+
+    const typeOrder = ['child', 'teen', 'adult'];
+    const userTypeIndex = typeOrder.indexOf(accountType);
+    const thresholdIndex = typeOrder.indexOf(threshold);
+
+    return userTypeIndex >= thresholdIndex;
   }
 }
