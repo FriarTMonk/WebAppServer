@@ -131,6 +131,41 @@ export class EvaluationOrchestratorService {
       visibilityTier = 'globally_aligned';
     }
 
+    // Check if PDF tier migration is needed
+    const book = await this.prisma.book.findUnique({
+      where: { id: bookId },
+      select: {
+        pdfStoragePath: true,
+        pdfStorageTier: true,
+        biblicalAlignmentScore: true,
+      },
+    });
+
+    if (book?.pdfStoragePath && book.pdfStorageTier) {
+      const newTier = result.score >= globallyAlignedThreshold ? 'active' : 'archived';
+      const currentTier = book.pdfStorageTier;
+
+      // Check if tier change is needed
+      if (newTier !== currentTier) {
+        this.logger.log(`Migrating PDF for book ${bookId} from ${currentTier} to ${newTier}`);
+
+        await this.storageProvider.move(
+          bookId,
+          currentTier as 'active' | 'archived',
+          newTier as 'active' | 'archived',
+        );
+
+        // Update book with new tier
+        await this.prisma.book.update({
+          where: { id: bookId },
+          data: {
+            pdfStorageTier: newTier,
+            pdfStoragePath: `${newTier === 'active' ? resourcesConfig.storage.activeTier.prefix : resourcesConfig.storage.archivedTier.prefix}${bookId}.pdf`,
+          },
+        });
+      }
+    }
+
     // Update book
     await this.prisma.book.update({
       where: { id: bookId },

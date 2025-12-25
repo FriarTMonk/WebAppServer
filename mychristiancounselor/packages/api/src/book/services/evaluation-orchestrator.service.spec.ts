@@ -39,6 +39,7 @@ describe('EvaluationOrchestratorService', () => {
           provide: S3StorageProvider,
           useValue: {
             upload: jest.fn(),
+            move: jest.fn(),
           },
         },
       ],
@@ -459,5 +460,139 @@ describe('EvaluationOrchestratorService', () => {
     await orchestrator.evaluateBook('book-id');
 
     expect(storageProvider.upload).not.toHaveBeenCalled();
+  });
+
+  it('should migrate PDF from archived to active when score increases', async () => {
+    const mockBook = {
+      id: 'book-id',
+      title: 'Test Book',
+      author: 'Test Author',
+      description: 'Test description',
+      pdfStoragePath: 'archived/books/book-id.pdf',
+      pdfStorageTier: 'archived',
+      biblicalAlignmentScore: 75, // Was conceptually aligned
+    };
+
+    const mockEvalResult = {
+      score: 95, // Now globally aligned
+      summary: 'Improved book',
+      doctrineCategoryScores: [],
+      denominationalTags: [],
+      matureContent: false,
+      strengths: [],
+      concerns: [],
+      reasoning: 'Score improved',
+      scripture: 'Solid',
+      modelUsed: 'claude-sonnet-4-20250514',
+      analysisLevel: 'description',
+    };
+
+    jest.spyOn(prisma.book, 'findUnique')
+      .mockResolvedValueOnce(mockBook as any) // First call in evaluateBook
+      .mockResolvedValueOnce(mockBook as any); // Second call in saveEvaluationResults for migration check
+
+    jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
+    jest.spyOn(storageProvider, 'move').mockResolvedValue();
+    jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
+    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
+
+    await orchestrator.evaluateBook('book-id');
+
+    expect(storageProvider.move).toHaveBeenCalledWith('book-id', 'archived', 'active');
+    expect(prisma.book.update).toHaveBeenCalledWith({
+      where: { id: 'book-id' },
+      data: expect.objectContaining({
+        pdfStorageTier: 'active',
+        pdfStoragePath: 'active/books/book-id.pdf',
+      }),
+    });
+  });
+
+  it('should migrate PDF from active to archived when score decreases', async () => {
+    const mockBook = {
+      id: 'book-id',
+      title: 'Test Book',
+      author: 'Test Author',
+      description: 'Test description',
+      pdfStoragePath: 'active/books/book-id.pdf',
+      pdfStorageTier: 'active',
+      biblicalAlignmentScore: 95, // Was globally aligned
+    };
+
+    const mockEvalResult = {
+      score: 75, // Now conceptually aligned
+      summary: 'Score decreased',
+      doctrineCategoryScores: [],
+      denominationalTags: [],
+      matureContent: false,
+      strengths: [],
+      concerns: [],
+      reasoning: 'Score decreased',
+      scripture: 'Mixed',
+      modelUsed: 'claude-sonnet-4-20250514',
+      analysisLevel: 'description',
+    };
+
+    jest.spyOn(prisma.book, 'findUnique')
+      .mockResolvedValueOnce(mockBook as any)
+      .mockResolvedValueOnce(mockBook as any);
+
+    jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
+    jest.spyOn(storageProvider, 'move').mockResolvedValue();
+    jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
+    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
+
+    await orchestrator.evaluateBook('book-id');
+
+    expect(storageProvider.move).toHaveBeenCalledWith('book-id', 'active', 'archived');
+    expect(prisma.book.update).toHaveBeenCalledWith({
+      where: { id: 'book-id' },
+      data: expect.objectContaining({
+        pdfStorageTier: 'archived',
+        pdfStoragePath: 'archived/books/book-id.pdf',
+      }),
+    });
+  });
+
+  it('should not migrate PDF when tier remains the same', async () => {
+    const mockBook = {
+      id: 'book-id',
+      title: 'Test Book',
+      author: 'Test Author',
+      description: 'Test description',
+      pdfStoragePath: 'active/books/book-id.pdf',
+      pdfStorageTier: 'active',
+      biblicalAlignmentScore: 92,
+    };
+
+    const mockEvalResult = {
+      score: 95, // Still globally aligned
+      summary: 'Still good',
+      doctrineCategoryScores: [],
+      denominationalTags: [],
+      matureContent: false,
+      strengths: [],
+      concerns: [],
+      reasoning: 'Still well aligned',
+      scripture: 'Solid',
+      modelUsed: 'claude-sonnet-4-20250514',
+      analysisLevel: 'description',
+    };
+
+    jest.spyOn(prisma.book, 'findUnique')
+      .mockResolvedValueOnce(mockBook as any)
+      .mockResolvedValueOnce(mockBook as any);
+
+    jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
+    jest.spyOn(storageProvider, 'move').mockResolvedValue();
+    jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
+    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
+
+    await orchestrator.evaluateBook('book-id');
+
+    expect(storageProvider.move).not.toHaveBeenCalled();
   });
 });
