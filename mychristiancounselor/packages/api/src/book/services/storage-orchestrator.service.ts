@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { S3StorageProvider } from '../providers/storage/s3-storage.provider';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as crypto from 'crypto';
@@ -48,6 +48,10 @@ export class StorageOrchestratorService {
       where: { id: bookId },
       select: { pdfFileHash: true, pdfMetadataYear: true },
     });
+
+    if (!book) {
+      throw new NotFoundException(`Book not found: ${bookId}`);
+    }
 
     // No existing PDF - always accept
     if (!book.pdfFileHash) {

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { StorageOrchestratorService } from './storage-orchestrator.service';
 import { S3StorageProvider } from '../providers/storage/s3-storage.provider';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
 
 describe('StorageOrchestratorService', () => {
@@ -85,6 +86,14 @@ describe('StorageOrchestratorService', () => {
 
     beforeEach(() => {
       prisma.book.findUnique.mockResolvedValue(mockBook as any);
+    });
+
+    it('should throw NotFoundException if book does not exist', async () => {
+      prisma.book.findUnique.mockResolvedValue(null);
+      const newPdf = Buffer.from('new pdf');
+
+      await expect(service.validatePdfUpload('nonexistent-id', newPdf))
+        .rejects.toThrow(NotFoundException);
     });
 
     it('should accept upload if no existing PDF', async () => {

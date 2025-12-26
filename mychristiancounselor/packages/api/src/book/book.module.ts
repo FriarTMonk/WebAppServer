@@ -12,6 +12,7 @@ import { EvaluationOrchestratorService } from './services/evaluation-orchestrato
 import { MetadataAggregatorService } from './providers/metadata/metadata-aggregator.service';
 import { GoogleBooksProvider } from './providers/metadata/google-books.provider';
 import { S3StorageProvider } from './providers/storage/s3-storage.provider';
+import { StorageOrchestratorService } from './services/storage-orchestrator.service';
 import { BookEvaluationProcessor } from './processors/book-evaluation.processor';
 import { queueConfig } from '../config/queue.config';
 
@@ -34,6 +35,7 @@ import { queueConfig } from '../config/queue.config';
     MetadataAggregatorService,
     GoogleBooksProvider,
     S3StorageProvider,
+    StorageOrchestratorService,
     BookEvaluationProcessor,
   ],
   exports: [
