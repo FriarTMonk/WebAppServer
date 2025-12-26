@@ -152,6 +152,11 @@ export function UserMenu() {
     }
   };
 
+  const handleNavigateToResources = (path: string) => () => {
+    setIsOpen(false);
+    router.push(path);
+  };
+
   return (
     <div className="relative user-menu">
       <button
@@ -204,40 +209,32 @@ export function UserMenu() {
             Journal
           </button>
           {/* Resources Submenu */}
-          <div className="border-t border-gray-200">
+          <div className="border-t border-gray-200" role="group" aria-label="Resources">
             <button
-              onClick={() => {
-                setIsOpen(false);
-                router.push('/resources/books');
-              }}
+              onClick={handleNavigateToResources('/resources/books')}
               className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              role="menuitem"
             >
               Browse Books
             </button>
             <button
-              onClick={() => {
-                setIsOpen(false);
-                router.push('/resources/reading-list');
-              }}
+              onClick={handleNavigateToResources('/resources/reading-list')}
               className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              role="menuitem"
             >
               My Reading List
             </button>
             <button
-              onClick={() => {
-                setIsOpen(false);
-                router.push('/resources/organizations');
-              }}
+              onClick={handleNavigateToResources('/resources/organizations')}
               className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              role="menuitem"
             >
               Browse Organizations
             </button>
             <button
-              onClick={() => {
-                setIsOpen(false);
-                router.push('/resources/recommended');
-              }}
+              onClick={handleNavigateToResources('/resources/recommended')}
               className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              role="menuitem"
             >
               Recommended for Me
             </button>
