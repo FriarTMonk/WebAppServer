@@ -1,8 +1,37 @@
 import React from 'react';
-import { Message } from '@mychristiancounselor/shared';
+import { Message, ScriptureReference } from '@mychristiancounselor/shared';
 import { ScriptureCard } from './ScriptureCard';
 import { ScriptureComparison } from './ScriptureComparison';
 import { useTextToSpeech } from '../hooks/useTextToSpeech';
+
+interface GroupedScripture {
+  primary: ScriptureReference;
+  related: ScriptureReference[];
+}
+
+function groupScriptures(scriptures: ScriptureReference[]): GroupedScripture[] {
+  const groups: GroupedScripture[] = [];
+  let currentGroup: GroupedScripture | null = null;
+
+  for (const scripture of scriptures) {
+    if (scripture.source === 'ai-cited') {
+      // Start new group
+      if (currentGroup) groups.push(currentGroup);
+      currentGroup = { primary: scripture, related: [] };
+    } else if (scripture.source === 'related' && currentGroup) {
+      // Add to current group
+      currentGroup.related.push(scripture);
+    } else {
+      // Standalone (theme) scripture
+      if (currentGroup) groups.push(currentGroup);
+      groups.push({ primary: scripture, related: [] });
+      currentGroup = null;
+    }
+  }
+
+  if (currentGroup) groups.push(currentGroup);
+  return groups;
+}
 
 interface MessageBubbleProps {
   message: Message;
@@ -109,11 +138,20 @@ export function MessageBubble({ message, comparisonMode = false }: MessageBubble
             {comparisonMode ? (
               <ScriptureComparison scriptures={message.scriptureReferences} />
             ) : (
-              <div className="space-y-2">
-                {message.scriptureReferences.map((ref, idx) => (
-                  <ScriptureCard key={idx} scripture={ref} />
-                ))}
-              </div>
+              (() => {
+                const groupedScriptures = groupScriptures(message.scriptureReferences);
+                return (
+                  <div className="space-y-2">
+                    {groupedScriptures.map((group, idx) => (
+                      <ScriptureCard
+                        key={idx}
+                        scripture={group.primary}
+                        relatedScriptures={group.related}
+                      />
+                    ))}
+                  </div>
+                );
+              })()
             )}
           </div>
         )}
