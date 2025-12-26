@@ -278,5 +278,28 @@ describe('StorageOrchestratorService', () => {
 
       expect(s3Provider.move).not.toHaveBeenCalled();
     });
+
+    it('should throw NotFoundException if book not found', async () => {
+      prisma.book.findUnique.mockResolvedValue(null);
+
+      await expect(service.migratePdfToArchivedTier('nonexistent')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should not update database if S3 move fails', async () => {
+      s3Provider.move.mockRejectedValue(new Error('S3 error'));
+
+      await expect(service.migratePdfToArchivedTier(bookId)).rejects.toThrow('S3 error');
+
+      expect(prisma.book.update).not.toHaveBeenCalled();
+    });
+
+    it('should rollback S3 move if database update fails', async () => {
+      prisma.book.update.mockRejectedValue(new Error('DB error'));
+
+      await expect(service.migratePdfToArchivedTier(bookId)).rejects.toThrow('DB error');
+
+      expect(s3Provider.move).toHaveBeenCalledWith(bookId, 'active', 'archived');
+      expect(s3Provider.move).toHaveBeenCalledWith(bookId, 'archived', 'active'); // Rollback
+    });
   });
 });

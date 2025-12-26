@@ -166,8 +166,12 @@ export class StorageOrchestratorService {
       select: { pdfStorageTier: true },
     });
 
+    if (!book) {
+      throw new NotFoundException(`Book not found: ${bookId}`);
+    }
+
     // Already archived - skip
-    if (book?.pdfStorageTier === 'archived') {
+    if (book.pdfStorageTier === 'archived') {
       this.logger.log(`PDF already in archived tier for book ${bookId}`);
       return;
     }
@@ -175,14 +179,25 @@ export class StorageOrchestratorService {
     // Move from active to archived in S3
     await this.s3Provider.move(bookId, 'active', 'archived');
 
-    // Update database
-    await this.prisma.book.update({
-      where: { id: bookId },
-      data: {
-        pdfStorageTier: 'archived',
-      },
-    });
+    try {
+      // Update database
+      await this.prisma.book.update({
+        where: { id: bookId },
+        data: {
+          pdfStorageTier: 'archived',
+        },
+      });
 
-    this.logger.log(`PDF migrated to archived tier for book ${bookId}`);
+      this.logger.log(`PDF migrated to archived tier for book ${bookId}`);
+    } catch (dbError) {
+      // DB update failed - rollback S3 move
+      this.logger.error(`DB update failed after S3 move, rolling back: ${dbError?.message || dbError}`);
+      try {
+        await this.s3Provider.move(bookId, 'archived', 'active');
+      } catch (rollbackError) {
+        this.logger.error(`Failed to rollback S3 move: ${rollbackError?.message || rollbackError}`);
+      }
+      throw dbError;
+    }
   }
 }
