@@ -172,3 +172,43 @@ export const api = {
     return { data: await response.json() };
   },
 };
+
+// Book API helpers
+export interface BookFilters {
+  search?: string;
+  genre?: string;
+  visibilityTier?: string;
+  showMatureContent?: boolean;
+  skip?: number;
+  take?: number;
+  sort?: string;
+}
+
+export const bookApi = {
+  list: (filters: BookFilters) => {
+    const params = new URLSearchParams();
+    if (filters.search) params.append('search', filters.search);
+    if (filters.genre && filters.genre !== 'all') params.append('genre', filters.genre);
+    if (filters.visibilityTier && filters.visibilityTier !== 'all') params.append('visibilityTier', filters.visibilityTier);
+    if (filters.showMatureContent !== undefined) params.append('showMatureContent', String(filters.showMatureContent));
+    if (filters.skip !== undefined) params.append('skip', String(filters.skip));
+    if (filters.take !== undefined) params.append('take', String(filters.take));
+    if (filters.sort) params.append('sort', filters.sort);
+
+    return apiGet(`/books?${params.toString()}`);
+  },
+
+  getById: (id: string) => apiGet(`/books/${id}`),
+
+  create: (data: any) => apiPost('/books', data),
+
+  uploadPdf: (id: string, file: File, licenseType: string) => {
+    const formData = new FormData();
+    formData.append('pdf', file);
+    formData.append('pdfLicenseType', licenseType);
+    return apiFetch(`/books/${id}/pdf`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
+};
