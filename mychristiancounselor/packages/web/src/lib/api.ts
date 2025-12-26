@@ -206,9 +206,6 @@ export const bookApi = {
     const formData = new FormData();
     formData.append('pdf', file);
     formData.append('pdfLicenseType', licenseType);
-    return apiFetch(`/books/${id}/pdf`, {
-      method: 'POST',
-      body: formData,
-    });
+    return apiPost(`/books/${id}/pdf`, formData);
   },
 };
