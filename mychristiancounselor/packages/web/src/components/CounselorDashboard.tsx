@@ -200,13 +200,24 @@ export default function CounselorDashboard() {
                         <div className="text-sm text-gray-500">{memberSummary.member.email}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    {/* Desktop: Show full summary inline */}
+                    <td className="px-6 py-4 hidden lg:table-cell">
                       <div className="text-sm text-gray-900">
                         {memberSummary.wellbeingStatus?.summary || 'No analysis yet'}
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
                         Analyzed: {formatDate(memberSummary.wellbeingStatus?.lastAnalyzedAt)}
                       </div>
+                    </td>
+
+                    {/* Mobile: Show "View Summary" link */}
+                    <td className="px-6 py-4 lg:hidden">
+                      <button
+                        onClick={() => setSelectedSummary(memberSummary)}
+                        className="text-blue-600 hover:text-blue-900 text-sm font-medium underline"
+                      >
+                        View Summary
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(memberSummary.lastLogin)}
