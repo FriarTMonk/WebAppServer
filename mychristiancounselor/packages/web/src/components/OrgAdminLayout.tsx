@@ -85,7 +85,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
                 <div className="px-4 py-2 text-xs font-semibold text-green-300 uppercase tracking-wider">
                   Resources
                 </div>
-                <ul className="mt-2 space-y-1">
+                <ul className="mt-2 space-y-1" aria-label="Resources navigation">
                   <li>
                     <Link
                       href="/org-admin/resources/books"
