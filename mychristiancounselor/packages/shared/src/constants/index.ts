@@ -358,3 +358,9 @@ export const GRIEF_RESOURCES: Array<{
 
 export const MAX_CLARIFYING_QUESTIONS = 3;
 export const SESSION_TIMEOUT_MINUTES = 60;
+
+// Alignment score thresholds used for book evaluation
+export const ALIGNMENT_SCORE_THRESHOLDS = {
+  GLOBALLY_ALIGNED: 90,
+  CONCEPTUALLY_ALIGNED: 70,
+} as const;

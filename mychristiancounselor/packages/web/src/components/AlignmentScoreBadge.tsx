@@ -1,14 +1,20 @@
 'use client';
 
+import clsx from 'clsx';
+import { ALIGNMENT_SCORE_THRESHOLDS } from '@mychristiancounselor/shared';
+
 interface AlignmentScoreBadgeProps {
   score: number;
   size?: 'small' | 'medium' | 'large';
 }
 
 export function AlignmentScoreBadge({ score, size = 'medium' }: AlignmentScoreBadgeProps) {
+  // Clamp score to valid range (0-100) for safety
+  const clampedScore = Math.max(0, Math.min(100, score));
+
   // Determine tier and styling
   const getStyles = () => {
-    if (score >= 90) {
+    if (clampedScore >= ALIGNMENT_SCORE_THRESHOLDS.GLOBALLY_ALIGNED) {
       return {
         bgColor: 'bg-green-100',
         textColor: 'text-green-800',
@@ -16,7 +22,7 @@ export function AlignmentScoreBadge({ score, size = 'medium' }: AlignmentScoreBa
         icon: '✓',
         label: 'Globally Aligned',
       };
-    } else if (score >= 70) {
+    } else if (clampedScore >= ALIGNMENT_SCORE_THRESHOLDS.CONCEPTUALLY_ALIGNED) {
       return {
         bgColor: 'bg-yellow-100',
         textColor: 'text-yellow-800',
@@ -56,8 +62,8 @@ export function AlignmentScoreBadge({ score, size = 'medium' }: AlignmentScoreBa
   const { container, score: scoreClass } = sizeClasses[size];
 
   return (
-    <div className={`inline-flex items-center gap-2 ${bgColor} ${textColor} ${borderColor} border rounded-lg ${container}`}>
-      <span className={scoreClass}>{score}%</span>
+    <div className={clsx('inline-flex items-center gap-2 border rounded-lg', bgColor, textColor, borderColor, container)}>
+      <span className={scoreClass}>{clampedScore}%</span>
       <span className="font-medium">
         {icon} {label}
       </span>
