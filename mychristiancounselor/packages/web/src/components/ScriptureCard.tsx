@@ -89,7 +89,9 @@ export function ScriptureCard({
   };
 
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
+    <div className={`border border-blue-200 rounded-lg p-4 mb-3 ${
+      isNested ? 'ml-4 bg-blue-25 p-3' : 'bg-blue-50'
+    }`}>
       <div className="flex justify-between items-center mb-2">
         <div className="flex items-center gap-2 font-semibold text-blue-900">
           <span>
@@ -99,7 +101,7 @@ export function ScriptureCard({
           </span>
           {getSourceBadge()}
         </div>
-        {hasStrongs && (
+        {hasStrongs && !isNested && (
           <button
             onClick={() => setShowStrongs(!showStrongs)}
             className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors"
