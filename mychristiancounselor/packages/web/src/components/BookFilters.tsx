@@ -1,6 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { BookFilters as BookFiltersType } from '../lib/api';
+
+// Constants for magic strings
+const GENRES = [
+  { value: 'all', label: 'All Genres' },
+  { value: 'theology', label: 'Theology' },
+  { value: 'devotional', label: 'Devotional' },
+  { value: 'fiction', label: 'Fiction' },
+  { value: 'study', label: 'Study' },
+  { value: 'biography', label: 'Biography' },
+  { value: 'commentary', label: 'Commentary' },
+] as const;
+
+const SORT_OPTIONS = [
+  { value: 'relevance', label: 'Relevance' },
+  { value: 'title', label: 'Title (A-Z)' },
+  { value: 'newest', label: 'Newest First' },
+  { value: 'score', label: 'Highest Score' },
+] as const;
+
+const VISIBILITY_TIERS = [
+  { value: 'all', label: 'All Levels' },
+  { value: 'globally_aligned', label: 'Globally Aligned (≥90%)' },
+  { value: 'conceptually_aligned', label: 'Conceptually Aligned (70-89%)' },
+  { value: 'not_aligned', label: 'Not Aligned (<70%)' },
+] as const;
+
+const INPUT_CLASSNAME = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500';
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 interface BookFiltersProps {
   filters: {
@@ -10,14 +40,34 @@ interface BookFiltersProps {
     showMatureContent: boolean;
     sort: string;
   };
-  onFilterChange: (filters: any) => void;
+  onFilterChange: (filters: BookFiltersType) => void;
   showAlignmentFilter?: boolean;
 }
 
 export function BookFilters({ filters, onFilterChange, showAlignmentFilter = false }: BookFiltersProps) {
   const [localFilters, setLocalFilters] = useState(filters);
+  const [searchValue, setSearchValue] = useState(filters.search);
 
-  const handleFilterChange = (key: string, value: any) => {
+  // Sync localFilters when parent filters prop changes
+  useEffect(() => {
+    setLocalFilters(filters);
+    setSearchValue(filters.search);
+  }, [filters]);
+
+  // Debounce search input
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchValue !== localFilters.search) {
+        const newFilters = { ...localFilters, search: searchValue };
+        setLocalFilters(newFilters);
+        onFilterChange(newFilters);
+      }
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchValue, localFilters, onFilterChange]);
+
+  const handleFilterChange = (key: string, value: string | boolean) => {
     const newFilters = { ...localFilters, [key]: value };
     setLocalFilters(newFilters);
     onFilterChange(newFilters);
@@ -28,79 +78,78 @@ export function BookFilters({ filters, onFilterChange, showAlignmentFilter = fal
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1">
         {/* Search Input */}
         <div className="lg:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="book-search" className="block text-sm font-medium text-gray-700 mb-1">
             Search
           </label>
           <input
+            id="book-search"
             type="text"
-            value={localFilters.search}
-            onChange={(e) => handleFilterChange('search', e.target.value)}
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
             placeholder="Title, Author, ISBN..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={INPUT_CLASSNAME}
           />
         </div>
 
         {/* Genre Filter */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="book-genre" className="block text-sm font-medium text-gray-700 mb-1">
             Genre
           </label>
           <select
+            id="book-genre"
             value={localFilters.genre}
             onChange={(e) => handleFilterChange('genre', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={INPUT_CLASSNAME}
           >
-            <option value="all">All Genres</option>
-            <option value="theology">Theology</option>
-            <option value="devotional">Devotional</option>
-            <option value="fiction">Fiction</option>
-            <option value="study">Study</option>
-            <option value="biography">Biography</option>
-            <option value="commentary">Commentary</option>
+            {GENRES.map(({ value, label }) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
           </select>
         </div>
 
         {/* Alignment Filter (Platform Admin only) */}
         {showAlignmentFilter && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="book-alignment" className="block text-sm font-medium text-gray-700 mb-1">
               Alignment
             </label>
             <select
+              id="book-alignment"
               value={localFilters.visibilityTier}
               onChange={(e) => handleFilterChange('visibilityTier', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={INPUT_CLASSNAME}
             >
-              <option value="all">All Levels</option>
-              <option value="globally_aligned">Globally Aligned (≥90%)</option>
-              <option value="conceptually_aligned">Conceptually Aligned (70-89%)</option>
-              <option value="not_aligned">Not Aligned (&lt;70%)</option>
+              {VISIBILITY_TIERS.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
           </div>
         )}
 
         {/* Sort */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="book-sort" className="block text-sm font-medium text-gray-700 mb-1">
             Sort By
           </label>
           <select
+            id="book-sort"
             value={localFilters.sort}
             onChange={(e) => handleFilterChange('sort', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={INPUT_CLASSNAME}
           >
-            <option value="relevance">Relevance</option>
-            <option value="title">Title (A-Z)</option>
-            <option value="newest">Newest First</option>
-            <option value="score">Highest Score</option>
+            {SORT_OPTIONS.map(({ value, label }) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
           </select>
         </div>
       </div>
 
       {/* Mature Content Checkbox */}
       <div className="mt-4">
-        <label className="flex items-center">
+        <label htmlFor="book-mature-content" className="flex items-center">
           <input
+            id="book-mature-content"
             type="checkbox"
             checked={localFilters.showMatureContent}
             onChange={(e) => handleFilterChange('showMatureContent', e.target.checked)}
