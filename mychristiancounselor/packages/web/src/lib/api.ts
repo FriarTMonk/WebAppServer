@@ -184,6 +184,26 @@ export interface BookFilters {
   sort?: string;
 }
 
+/**
+ * Interface for creating a new book submission.
+ * Matches the backend CreateBookDto expectations.
+ */
+export interface CreateBookData {
+  // Lookup methods (mutually exclusive with manual entry)
+  isbn?: string;
+  lookupUrl?: string;
+
+  // Manual entry fields (required if no ISBN/URL)
+  title?: string;
+  author?: string;
+
+  // Optional fields for manual entry or override
+  publisher?: string;
+  publicationYear?: number;
+  description?: string;
+  coverImageUrl?: string;
+}
+
 export const bookApi = {
   list: (filters: BookFilters) => {
     const params = new URLSearchParams();
@@ -200,12 +220,18 @@ export const bookApi = {
 
   getById: (id: string) => apiGet(`/books/${id}`),
 
-  create: (data: any) => apiPost('/books', data),
+  create: (data: CreateBookData) => apiPost('/books', data),
 
   uploadPdf: (id: string, file: File, licenseType: string) => {
     const formData = new FormData();
     formData.append('pdf', file);
     formData.append('pdfLicenseType', licenseType);
-    return apiPost(`/books/${id}/pdf`, formData);
+    // CRITICAL: Must use apiFetch directly with FormData body
+    // apiPost() would stringify FormData to empty JSON object "{}"
+    // Browser must set Content-Type: multipart/form-data with boundary
+    return apiFetch(`/books/${id}/pdf`, {
+      method: 'POST',
+      body: formData, // FormData passed directly, not stringified
+    });
   },
 };
