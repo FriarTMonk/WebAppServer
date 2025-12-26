@@ -125,6 +125,39 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   </li>
                 </ul>
               </li>
+
+              {/* Resources Section */}
+              <li>
+                <div className="px-4 py-2 text-xs font-semibold text-blue-300 uppercase tracking-wider">
+                  Resources
+                </div>
+                <ul className="mt-2 space-y-1">
+                  <li>
+                    <Link
+                      href="/admin/resources/books"
+                      className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/resources/books')}`}
+                    >
+                      All Books
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/admin/resources/evaluation"
+                      className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/resources/evaluation')}`}
+                    >
+                      Evaluation Management
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/admin/resources/organizations"
+                      className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/resources/organizations')}`}
+                    >
+                      Organizations
+                    </Link>
+                  </li>
+                </ul>
+              </li>
             </ul>
           </nav>
         </aside>
