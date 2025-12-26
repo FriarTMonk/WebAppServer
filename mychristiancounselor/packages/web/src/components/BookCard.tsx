@@ -2,7 +2,16 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Menu } from '@headlessui/react';
+import clsx from 'clsx';
 import { AlignmentScoreBadge } from './AlignmentScoreBadge';
+
+// Reading list status constants
+const READING_LIST_STATUS = {
+  WANT_TO_READ: 'want_to_read',
+  CURRENTLY_READING: 'currently_reading',
+  FINISHED: 'finished',
+} as const;
 
 interface Book {
   id: string;
@@ -21,9 +30,19 @@ interface BookCardProps {
   compact?: boolean;
 }
 
+// Validate URL to prevent XSS attacks
+function isValidImageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export function BookCard({ book, showActions = true, compact = false }: BookCardProps) {
   const router = useRouter();
-  const [showReadingListMenu, setShowReadingListMenu] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const handleViewDetails = () => {
     router.push(`/resources/books/${book.id}`);
@@ -31,23 +50,33 @@ export function BookCard({ book, showActions = true, compact = false }: BookCard
 
   const handleSaveToList = (status: string) => {
     // TODO: Implement reading list functionality in Phase 2
-    console.log('Save to list:', book.id, status);
-    setShowReadingListMenu(false);
   };
+
+  // Validate image URL for security
+  const validImageUrl = book.coverImageUrl && isValidImageUrl(book.coverImageUrl) && !imageError
+    ? book.coverImageUrl
+    : null;
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
       <div className="flex gap-4">
         {/* Cover Image */}
         <div className="flex-shrink-0">
-          {book.coverImageUrl ? (
+          {validImageUrl ? (
             <img
-              src={book.coverImageUrl}
+              src={validImageUrl}
               alt={`${book.title} cover`}
-              className={`${compact ? 'w-16 h-24' : 'w-24 h-36'} object-cover rounded`}
+              className={clsx(
+                'object-cover rounded',
+                compact ? 'w-16 h-24' : 'w-24 h-36'
+              )}
+              onError={() => setImageError(true)}
             />
           ) : (
-            <div className={`${compact ? 'w-16 h-24' : 'w-24 h-36'} bg-gray-200 rounded flex items-center justify-center`}>
+            <div className={clsx(
+              'bg-gray-200 rounded flex items-center justify-center',
+              compact ? 'w-16 h-24' : 'w-24 h-36'
+            )}>
               <span className="text-gray-400 text-xs text-center px-2">No Cover</span>
             </div>
           )}
@@ -93,44 +122,54 @@ export function BookCard({ book, showActions = true, compact = false }: BookCard
           {/* Actions */}
           {showActions && (
             <div className="flex gap-2 mt-3">
-              {/* Reading List Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowReadingListMenu(!showReadingListMenu)}
-                  className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
-                >
+              {/* Reading List Dropdown - Accessible with Headless UI */}
+              <Menu as="div" className="relative">
+                <Menu.Button className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors">
                   Save to List ▼
-                </button>
+                </Menu.Button>
 
-                {showReadingListMenu && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-10"
-                      onClick={() => setShowReadingListMenu(false)}
-                    />
-                    <div className="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-200">
+                <Menu.Items className="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-200 focus:outline-none">
+                  <Menu.Item>
+                    {({ active }) => (
                       <button
-                        onClick={() => handleSaveToList('want_to_read')}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => handleSaveToList(READING_LIST_STATUS.WANT_TO_READ)}
+                        className={clsx(
+                          'block w-full text-left px-4 py-2 text-sm text-gray-700',
+                          active && 'bg-gray-100'
+                        )}
                       >
                         Want to Read
                       </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
                       <button
-                        onClick={() => handleSaveToList('currently_reading')}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => handleSaveToList(READING_LIST_STATUS.CURRENTLY_READING)}
+                        className={clsx(
+                          'block w-full text-left px-4 py-2 text-sm text-gray-700',
+                          active && 'bg-gray-100'
+                        )}
                       >
                         Currently Reading
                       </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
                       <button
-                        onClick={() => handleSaveToList('finished')}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => handleSaveToList(READING_LIST_STATUS.FINISHED)}
+                        className={clsx(
+                          'block w-full text-left px-4 py-2 text-sm text-gray-700',
+                          active && 'bg-gray-100'
+                        )}
                       >
                         Finished
                       </button>
-                    </div>
-                  </>
-                )}
-              </div>
+                    )}
+                  </Menu.Item>
+                </Menu.Items>
+              </Menu>
 
               <button
                 onClick={handleViewDetails}
