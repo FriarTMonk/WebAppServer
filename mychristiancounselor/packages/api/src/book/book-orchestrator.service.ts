@@ -6,6 +6,7 @@ import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { MetadataAggregatorService } from './providers/metadata/metadata-aggregator.service';
 import { DuplicateDetectorService } from './services/duplicate-detector.service';
+import { StorageOrchestratorService } from './services/storage-orchestrator.service';
 import { queueConfig } from '../config/queue.config';
 import { BookMetadata } from '@mychristiancounselor/shared';
 import { PdfLicenseType, BookEvaluationStatus } from '@prisma/client';
@@ -42,6 +43,7 @@ export class BookOrchestratorService {
   constructor(
     private readonly metadataService: MetadataAggregatorService,
     private readonly duplicateDetector: DuplicateDetectorService,
+    private readonly storageOrchestrator: StorageOrchestratorService,
     @InjectQueue(queueConfig.evaluationQueue.name)
     private readonly evaluationQueue: Queue,
     private readonly prisma: PrismaService,
@@ -221,6 +223,7 @@ export class BookOrchestratorService {
         submittedByOrganizationId: true,
         evaluationStatus: true,
         pdfFilePath: true,
+        pdfFileHash: true,
       },
     });
 
@@ -232,6 +235,14 @@ export class BookOrchestratorService {
     if (book.submittedByOrganizationId !== organizationId) {
       throw new ForbiddenException('Only organization admins from the submitting organization can upload PDFs');
     }
+
+    // Validate if replacing existing PDF
+    if (book.pdfFileHash) {
+      await this.storageOrchestrator.validatePdfUpload(bookId, file.buffer);
+    }
+
+    // Extract metadata
+    const metadata = await this.storageOrchestrator.extractPdfMetadata(file.buffer);
 
     // Delete old PDF file if it exists
     if (book.pdfFilePath) {
@@ -282,6 +293,8 @@ export class BookOrchestratorService {
         pdfFileSize: file.size,
         pdfUploadedAt: uploadedAt,
         pdfLicenseType: validatedLicenseType,
+        pdfFileHash: metadata.hash,
+        pdfMetadataYear: metadata.year,
         evaluationStatus: newStatus,
       },
     });

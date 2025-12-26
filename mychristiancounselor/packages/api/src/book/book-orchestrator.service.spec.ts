@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { BookOrchestratorService } from './book-orchestrator.service';
 import { MetadataAggregatorService } from './providers/metadata/metadata-aggregator.service';
 import { DuplicateDetectorService } from './services/duplicate-detector.service';
+import { StorageOrchestratorService } from './services/storage-orchestrator.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { queueConfig } from '../config/queue.config';
 
@@ -9,8 +10,9 @@ describe('BookOrchestratorService', () => {
   let orchestrator: BookOrchestratorService;
   let metadataService: MetadataAggregatorService;
   let duplicateDetector: DuplicateDetectorService;
+  let storageOrchestrator: jest.Mocked<StorageOrchestratorService>;
   let evaluationQueue: any;
-  let prisma: PrismaService;
+  let prisma: any;
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
@@ -25,6 +27,13 @@ describe('BookOrchestratorService', () => {
           useValue: { findDuplicate: jest.fn() },
         },
         {
+          provide: StorageOrchestratorService,
+          useValue: {
+            validatePdfUpload: jest.fn().mockResolvedValue(undefined),
+            extractPdfMetadata: jest.fn().mockResolvedValue({ hash: 'new-hash', year: 2023 }),
+          },
+        },
+        {
           provide: `BullQueue_${queueConfig.evaluationQueue.name}`,
           useValue: {
             add: jest.fn().mockResolvedValue(undefined),
@@ -33,7 +42,7 @@ describe('BookOrchestratorService', () => {
         {
           provide: PrismaService,
           useValue: {
-            book: { create: jest.fn() },
+            book: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
             bookEndorsement: { create: jest.fn(), findUnique: jest.fn() },
           },
         },
@@ -43,6 +52,7 @@ describe('BookOrchestratorService', () => {
     orchestrator = module.get<BookOrchestratorService>(BookOrchestratorService);
     metadataService = module.get<MetadataAggregatorService>(MetadataAggregatorService);
     duplicateDetector = module.get<DuplicateDetectorService>(DuplicateDetectorService);
+    storageOrchestrator = module.get(StorageOrchestratorService);
     evaluationQueue = module.get(`BullQueue_${queueConfig.evaluationQueue.name}`);
     prisma = module.get<PrismaService>(PrismaService);
   });
@@ -109,5 +119,87 @@ describe('BookOrchestratorService', () => {
     expect(result.id).toBe('existing-book-id');
     expect(result.status).toBe('existing');
     expect(result.message).toContain('already exists');
+  });
+
+  describe('uploadPdf with validation', () => {
+    it('should validate PDF if book already has pdfFileHash', async () => {
+      const existingBook = {
+        id: 'book-123',
+        submittedByOrganizationId: 'org-123',
+        evaluationStatus: 'pending',
+        pdfFilePath: null,
+        pdfFileHash: 'existing-hash',
+        pdfMetadataYear: 2020,
+      };
+      prisma.book.findUnique.mockResolvedValue(existingBook as any);
+      prisma.book.update.mockResolvedValue({} as any);
+
+      const file = {
+        buffer: Buffer.from('%PDF-1.4 new pdf content'),
+        size: 1000,
+        mimetype: 'application/pdf',
+        originalname: 'test.pdf',
+      } as Express.Multer.File;
+
+      await orchestrator.uploadPdf('book-123', file, 'user-123', 'org-123', undefined);
+
+      expect(storageOrchestrator.validatePdfUpload).toHaveBeenCalledWith('book-123', file.buffer);
+    });
+
+    it('should not validate if book has no existing PDF', async () => {
+      const newBook = {
+        id: 'book-123',
+        submittedByOrganizationId: 'org-123',
+        evaluationStatus: 'pending',
+        pdfFilePath: null,
+        pdfFileHash: null,
+      };
+      prisma.book.findUnique.mockResolvedValue(newBook as any);
+      prisma.book.update.mockResolvedValue({} as any);
+
+      const file = {
+        buffer: Buffer.from('%PDF-1.4 pdf content'),
+        size: 1000,
+        mimetype: 'application/pdf',
+        originalname: 'test.pdf',
+      } as Express.Multer.File;
+
+      await orchestrator.uploadPdf('book-123', file, 'user-123', 'org-123', undefined);
+
+      expect(storageOrchestrator.validatePdfUpload).not.toHaveBeenCalled();
+    });
+
+    it('should extract metadata and save to database', async () => {
+      const book = {
+        id: 'book-123',
+        submittedByOrganizationId: 'org-123',
+        evaluationStatus: 'pending',
+        pdfFilePath: null,
+        pdfFileHash: null,
+      };
+      prisma.book.findUnique.mockResolvedValue(book as any);
+      prisma.book.update.mockResolvedValue({} as any);
+
+      const file = {
+        buffer: Buffer.from('%PDF-1.4 pdf content'),
+        size: 1000,
+        mimetype: 'application/pdf',
+        originalname: 'test.pdf',
+      } as Express.Multer.File;
+
+      const metadata = { hash: 'sha256-hash', year: 2023 };
+      storageOrchestrator.extractPdfMetadata.mockResolvedValue(metadata);
+
+      await orchestrator.uploadPdf('book-123', file, 'user-123', 'org-123', undefined);
+
+      expect(prisma.book.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            pdfFileHash: 'sha256-hash',
+            pdfMetadataYear: 2023,
+          }),
+        })
+      );
+    });
   });
 });
