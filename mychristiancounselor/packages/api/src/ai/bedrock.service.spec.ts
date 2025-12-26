@@ -314,13 +314,13 @@ describe('BedrockService', () => {
       const info = service.getModelInfo();
 
       expect(info.models.sonnet.id).toBe(
-        'anthropic.claude-sonnet-4-5-20250929-v1:0'
+        'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
       );
       expect(info.models.haiku.id).toBe(
-        'anthropic.claude-haiku-4-5-20251001-v1:0'
+        'global.anthropic.claude-haiku-4-5-20251001-v1:0'
       );
       expect(info.models.opus.id).toBe(
-        'anthropic.claude-opus-4-5-20251101-v1:0'
+        'global.anthropic.claude-opus-4-5-20251101-v1:0'
       );
     });
 
