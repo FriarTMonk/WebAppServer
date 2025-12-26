@@ -18,11 +18,6 @@ export function ScriptureCard({
   const hasStrongs = scripture.strongs && scripture.strongs.length > 0;
   const hasRelated = relatedScriptures.length > 0;
 
-  // Suppress unused variable warnings - these will be used in upcoming tasks
-  void showRelated;
-  void setShowRelated;
-  void hasRelated;
-
   // Determine if a Strong's number is Greek (G) or Hebrew (H)
   const getStrongsType = (number: string): 'greek' | 'hebrew' => {
     return number.startsWith('G') ? 'greek' : 'hebrew';
@@ -111,6 +106,16 @@ export function ScriptureCard({
         )}
       </div>
       <p className="text-blue-800 italic">"{scripture.text}"</p>
+
+      {/* Related toggle button */}
+      {hasRelated && !isNested && (
+        <button
+          onClick={() => setShowRelated(!showRelated)}
+          className="mt-2 text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors"
+        >
+          {showRelated ? 'Hide' : 'Show'} Related ({relatedScriptures.length})
+        </button>
+      )}
 
       {hasStrongs && showStrongs && (
         <div className="mt-3 pt-3 border-t border-blue-300">
