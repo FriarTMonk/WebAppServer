@@ -153,7 +153,14 @@ describe('BookOrchestratorService', () => {
       expect(pdfMigrationQueue.add).toHaveBeenCalledWith(
         'migrate-to-active',
         { bookId: 'book-123' },
-        { priority: 1 }
+        expect.objectContaining({
+          priority: 1,
+          attempts: queueConfig.pdfMigrationQueue.attempts,
+          backoff: expect.objectContaining({
+            type: 'exponential',
+            delay: expect.any(Number),
+          }),
+        })
       );
     });
   });

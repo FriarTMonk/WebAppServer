@@ -315,7 +315,13 @@ export class BookOrchestratorService {
     await this.pdfMigrationQueue.add(
       'migrate-to-active',
       { bookId },
-      { priority: 1 }
+      {
+        priority: 1, // High priority for user-initiated uploads
+        attempts: queueConfig.pdfMigrationQueue.attempts,
+        backoff: queueConfig.pdfMigrationQueue.backoff,
+        removeOnComplete: queueConfig.pdfMigrationQueue.removeOnComplete,
+        removeOnFail: queueConfig.pdfMigrationQueue.removeOnFail,
+      }
     );
     this.logger.log(`PDF migration job queued for book ${bookId}`);
 
