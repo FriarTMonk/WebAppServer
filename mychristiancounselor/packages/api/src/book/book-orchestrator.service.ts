@@ -236,14 +236,24 @@ export class BookOrchestratorService {
       throw new ForbiddenException('Only organization admins from the submitting organization can upload PDFs');
     }
 
-    // Validate if replacing existing PDF
-    if (book.pdfFileHash) {
-      await this.storageOrchestrator.validatePdfUpload(bookId, file.buffer);
+    // Step 1: Validate and extract metadata BEFORE any file operations
+    // This ensures we don't modify the filesystem if validation/extraction fails
+    let metadata: { hash: string; year: number | null };
+    try {
+      // Validate if replacing existing PDF
+      if (book.pdfFileHash) {
+        await this.storageOrchestrator.validatePdfUpload(bookId, file.buffer);
+      }
+
+      // Extract metadata
+      metadata = await this.storageOrchestrator.extractPdfMetadata(file.buffer);
+    } catch (error) {
+      // Re-throw validation/extraction errors without modifying filesystem
+      this.logger.error(`PDF validation or metadata extraction failed: ${error.message}`);
+      throw error;
     }
 
-    // Extract metadata
-    const metadata = await this.storageOrchestrator.extractPdfMetadata(file.buffer);
-
+    // Step 2: Now that validation passed, perform file operations
     // Delete old PDF file if it exists
     if (book.pdfFilePath) {
       try {

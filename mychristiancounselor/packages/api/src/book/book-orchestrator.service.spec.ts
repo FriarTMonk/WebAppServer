@@ -201,5 +201,64 @@ describe('BookOrchestratorService', () => {
         })
       );
     });
+
+    it('should not perform file operations if validation fails', async () => {
+      const existingBook = {
+        id: 'book-123',
+        submittedByOrganizationId: 'org-123',
+        evaluationStatus: 'pending',
+        pdfFilePath: null,
+        pdfFileHash: 'existing-hash',
+        pdfMetadataYear: 2020,
+      };
+      prisma.book.findUnique.mockResolvedValue(existingBook as any);
+
+      // Mock validation to reject (e.g., older edition)
+      const validationError = new Error('Older edition rejected');
+      storageOrchestrator.validatePdfUpload.mockRejectedValue(validationError);
+
+      const file = {
+        buffer: Buffer.from('%PDF-1.4 new pdf'),
+        size: 1000,
+        mimetype: 'application/pdf',
+        originalname: 'test.pdf',
+      } as Express.Multer.File;
+
+      await expect(
+        orchestrator.uploadPdf('book-123', file, 'user-123', 'org-123', undefined)
+      ).rejects.toThrow('Older edition rejected');
+
+      // Verify database was not updated
+      expect(prisma.book.update).not.toHaveBeenCalled();
+    });
+
+    it('should not perform file operations if metadata extraction fails', async () => {
+      const book = {
+        id: 'book-123',
+        submittedByOrganizationId: 'org-123',
+        evaluationStatus: 'pending',
+        pdfFilePath: '/uploads/temp/pdfs/book-123-old.pdf',
+        pdfFileHash: null,
+      };
+      prisma.book.findUnique.mockResolvedValue(book as any);
+
+      // Mock metadata extraction to fail
+      const extractionError = new Error('Malformed PDF');
+      storageOrchestrator.extractPdfMetadata.mockRejectedValue(extractionError);
+
+      const file = {
+        buffer: Buffer.from('%PDF-1.4 corrupted content'),
+        size: 1000,
+        mimetype: 'application/pdf',
+        originalname: 'test.pdf',
+      } as Express.Multer.File;
+
+      await expect(
+        orchestrator.uploadPdf('book-123', file, 'user-123', 'org-123', undefined)
+      ).rejects.toThrow('Malformed PDF');
+
+      // Verify database was not updated (old file should still exist)
+      expect(prisma.book.update).not.toHaveBeenCalled();
+    });
   });
 });
