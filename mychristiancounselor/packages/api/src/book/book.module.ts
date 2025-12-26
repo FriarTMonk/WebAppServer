@@ -14,6 +14,7 @@ import { GoogleBooksProvider } from './providers/metadata/google-books.provider'
 import { S3StorageProvider } from './providers/storage/s3-storage.provider';
 import { StorageOrchestratorService } from './services/storage-orchestrator.service';
 import { BookEvaluationProcessor } from './processors/book-evaluation.processor';
+import { PdfMigrationProcessor } from './processors/pdf-migration.processor';
 import { queueConfig } from '../config/queue.config';
 
 @Module({
@@ -22,6 +23,9 @@ import { queueConfig } from '../config/queue.config';
     HttpModule,
     BullModule.registerQueue({
       name: queueConfig.evaluationQueue.name,
+    }),
+    BullModule.registerQueue({
+      name: queueConfig.pdfMigrationQueue.name,
     }),
   ],
   controllers: [BookController],
@@ -37,6 +41,7 @@ import { queueConfig } from '../config/queue.config';
     S3StorageProvider,
     StorageOrchestratorService,
     BookEvaluationProcessor,
+    PdfMigrationProcessor,
   ],
   exports: [
     BookOrchestratorService,
@@ -44,6 +49,7 @@ import { queueConfig } from '../config/queue.config';
     VisibilityCheckerService,
     BookQueryService,
     EvaluationOrchestratorService,
+    StorageOrchestratorService,
   ],
 })
 export class BookModule {}
