@@ -7,5 +7,5 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/packages/api',
-  testMatch: ['**/*.spec.ts'],
+  testMatch: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
 };
