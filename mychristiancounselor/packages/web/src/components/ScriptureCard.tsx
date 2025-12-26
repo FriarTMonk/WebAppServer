@@ -179,6 +179,23 @@ export function ScriptureCard({
           </div>
         </div>
       )}
+
+      {hasRelated && showRelated && !isNested && (
+        <div className="mt-3 pl-4 border-l-2 border-blue-300">
+          <div className="text-xs font-semibold text-blue-900 mb-2">
+            Related Scriptures:
+          </div>
+          <div className="space-y-2">
+            {relatedScriptures.map((related, idx) => (
+              <ScriptureCard
+                key={idx}
+                scripture={related}
+                isNested={true}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
