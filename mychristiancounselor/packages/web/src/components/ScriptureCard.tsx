@@ -182,13 +182,13 @@ export function ScriptureCard({
 
       {hasRelated && showRelated && !isNested && (
         <div className="mt-3 pl-4 border-l-2 border-blue-300">
-          <div className="text-xs font-semibold text-blue-900 mb-2">
+          <h4 className="text-xs font-semibold text-blue-900 mb-2">
             Related Scriptures:
-          </div>
+          </h4>
           <div className="space-y-2">
-            {relatedScriptures.map((related, idx) => (
+            {relatedScriptures.map((related) => (
               <ScriptureCard
-                key={idx}
+                key={`${related.book}-${related.chapter}-${related.verseStart}`}
                 scripture={related}
                 isNested={true}
               />
