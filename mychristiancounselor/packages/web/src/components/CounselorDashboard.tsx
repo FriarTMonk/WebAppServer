@@ -295,6 +295,59 @@ export default function CounselorDashboard() {
           onClose={() => setProfileModal(null)}
         />
       )}
+
+      {selectedSummary && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedSummary(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  7-Day Summary
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {selectedSummary.member.firstName} {selectedSummary.member.lastName}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedSummary(null)}
+                className="text-gray-400 hover:text-gray-500"
+                aria-label="Close dialog"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <div className="text-sm text-gray-900 whitespace-pre-wrap">
+                {selectedSummary.wellbeingStatus?.summary || 'No analysis yet'}
+              </div>
+              <div className="text-xs text-gray-500 mt-4 pt-4 border-t border-gray-200">
+                Analyzed: {formatDate(selectedSummary.wellbeingStatus?.lastAnalyzedAt)}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-lg">
+              <button
+                onClick={() => setSelectedSummary(null)}
+                className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
