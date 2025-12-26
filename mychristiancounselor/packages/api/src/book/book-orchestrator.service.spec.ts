@@ -12,6 +12,7 @@ describe('BookOrchestratorService', () => {
   let duplicateDetector: DuplicateDetectorService;
   let storageOrchestrator: jest.Mocked<StorageOrchestratorService>;
   let evaluationQueue: any;
+  let pdfMigrationQueue: any;
   let prisma: any;
 
   beforeEach(async () => {
@@ -40,6 +41,12 @@ describe('BookOrchestratorService', () => {
           },
         },
         {
+          provide: `BullQueue_${queueConfig.pdfMigrationQueue.name}`,
+          useValue: {
+            add: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
           provide: PrismaService,
           useValue: {
             book: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
@@ -54,6 +61,7 @@ describe('BookOrchestratorService', () => {
     duplicateDetector = module.get<DuplicateDetectorService>(DuplicateDetectorService);
     storageOrchestrator = module.get(StorageOrchestratorService);
     evaluationQueue = module.get(`BullQueue_${queueConfig.evaluationQueue.name}`);
+    pdfMigrationQueue = module.get(`BullQueue_${queueConfig.pdfMigrationQueue.name}`);
     prisma = module.get<PrismaService>(PrismaService);
   });
 
@@ -119,6 +127,35 @@ describe('BookOrchestratorService', () => {
     expect(result.id).toBe('existing-book-id');
     expect(result.status).toBe('existing');
     expect(result.message).toContain('already exists');
+  });
+
+  describe('uploadPdf queues migration job', () => {
+    it('should queue migrate-to-active job after upload', async () => {
+      const book = {
+        id: 'book-123',
+        submittedByOrganizationId: 'org-123',
+        evaluationStatus: 'pending',
+        pdfFilePath: null,
+        pdfFileHash: null,
+      };
+      prisma.book.findUnique.mockResolvedValue(book as any);
+      prisma.book.update.mockResolvedValue({} as any);
+
+      const file = {
+        buffer: Buffer.from('%PDF-1.4 pdf content'),
+        size: 1000,
+        mimetype: 'application/pdf',
+        originalname: 'test.pdf',
+      } as Express.Multer.File;
+
+      await orchestrator.uploadPdf('book-123', file, 'user-123', 'org-123', undefined);
+
+      expect(pdfMigrationQueue.add).toHaveBeenCalledWith(
+        'migrate-to-active',
+        { bookId: 'book-123' },
+        { priority: 1 }
+      );
+    });
   });
 
   describe('uploadPdf with validation', () => {

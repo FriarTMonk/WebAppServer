@@ -46,6 +46,8 @@ export class BookOrchestratorService {
     private readonly storageOrchestrator: StorageOrchestratorService,
     @InjectQueue(queueConfig.evaluationQueue.name)
     private readonly evaluationQueue: Queue,
+    @InjectQueue(queueConfig.pdfMigrationQueue.name)
+    private readonly pdfMigrationQueue: Queue,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -308,6 +310,14 @@ export class BookOrchestratorService {
         evaluationStatus: newStatus,
       },
     });
+
+    // Queue migration to active tier (high priority)
+    await this.pdfMigrationQueue.add(
+      'migrate-to-active',
+      { bookId },
+      { priority: 1 }
+    );
+    this.logger.log(`PDF migration job queued for book ${bookId}`);
 
     // Queue re-evaluation if needed
     if (needsReEvaluation) {
