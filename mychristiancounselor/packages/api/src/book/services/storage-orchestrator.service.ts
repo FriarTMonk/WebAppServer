@@ -170,6 +170,12 @@ export class StorageOrchestratorService {
       throw new NotFoundException(`Book not found: ${bookId}`);
     }
 
+    // Check if book has a PDF
+    if (!book.pdfStorageTier) {
+      this.logger.log(`No PDF to archive for book ${bookId}`);
+      return;
+    }
+
     // Already archived - skip
     if (book.pdfStorageTier === 'archived') {
       this.logger.log(`PDF already in archived tier for book ${bookId}`);

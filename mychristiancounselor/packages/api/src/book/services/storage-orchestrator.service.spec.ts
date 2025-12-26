@@ -251,6 +251,20 @@ describe('StorageOrchestratorService', () => {
       } as any);
     });
 
+    it('should skip migration if book has no PDF (null tier)', async () => {
+      const bookWithNoPdf = {
+        id: 'book-123',
+        pdfStorageTier: null,
+      };
+
+      prisma.book.findUnique.mockResolvedValue(bookWithNoPdf as any);
+
+      await service.migratePdfToArchivedTier('book-123');
+
+      expect(s3Provider.move).not.toHaveBeenCalled();
+      expect(prisma.book.update).not.toHaveBeenCalled();
+    });
+
     it('should move PDF from active to archived tier in S3', async () => {
       await service.migratePdfToArchivedTier(bookId);
 
