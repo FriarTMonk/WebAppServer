@@ -122,18 +122,34 @@ export class StorageOrchestratorService {
     // Upload to S3 active tier
     const s3Key = await this.s3Provider.upload(bookId, pdfBuffer, 'active');
 
-    // Update database with S3 path and tier
-    await this.prisma.book.update({
-      where: { id: bookId },
-      data: {
-        pdfStoragePath: `s3://${s3Key}`,
-        pdfStorageTier: 'active',
-      },
-    });
+    try {
+      // Update database with S3 path and tier
+      await this.prisma.book.update({
+        where: { id: bookId },
+        data: {
+          pdfStoragePath: `s3://${s3Key}`,
+          pdfStorageTier: 'active',
+        },
+      });
 
-    // Delete temp file
-    await fs.unlink(book.pdfFilePath);
+      // Delete temp file (with error handling)
+      try {
+        await fs.unlink(book.pdfFilePath);
+      } catch (unlinkError) {
+        this.logger.warn(`Failed to delete temp file ${book.pdfFilePath}: ${unlinkError.message}`);
+        // Continue - DB is consistent, just have orphaned temp file
+      }
 
-    this.logger.log(`PDF migrated to active tier: ${s3Key}`);
+      this.logger.log(`PDF migrated to active tier: ${s3Key}`);
+    } catch (dbError) {
+      // DB update failed - delete the S3 file to maintain consistency
+      this.logger.error(`DB update failed after S3 upload, rolling back S3 file: ${dbError.message}`);
+      try {
+        await this.s3Provider.delete(s3Key);
+      } catch (deleteError) {
+        this.logger.error(`Failed to rollback S3 file ${s3Key}: ${deleteError.message}`);
+      }
+      throw dbError; // Re-throw to signal failure
+    }
   }
 }

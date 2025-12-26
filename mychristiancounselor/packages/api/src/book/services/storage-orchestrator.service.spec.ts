@@ -217,5 +217,27 @@ describe('StorageOrchestratorService', () => {
 
       expect(fs.unlink).not.toHaveBeenCalled();
     });
+
+    it('should rollback S3 upload if database update fails', async () => {
+      const s3Key = `active/books/${bookId}.pdf`;
+      s3Provider.upload.mockResolvedValue(s3Key);
+      prisma.book.update.mockRejectedValue(new Error('DB error'));
+
+      await expect(service.migratePdfToActiveTier(bookId)).rejects.toThrow('DB error');
+
+      expect(s3Provider.delete).toHaveBeenCalledWith(s3Key);
+      expect(fs.unlink).not.toHaveBeenCalled(); // Should not delete temp file if DB fails
+    });
+
+    it('should log warning if temp file deletion fails but continue', async () => {
+      const s3Key = `active/books/${bookId}.pdf`;
+      s3Provider.upload.mockResolvedValue(s3Key);
+      (fs.unlink as jest.Mock).mockRejectedValue(new Error('Unlink error'));
+
+      await expect(service.migratePdfToActiveTier(bookId)).resolves.not.toThrow();
+
+      expect(prisma.book.update).toHaveBeenCalled(); // DB update should succeed
+      // Migration should complete successfully despite unlink failure
+    });
   });
 });
