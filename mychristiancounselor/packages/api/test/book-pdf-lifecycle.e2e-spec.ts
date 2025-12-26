@@ -27,24 +27,9 @@ import * as fs from 'fs/promises';
  * Note: This is an integration test with mocked external services (S3, AI evaluation, Redis queues)
  * but real service orchestration and business logic.
  *
- * SETUP REQUIRED:
+ * SETUP:
  * - Database connection configured in .env (DATABASE_URL)
- * - Test user and organization must exist in database:
- *   - User ID: test-user-id
- *   - Organization ID: test-org-id
- * - Or modify the test to create these fixtures in beforeAll()
- *
- * To create test fixtures, run in the database:
- * ```sql
- * INSERT INTO "User" (id, email, "firstName", "lastName", "emailVerified", "isActive")
- * VALUES ('test-user-id', 'test@example.com', 'Test', 'User', true, true);
- *
- * INSERT INTO "Organization" (id, name, slug)
- * VALUES ('test-org-id', 'Test Organization', 'test-org');
- *
- * INSERT INTO "OrganizationMember" (id, "userId", "organizationId", role, "status")
- * VALUES (gen_random_uuid(), 'test-user-id', 'test-org-id', 'owner', 'active');
- * ```
+ * - Test fixtures (user, organization) are created automatically in beforeAll()
  */
 describe('Book PDF Lifecycle (Integration)', () => {
   let moduleRef: TestingModule;
@@ -75,6 +60,73 @@ describe('Book PDF Lifecycle (Integration)', () => {
   const mockS3Storage = new Map<string, Buffer>();
 
   beforeAll(async () => {
+    // Initialize Prisma connection first
+    const tempPrisma = new PrismaService();
+
+    // Create test fixtures using upsert for idempotency
+    await tempPrisma.user.upsert({
+      where: { id: 'test-user-id' },
+      create: {
+        id: 'test-user-id',
+        email: 'e2e-test-lifecycle@test.local',
+        passwordHash: 'test-password-hash',
+        firstName: 'Test',
+        lastName: 'User',
+        emailVerified: true,
+        isActive: true,
+      },
+      update: {
+        passwordHash: 'test-password-hash',
+        firstName: 'Test',
+        lastName: 'User',
+        emailVerified: true,
+        isActive: true,
+      },
+    });
+
+    await tempPrisma.organization.upsert({
+      where: { id: 'test-org-id' },
+      create: {
+        id: 'test-org-id',
+        name: 'Test Organization',
+      },
+      update: {
+        name: 'Test Organization',
+      },
+    });
+
+    // Create or get owner role
+    await tempPrisma.organizationRole.upsert({
+      where: { id: 'test-role-id' },
+      create: {
+        id: 'test-role-id',
+        organizationId: 'test-org-id',
+        name: 'Owner',
+        isSystemRole: true,
+        permissions: [],
+      },
+      update: {
+        name: 'Owner',
+      },
+    });
+
+    await tempPrisma.organizationMember.upsert({
+      where: {
+        organizationId_userId: {
+          userId: 'test-user-id',
+          organizationId: 'test-org-id',
+        },
+      },
+      create: {
+        userId: 'test-user-id',
+        organizationId: 'test-org-id',
+        roleId: 'test-role-id',
+      },
+      update: {
+        roleId: 'test-role-id',
+      },
+    });
+
     moduleRef = await Test.createTestingModule({
       providers: [
         // Core services
@@ -160,9 +212,9 @@ describe('Book PDF Lifecycle (Integration)', () => {
           evaluationStatus: 'completed',
           biblicalAlignmentScore: score,
           visibilityTier: score >= 90 ? 'globally_aligned' : score >= 70 ? 'conceptually_aligned' : 'not_aligned',
-          evaluatedAt: new Date(),
-          theologicalSummary: `Mock evaluation for ${book?.title}`,
-          scriptureComparisonNotes: 'Mock scripture comparison',
+          theologicalStrengths: [`Mock strength for ${book?.title}`],
+          theologicalConcerns: score < 70 ? ['Mock concern'] : [],
+          scoringReasoning: `Mock evaluation for ${book?.title}`,
         },
       });
     });
@@ -177,11 +229,34 @@ describe('Book PDF Lifecycle (Integration)', () => {
       await prisma.book.delete({ where: { id: alignedBookId } }).catch(() => {});
     }
 
+    // Cleanup test fixtures
+    await prisma.organizationMember.deleteMany({
+      where: { userId: 'test-user-id' },
+    }).catch(() => {});
+
+    await prisma.organizationRole.delete({
+      where: { id: 'test-role-id' },
+    }).catch(() => {});
+
+    await prisma.organization.delete({
+      where: { id: 'test-org-id' },
+    }).catch(() => {});
+
+    await prisma.user.delete({
+      where: { id: 'test-user-id' },
+    }).catch(() => {});
+
     // Close module
     await moduleRef.close();
 
     // Clear mock storage
     mockS3Storage.clear();
+  });
+
+  beforeEach(() => {
+    // Clear mock call history between tests
+    mockPdfMigrationQueue.add.mockClear();
+    mockEvaluationQueue.add.mockClear();
   });
 
   describe('PDF Lifecycle: Upload → Active → Evaluation → Archive (Not Aligned)', () => {
@@ -386,6 +461,9 @@ describe('Book PDF Lifecycle (Integration)', () => {
       });
 
       expect(bookAfterMigration?.pdfStorageTier).toBe('active');
+
+      // Verify temp file was deleted after migration
+      await expect(fs.access(tempFilePath)).rejects.toThrow();
 
       // Step 4: Process evaluation job
       const evaluationJob = {
