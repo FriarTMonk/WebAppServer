@@ -41,6 +41,7 @@ export function OrganizationSwitcher() {
       if (!response.ok) {
         console.error('Failed to load organizations:', response.statusText);
         setOrganizationName('Individual');
+        setHasLoaded(true);
         return;
       }
 
