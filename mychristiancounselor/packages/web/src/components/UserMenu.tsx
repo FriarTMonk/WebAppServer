@@ -203,6 +203,45 @@ export function UserMenu() {
           >
             Journal
           </button>
+          {/* Resources Submenu */}
+          <div className="border-t border-gray-200">
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                router.push('/resources/books');
+              }}
+              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Browse Books
+            </button>
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                router.push('/resources/reading-list');
+              }}
+              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              My Reading List
+            </button>
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                router.push('/resources/organizations');
+              }}
+              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Browse Organizations
+            </button>
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                router.push('/resources/recommended');
+              }}
+              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Recommended for Me
+            </button>
+          </div>
           {isCounselor && (
             <button
               onClick={() => {
