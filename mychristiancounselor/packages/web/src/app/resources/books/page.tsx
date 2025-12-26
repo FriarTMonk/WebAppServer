@@ -68,7 +68,7 @@ export default function BrowseBooksPage() {
   }, [loadBooks]);
 
   const handleFilterChange = (newFilters: Partial<BookFiltersType>) => {
-    setFilters({ ...newFilters, skip: 0 } as BookFiltersType);
+    setFilters(prev => ({ ...prev, ...newFilters, skip: 0 }));
   };
 
   const handleNextPage = () => {
