@@ -2,6 +2,7 @@ import { Injectable, Logger, BadRequestException, NotFoundException } from '@nes
 import { S3StorageProvider } from '../providers/storage/s3-storage.provider';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as crypto from 'crypto';
+import * as fs from 'fs/promises';
 
 @Injectable()
 export class StorageOrchestratorService {
@@ -96,5 +97,43 @@ export class StorageOrchestratorService {
         );
       }
     }
+  }
+
+  /**
+   * Migrate PDF from temp storage to S3 active tier
+   * Temp → S3 Standard → Delete temp
+   */
+  async migratePdfToActiveTier(bookId: string): Promise<void> {
+    this.logger.log(`Migrating PDF to active tier for book ${bookId}`);
+
+    // Get book with temp file path
+    const book = await this.prisma.book.findUnique({
+      where: { id: bookId },
+      select: { pdfFilePath: true },
+    });
+
+    if (!book?.pdfFilePath) {
+      throw new Error(`No PDF file path found for book ${bookId}`);
+    }
+
+    // Read PDF from temp storage
+    const pdfBuffer = await fs.readFile(book.pdfFilePath);
+
+    // Upload to S3 active tier
+    const s3Key = await this.s3Provider.upload(bookId, pdfBuffer, 'active');
+
+    // Update database with S3 path and tier
+    await this.prisma.book.update({
+      where: { id: bookId },
+      data: {
+        pdfStoragePath: `s3://${s3Key}`,
+        pdfStorageTier: 'active',
+      },
+    });
+
+    // Delete temp file
+    await fs.unlink(book.pdfFilePath);
+
+    this.logger.log(`PDF migrated to active tier: ${s3Key}`);
   }
 }

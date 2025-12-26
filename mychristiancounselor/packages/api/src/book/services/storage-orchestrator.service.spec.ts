@@ -4,6 +4,7 @@ import { S3StorageProvider } from '../providers/storage/s3-storage.provider';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
+import * as fs from 'fs/promises';
 
 describe('StorageOrchestratorService', () => {
   let service: StorageOrchestratorService;
@@ -152,6 +153,69 @@ describe('StorageOrchestratorService', () => {
 
       await expect(service.validatePdfUpload('book-123', newPdf))
         .rejects.toThrow('Only newer editions can replace existing PDFs');
+    });
+  });
+
+  describe('migratePdfToActiveTier', () => {
+    const bookId = 'book-123';
+    const tempFilePath = `/path/to/temp/${bookId}-1234567890.pdf`;
+
+    beforeEach(() => {
+      prisma.book.findUnique.mockResolvedValue({
+        id: bookId,
+        pdfFilePath: tempFilePath,
+      } as any);
+
+      jest.spyOn(fs, 'readFile').mockResolvedValue(Buffer.from('pdf content') as any);
+      jest.spyOn(fs, 'unlink').mockResolvedValue(undefined as any);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should read PDF from temp, upload to S3 active tier', async () => {
+      s3Provider.upload.mockResolvedValue(`active/books/${bookId}.pdf`);
+
+      await service.migratePdfToActiveTier(bookId);
+
+      expect(fs.readFile).toHaveBeenCalledWith(tempFilePath);
+      expect(s3Provider.upload).toHaveBeenCalledWith(
+        bookId,
+        expect.any(Buffer),
+        'active'
+      );
+    });
+
+    it('should update database with S3 path and tier', async () => {
+      const s3Path = `s3://bucket/active/books/${bookId}.pdf`;
+      s3Provider.upload.mockResolvedValue(`active/books/${bookId}.pdf`);
+
+      await service.migratePdfToActiveTier(bookId);
+
+      expect(prisma.book.update).toHaveBeenCalledWith({
+        where: { id: bookId },
+        data: {
+          pdfStoragePath: expect.stringContaining('active/books'),
+          pdfStorageTier: 'active',
+        },
+      });
+    });
+
+    it('should delete temp file after successful S3 upload', async () => {
+      s3Provider.upload.mockResolvedValue(`active/books/${bookId}.pdf`);
+
+      await service.migratePdfToActiveTier(bookId);
+
+      expect(fs.unlink).toHaveBeenCalledWith(tempFilePath);
+    });
+
+    it('should not delete temp file if S3 upload fails', async () => {
+      s3Provider.upload.mockRejectedValue(new Error('S3 error'));
+
+      await expect(service.migratePdfToActiveTier(bookId)).rejects.toThrow('S3 error');
+
+      expect(fs.unlink).not.toHaveBeenCalled();
     });
   });
 });
