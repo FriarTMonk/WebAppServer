@@ -152,4 +152,37 @@ export class StorageOrchestratorService {
       throw dbError; // Re-throw to signal failure
     }
   }
+
+  /**
+   * Migrate PDF from S3 active tier to archived tier (Glacier)
+   * Only for books <70% aligned
+   */
+  async migratePdfToArchivedTier(bookId: string): Promise<void> {
+    this.logger.log(`Migrating PDF to archived tier for book ${bookId}`);
+
+    // Get current storage tier
+    const book = await this.prisma.book.findUnique({
+      where: { id: bookId },
+      select: { pdfStorageTier: true },
+    });
+
+    // Already archived - skip
+    if (book?.pdfStorageTier === 'archived') {
+      this.logger.log(`PDF already in archived tier for book ${bookId}`);
+      return;
+    }
+
+    // Move from active to archived in S3
+    await this.s3Provider.move(bookId, 'active', 'archived');
+
+    // Update database
+    await this.prisma.book.update({
+      where: { id: bookId },
+      data: {
+        pdfStorageTier: 'archived',
+      },
+    });
+
+    this.logger.log(`PDF migrated to archived tier for book ${bookId}`);
+  }
 }

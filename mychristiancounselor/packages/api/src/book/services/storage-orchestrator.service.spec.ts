@@ -240,4 +240,43 @@ describe('StorageOrchestratorService', () => {
       // Migration should complete successfully despite unlink failure
     });
   });
+
+  describe('migratePdfToArchivedTier', () => {
+    const bookId = 'book-123';
+
+    beforeEach(() => {
+      prisma.book.findUnique.mockResolvedValue({
+        id: bookId,
+        pdfStorageTier: 'active',
+      } as any);
+    });
+
+    it('should move PDF from active to archived tier in S3', async () => {
+      await service.migratePdfToArchivedTier(bookId);
+
+      expect(s3Provider.move).toHaveBeenCalledWith(bookId, 'active', 'archived');
+    });
+
+    it('should update database with archived tier', async () => {
+      await service.migratePdfToArchivedTier(bookId);
+
+      expect(prisma.book.update).toHaveBeenCalledWith({
+        where: { id: bookId },
+        data: {
+          pdfStorageTier: 'archived',
+        },
+      });
+    });
+
+    it('should handle already archived PDFs gracefully', async () => {
+      prisma.book.findUnique.mockResolvedValue({
+        id: bookId,
+        pdfStorageTier: 'archived',
+      } as any);
+
+      await service.migratePdfToArchivedTier(bookId);
+
+      expect(s3Provider.move).not.toHaveBeenCalled();
+    });
+  });
 });
