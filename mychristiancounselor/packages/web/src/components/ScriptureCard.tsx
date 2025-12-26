@@ -3,12 +3,25 @@ import { ScriptureReference } from '@mychristiancounselor/shared';
 
 interface ScriptureCardProps {
   scripture: ScriptureReference;
+  relatedScriptures?: ScriptureReference[];
+  isNested?: boolean;
 }
 
-export function ScriptureCard({ scripture }: ScriptureCardProps) {
+export function ScriptureCard({
+  scripture,
+  relatedScriptures = [],
+  isNested = false
+}: ScriptureCardProps) {
   const [showStrongs, setShowStrongs] = useState(false);
+  const [showRelated, setShowRelated] = useState(false);
   const [hoveredStrong, setHoveredStrong] = useState<string | null>(null);
   const hasStrongs = scripture.strongs && scripture.strongs.length > 0;
+  const hasRelated = relatedScriptures.length > 0;
+
+  // Suppress unused variable warnings - these will be used in upcoming tasks
+  void showRelated;
+  void setShowRelated;
+  void hasRelated;
 
   // Determine if a Strong's number is Greek (G) or Hebrew (H)
   const getStrongsType = (number: string): 'greek' | 'hebrew' => {
