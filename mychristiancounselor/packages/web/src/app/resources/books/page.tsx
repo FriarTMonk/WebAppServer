@@ -1,34 +1,47 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookCard } from '../../../components/BookCard';
 import { BookFilters } from '../../../components/BookFilters';
 import { useUserPermissions } from '../../../hooks/useUserPermissions';
 import { bookApi, BookFilters as BookFiltersType } from '../../../lib/api';
 
+// Book interface for type safety
+interface Book {
+  id: string;
+  title: string;
+  author: string;
+  coverImageUrl?: string;
+  biblicalAlignmentScore?: number;
+  genreTag?: string;
+  matureContent?: boolean;
+  endorsementCount?: number;
+}
+
+// Constants
+const DEFAULT_PAGE_SIZE = 20;
+
+const DEFAULT_FILTERS: BookFiltersType = {
+  search: '',
+  genre: 'all',
+  visibilityTier: 'all',
+  showMatureContent: false,
+  skip: 0,
+  take: DEFAULT_PAGE_SIZE,
+  sort: 'relevance',
+};
+
 export default function BrowseBooksPage() {
   const router = useRouter();
   const permissions = useUserPermissions();
-  const [books, setBooks] = useState<any[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
-  const [filters, setFilters] = useState<BookFiltersType>({
-    search: '',
-    genre: 'all',
-    visibilityTier: 'all',
-    showMatureContent: false,
-    skip: 0,
-    take: 20,
-    sort: 'relevance',
-  });
+  const [filters, setFilters] = useState<BookFiltersType>(DEFAULT_FILTERS);
 
-  useEffect(() => {
-    loadBooks();
-  }, [filters]);
-
-  const loadBooks = async () => {
+  const loadBooks = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -48,30 +61,26 @@ export default function BrowseBooksPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    loadBooks();
+  }, [loadBooks]);
 
   const handleFilterChange = (newFilters: Partial<BookFiltersType>) => {
-    setFilters({
-      search: newFilters.search ?? '',
-      genre: newFilters.genre ?? 'all',
-      visibilityTier: newFilters.visibilityTier ?? 'all',
-      showMatureContent: newFilters.showMatureContent ?? false,
-      skip: 0,
-      take: newFilters.take ?? 20,
-      sort: newFilters.sort ?? 'relevance',
-    });
+    setFilters({ ...newFilters, skip: 0 } as BookFiltersType);
   };
 
   const handleNextPage = () => {
-    setFilters(prev => ({ ...prev, skip: (prev.skip || 0) + (prev.take || 20) }));
+    setFilters(prev => ({ ...prev, skip: (prev.skip || 0) + (prev.take || DEFAULT_PAGE_SIZE) }));
   };
 
   const handlePreviousPage = () => {
-    setFilters(prev => ({ ...prev, skip: Math.max(0, (prev.skip || 0) - (prev.take || 20)) }));
+    setFilters(prev => ({ ...prev, skip: Math.max(0, (prev.skip || 0) - (prev.take || DEFAULT_PAGE_SIZE)) }));
   };
 
-  const currentPage = Math.floor((filters.skip || 0) / (filters.take || 20)) + 1;
-  const totalPages = Math.ceil(totalCount / (filters.take || 20));
+  const currentPage = Math.floor((filters.skip || 0) / (filters.take || DEFAULT_PAGE_SIZE)) + 1;
+  const totalPages = Math.ceil(totalCount / (filters.take || DEFAULT_PAGE_SIZE));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -165,15 +174,7 @@ export default function BrowseBooksPage() {
           <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
             <p className="text-gray-600 mb-4">No books found matching your filters.</p>
             <button
-              onClick={() => handleFilterChange({
-                search: '',
-                genre: 'all',
-                visibilityTier: 'all',
-                showMatureContent: false,
-                skip: 0,
-                take: 20,
-                sort: 'relevance',
-              })}
+              onClick={() => handleFilterChange(DEFAULT_FILTERS)}
               className="text-blue-600 hover:text-blue-800 underline"
             >
               Clear Filters
@@ -187,6 +188,7 @@ export default function BrowseBooksPage() {
             <button
               onClick={handlePreviousPage}
               disabled={currentPage === 1}
+              aria-label="Go to previous page"
               className={`px-4 py-2 rounded-md ${
                 currentPage === 1
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
@@ -203,6 +205,7 @@ export default function BrowseBooksPage() {
             <button
               onClick={handleNextPage}
               disabled={currentPage >= totalPages}
+              aria-label="Go to next page"
               className={`px-4 py-2 rounded-md ${
                 currentPage >= totalPages
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
