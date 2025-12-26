@@ -79,6 +79,47 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
                   Audit Log
                 </Link>
               </li>
+
+              {/* Resources Section */}
+              <li className="mt-6">
+                <div className="px-4 py-2 text-xs font-semibold text-green-300 uppercase tracking-wider">
+                  Resources
+                </div>
+                <ul className="mt-2 space-y-1">
+                  <li>
+                    <Link
+                      href="/org-admin/resources/books"
+                      className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/resources/books')}`}
+                    >
+                      Books
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/resources/books/new"
+                      className={`block px-4 py-2 rounded transition-colors ${isActive('/resources/books/new')}`}
+                    >
+                      Add New Book
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/org-admin/resources/books/pending"
+                      className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/resources/books/pending')}`}
+                    >
+                      Pending Evaluations
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/org-admin/resources/organizations"
+                      className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/resources/organizations')}`}
+                    >
+                      Organizations
+                    </Link>
+                  </li>
+                </ul>
+              </li>
             </ul>
           </nav>
         </aside>
