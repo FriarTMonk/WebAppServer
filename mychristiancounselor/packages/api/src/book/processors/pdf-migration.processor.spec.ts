@@ -87,5 +87,46 @@ describe('PdfMigrationProcessor', () => {
         await expect(processor.process(job)).rejects.toThrow('Unknown job name: unknown-job');
       });
     });
+
+    describe('edge cases', () => {
+      it('should throw error for missing job data', async () => {
+        const job = {
+          name: 'migrate-to-active',
+          id: 'job-1',
+        } as Job<{ bookId: string }, any, string>;
+
+        await expect(processor.process(job)).rejects.toThrow('Job data is missing');
+      });
+
+      it('should throw error for null bookId', async () => {
+        const job = {
+          name: 'migrate-to-active',
+          id: 'job-1',
+          data: { bookId: null as any },
+        } as Job<{ bookId: string }, any, string>;
+
+        await expect(processor.process(job)).rejects.toThrow('Invalid or missing bookId');
+      });
+
+      it('should throw error for empty bookId', async () => {
+        const job = {
+          name: 'migrate-to-active',
+          id: 'job-1',
+          data: { bookId: '' },
+        } as Job<{ bookId: string }, any, string>;
+
+        await expect(processor.process(job)).rejects.toThrow('Invalid or missing bookId');
+      });
+
+      it('should throw error for whitespace-only bookId', async () => {
+        const job = {
+          name: 'migrate-to-active',
+          id: 'job-1',
+          data: { bookId: '   ' },
+        } as Job<{ bookId: string }, any, string>;
+
+        await expect(processor.process(job)).rejects.toThrow('Invalid or missing bookId');
+      });
+    });
   });
 });
