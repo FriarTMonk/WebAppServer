@@ -456,6 +456,49 @@ export function ConversationView() {
                 </div>
               )}
 
+              {/* Resources Section */}
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="px-4 text-sm font-semibold text-gray-900 mb-2">
+                  Resources
+                </h3>
+                <button
+                  onClick={() => {
+                    router.push('/resources/books');
+                    setShowMobileMenu(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  Browse Books
+                </button>
+                <button
+                  onClick={() => {
+                    router.push('/resources/reading-list');
+                    setShowMobileMenu(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  My Reading List
+                </button>
+                <button
+                  onClick={() => {
+                    router.push('/resources/organizations');
+                    setShowMobileMenu(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  Browse Organizations
+                </button>
+                <button
+                  onClick={() => {
+                    router.push('/resources/recommended');
+                    setShowMobileMenu(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  Recommended for Me
+                </button>
+              </div>
+
               {/* User Menu */}
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Account</h3>
