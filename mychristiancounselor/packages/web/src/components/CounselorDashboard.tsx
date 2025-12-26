@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCounselorMembers } from '@/hooks/useCounselorMembers';
 import { WellbeingStatus, CounselorMemberSummary } from '@mychristiancounselor/shared';
 import OverrideStatusModal from './OverrideStatusModal';
@@ -24,6 +24,23 @@ export default function CounselorDashboard() {
     memberName: string;
     organizationId: string;
   } | null>(null);
+  const [selectedSummary, setSelectedSummary] = useState<CounselorMemberSummary | null>(null);
+
+  // ESC key handler for summary dialog
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedSummary(null);
+      }
+    };
+
+    if (selectedSummary) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+
+    return undefined;
+  }, [selectedSummary]);
 
   const getStoplightEmoji = (status: WellbeingStatus) => {
     switch (status) {
