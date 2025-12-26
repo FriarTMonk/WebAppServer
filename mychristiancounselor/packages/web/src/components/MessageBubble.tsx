@@ -52,16 +52,6 @@ export function MessageBubble({ message, comparisonMode = false }: MessageBubble
 
   const contentText = getContentText(message.content);
 
-  // Debug logging
-  console.log('[MessageBubble] Rendering:', {
-    role: message.role,
-    isUser,
-    isSystem,
-    contentType: typeof message.content,
-    contentLength: contentText.length,
-    scriptureCount: message.scriptureReferences.length,
-  });
-
   const handleSpeak = () => {
     if (isSpeaking) {
       stop();
