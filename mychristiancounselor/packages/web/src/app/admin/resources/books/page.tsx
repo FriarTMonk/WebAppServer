@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUserPermissions } from '../../../../hooks/useUserPermissions';
-import { BookCard } from '../../../../components/BookCard';
-import { BookFilters } from '../../../../components/BookFilters';
-import { bookApi, BookFilters as BookFiltersType } from '../../../../lib/api';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { BookCard } from '@/components/BookCard';
+import { BookFilters } from '@/components/BookFilters';
+import { bookApi, BookFilters as BookFiltersType } from '@/lib/api';
 
+// Book interface for type safety
 interface Book {
   id: string;
   title: string;
@@ -16,6 +17,12 @@ interface Book {
   genreTag?: string;
   endorsementCount?: number;
   matureContent?: boolean;
+}
+
+// API response interface
+interface BooksApiResponse {
+  books: Book[];
+  total: number;
 }
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -37,14 +44,23 @@ export default function PlatformAdminAllBooksPage() {
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [filters, setFilters] = useState<BookFiltersType>(DEFAULT_FILTERS);
+  const [permissionsChecked, setPermissionsChecked] = useState(false);
 
-  // Redirect if not platform admin
-  if (!permissions.isPlatformAdmin) {
-    router.push('/resources/books');
-    return null;
-  }
+  // Check permissions and redirect if not platform admin
+  useEffect(() => {
+    // Wait a moment for permissions to load
+    const timer = setTimeout(() => {
+      setPermissionsChecked(true);
+      if (!permissions.isPlatformAdmin) {
+        router.push('/resources/books');
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [permissions.isPlatformAdmin, router]);
 
   const loadBooks = useCallback(async () => {
+    const abortController = new AbortController();
     setLoading(true);
     setError(null);
 
@@ -55,15 +71,29 @@ export default function PlatformAdminAllBooksPage() {
         throw new Error('Failed to load books');
       }
 
-      const data = await response.json();
+      const data = await response.json() as BooksApiResponse;
+
+      // Check if request was aborted
+      if (abortController.signal.aborted) {
+        return;
+      }
+
       setBooks(data.books || []);
       setTotalCount(data.total || 0);
     } catch (err) {
+      // Ignore abort errors
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       setError('Failed to load books. Please try again.');
       console.error('Error loading books:', err);
     } finally {
-      setLoading(false);
+      if (!abortController.signal.aborted) {
+        setLoading(false);
+      }
     }
+
+    return () => abortController.abort();
   }, [filters]);
 
   useEffect(() => {
@@ -84,6 +114,42 @@ export default function PlatformAdminAllBooksPage() {
 
   const currentPage = Math.floor((filters.skip || 0) / (filters.take || DEFAULT_PAGE_SIZE)) + 1;
   const totalPages = Math.ceil(totalCount / (filters.take || DEFAULT_PAGE_SIZE));
+
+  // Show loading skeleton while checking permissions
+  if (!permissionsChecked) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-200">
+          <div className="container mx-auto px-4 py-6">
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-48 mb-2" />
+              <div className="h-4 bg-gray-200 rounded w-96" />
+            </div>
+          </div>
+        </div>
+        <div className="container mx-auto px-4 py-6">
+          <div className="grid grid-cols-1 gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
+                <div className="flex gap-4">
+                  <div className="w-24 h-36 bg-gray-200 rounded" />
+                  <div className="flex-1">
+                    <div className="h-6 bg-gray-200 rounded w-3/4 mb-2" />
+                    <div className="h-4 bg-gray-200 rounded w-1/2" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Return null while redirecting non-platform admins
+  if (!permissions.isPlatformAdmin) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
