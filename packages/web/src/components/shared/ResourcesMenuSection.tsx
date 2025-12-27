@@ -1,12 +1,27 @@
 'use client';
 
+import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { MenuButton } from './MenuButton';
 
+/** Navigation paths for resources section */
+const RESOURCES_PATHS = {
+  books: '/resources/books',
+  readingList: '/resources/reading-list',
+  organizations: '/resources/organizations',
+  recommended: '/resources/recommended',
+} as const;
+
+/**
+ * Props for ResourcesMenuSection component
+ */
 interface ResourcesMenuSectionProps {
-  onNavigate?: () => void; // Called after navigation (to close dropdown)
-  showBorder?: boolean; // Show top border
-  roleGroup?: boolean; // Wrap in role="group"
+  /** Called after successful navigation (typically to close dropdown) */
+  onNavigate?: () => void;
+  /** Show top border separator */
+  showBorder?: boolean;
+  /** Wrap content in a semantic group role */
+  roleGroup?: boolean;
 }
 
 export function ResourcesMenuSection({
@@ -15,24 +30,43 @@ export function ResourcesMenuSection({
   roleGroup = true,
 }: ResourcesMenuSectionProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   const handleNavigate = (path: string) => () => {
-    router.push(path);
-    onNavigate?.();
+    startTransition(async () => {
+      try {
+        await router.push(path);
+        onNavigate?.();
+      } catch (error) {
+        console.error(`Failed to navigate to ${path}:`, error);
+      }
+    });
   };
 
   const content = (
     <>
-      <MenuButton onClick={handleNavigate('/resources/books')}>
+      <MenuButton
+        onClick={handleNavigate(RESOURCES_PATHS.books)}
+        disabled={isPending}
+      >
         Browse Books
       </MenuButton>
-      <MenuButton onClick={handleNavigate('/resources/reading-list')}>
+      <MenuButton
+        onClick={handleNavigate(RESOURCES_PATHS.readingList)}
+        disabled={isPending}
+      >
         My Reading List
       </MenuButton>
-      <MenuButton onClick={handleNavigate('/resources/organizations')}>
+      <MenuButton
+        onClick={handleNavigate(RESOURCES_PATHS.organizations)}
+        disabled={isPending}
+      >
         Browse Organizations
       </MenuButton>
-      <MenuButton onClick={handleNavigate('/resources/recommended')}>
+      <MenuButton
+        onClick={handleNavigate(RESOURCES_PATHS.recommended)}
+        disabled={isPending}
+      >
         Recommended for Me
       </MenuButton>
     </>
