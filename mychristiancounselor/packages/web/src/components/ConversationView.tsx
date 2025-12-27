@@ -10,6 +10,7 @@ import { TranslationSelector } from './TranslationSelector';
 import { ComparisonTranslationSelector } from './ComparisonTranslationSelector';
 import { UserMenu } from './UserMenu';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
+import { ResourcesMenuSection } from './shared/ResourcesMenuSection';
 import QuestionProgressIndicator from './QuestionProgressIndicator';
 import { SessionNotesPanel } from './SessionNotesPanel';
 import { SessionExportView } from './SessionExportView';
@@ -461,42 +462,11 @@ export function ConversationView() {
                 <h3 className="px-4 text-sm font-semibold text-gray-900 mb-2">
                   Resources
                 </h3>
-                <button
-                  onClick={() => {
-                    router.push('/resources/books');
-                    setShowMobileMenu(false);
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Browse Books
-                </button>
-                <button
-                  onClick={() => {
-                    router.push('/resources/reading-list');
-                    setShowMobileMenu(false);
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  My Reading List
-                </button>
-                <button
-                  onClick={() => {
-                    router.push('/resources/organizations');
-                    setShowMobileMenu(false);
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Browse Organizations
-                </button>
-                <button
-                  onClick={() => {
-                    router.push('/resources/recommended');
-                    setShowMobileMenu(false);
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Recommended for Me
-                </button>
+                <ResourcesMenuSection
+                  onNavigate={() => setShowMobileMenu(false)}
+                  showBorder={false}
+                  roleGroup={false}
+                />
               </div>
 
               {/* User Menu */}
