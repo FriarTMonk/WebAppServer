@@ -135,7 +135,6 @@ export class ReadingListService {
     // 4. Transform to DTOs with proper field mapping
     const dtoItems = items.map((item) => ({
       id: item.id,
-      userId: item.userId,
       bookId: item.bookId,
       status: item.status,
       progress: item.progress,
