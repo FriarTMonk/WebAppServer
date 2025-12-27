@@ -470,6 +470,33 @@ export function ConversationView() {
                 >
                   Browse Books
                 </button>
+                <button
+                  onClick={() => {
+                    router.push('/resources/reading-list');
+                    setShowMobileMenu(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  My Reading List
+                </button>
+                <button
+                  onClick={() => {
+                    router.push('/resources/organizations');
+                    setShowMobileMenu(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  Browse Organizations
+                </button>
+                <button
+                  onClick={() => {
+                    router.push('/resources/recommended');
+                    setShowMobileMenu(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  Recommended for Me
+                </button>
               </div>
 
               {/* User Menu */}

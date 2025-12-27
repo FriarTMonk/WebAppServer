@@ -59,7 +59,6 @@ export class BookController {
    * @param user - Optional authenticated user from JWT token
    * @returns Paginated list of books with metadata
    */
-  @Public()
   @Get()
   async listBooks(
     @Query() query: BookQueryDto,
