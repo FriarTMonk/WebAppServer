@@ -205,7 +205,7 @@ export interface CreateBookData {
 }
 
 export const bookApi = {
-  list: (filters: BookFilters) => {
+  list: (filters: BookFilters, options?: FetchOptions) => {
     const params = new URLSearchParams();
     if (filters.search) params.append('search', filters.search);
     if (filters.genre && filters.genre !== 'all') params.append('genre', filters.genre);
@@ -215,7 +215,7 @@ export const bookApi = {
     if (filters.take !== undefined) params.append('take', String(filters.take));
     if (filters.sort) params.append('sort', filters.sort);
 
-    return apiGet(`/books?${params.toString()}`);
+    return apiGet(`/books?${params.toString()}`, options);
   },
 
   getById: (id: string) => apiGet(`/books/${id}`),
