@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { BookCard } from '@/components/BookCard';
@@ -59,49 +59,69 @@ export default function PlatformAdminAllBooksPage() {
     return () => clearTimeout(timer);
   }, [permissions.isPlatformAdmin, router]);
 
-  const loadBooks = useCallback(async () => {
-    const abortController = new AbortController();
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await bookApi.list(filters);
-
-      if (!response.ok) {
-        throw new Error('Failed to load books');
-      }
-
-      const data = await response.json() as BooksApiResponse;
-
-      // Check if request was aborted
-      if (abortController.signal.aborted) {
-        return;
-      }
-
-      setBooks(data.books || []);
-      setTotalCount(data.total || 0);
-    } catch (err) {
-      // Ignore abort errors
-      if (err instanceof Error && err.name === 'AbortError') {
-        return;
-      }
-      setError('Failed to load books. Please try again.');
-      console.error('Error loading books:', err);
-    } finally {
-      if (!abortController.signal.aborted) {
-        setLoading(false);
-      }
-    }
-
-    return () => abortController.abort();
-  }, [filters]);
-
   useEffect(() => {
+    const abortController = new AbortController();
+    let isMounted = true;
+
+    const loadBooks = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Pass signal to the API call for proper cancellation
+        const response = await bookApi.list(filters, { signal: abortController.signal });
+
+        if (!isMounted) return; // Component unmounted, skip state updates
+
+        if (!response.ok) {
+          throw new Error('Failed to load books');
+        }
+
+        const data = await response.json();
+
+        // Runtime validation
+        if (!data || !Array.isArray(data.books)) {
+          throw new Error('Invalid API response structure');
+        }
+
+        setBooks(data.books);
+        setTotalCount(data.total || 0);
+      } catch (err) {
+        if (!isMounted) return;
+
+        if (err instanceof Error) {
+          if (err.name === 'AbortError') {
+            return; // Request was cancelled, ignore
+          }
+          setError(err.message);
+        } else {
+          setError('Failed to load books. Please try again.');
+        }
+        console.error('Error loading books:', err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
     loadBooks();
-  }, [loadBooks]);
+
+    // THIS is the cleanup function that React will call
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
+  }, [filters]);
 
   const handleFilterChange = (newFilters: Partial<BookFiltersType>) => {
     setFilters(prev => ({ ...prev, ...newFilters, skip: 0 }));
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    // Trigger re-render which will cause useEffect to run again
+    setFilters(prev => ({ ...prev }));
   };
 
   const handleNextPage = () => {
@@ -144,11 +164,6 @@ export default function PlatformAdminAllBooksPage() {
         </div>
       </div>
     );
-  }
-
-  // Return null while redirecting non-platform admins
-  if (!permissions.isPlatformAdmin) {
-    return null;
   }
 
   return (
@@ -206,7 +221,7 @@ export default function PlatformAdminAllBooksPage() {
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
             <p className="text-red-800">{error}</p>
             <button
-              onClick={loadBooks}
+              onClick={handleRetry}
               className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
             >
               Retry
