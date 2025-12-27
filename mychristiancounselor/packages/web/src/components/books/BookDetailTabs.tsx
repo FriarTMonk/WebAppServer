@@ -23,6 +23,10 @@ interface BookDetailTabsProps {
 
 type TabId = 'summary' | 'analysis' | 'endorsements';
 
+// Score thresholds for doctrine category scoring
+const SCORE_THRESHOLD_HIGH = 85;
+const SCORE_THRESHOLD_MEDIUM = 70;
+
 export function BookDetailTabs({ book }: BookDetailTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('summary');
 
@@ -78,7 +82,7 @@ export function BookDetailTabs({ book }: BookDetailTabsProps) {
             </p>
           ) : (
             <p className="text-gray-500 italic">
-              No theological summary available yet.
+              No theological summary available.
             </p>
           )}
 
@@ -107,8 +111,8 @@ export function BookDetailTabs({ book }: BookDetailTabsProps) {
           </h3>
           {book.doctrineCategoryScores.length > 0 ? (
             <div className="space-y-4 mb-6">
-              {book.doctrineCategoryScores.map((category, index) => (
-                <div key={index}>
+              {book.doctrineCategoryScores.map((category) => (
+                <div key={category.category}>
                   <div className="flex justify-between mb-1">
                     <span className="text-sm font-medium text-gray-700">
                       {category.category}
@@ -121,9 +125,9 @@ export function BookDetailTabs({ book }: BookDetailTabsProps) {
                     <div
                       className={clsx(
                         'h-2 rounded-full transition-all',
-                        category.score >= 85
+                        category.score >= SCORE_THRESHOLD_HIGH
                           ? 'bg-green-500'
-                          : category.score >= 70
+                          : category.score >= SCORE_THRESHOLD_MEDIUM
                             ? 'bg-yellow-500'
                             : 'bg-red-500'
                       )}
@@ -145,7 +149,7 @@ export function BookDetailTabs({ book }: BookDetailTabsProps) {
             </div>
           ) : (
             <p className="text-gray-500 italic mb-6">
-              No doctrine category scores available yet.
+              No doctrine category scores available.
             </p>
           )}
 
@@ -156,12 +160,12 @@ export function BookDetailTabs({ book }: BookDetailTabsProps) {
           {book.theologicalStrengths.length > 0 ? (
             <ul className="list-disc pl-5 space-y-2 mb-6 text-gray-700">
               {book.theologicalStrengths.map((strength, index) => (
-                <li key={index}>{strength}</li>
+                <li key={`strength-${index}`}>{strength}</li>
               ))}
             </ul>
           ) : (
             <p className="text-gray-500 italic mb-6">
-              No strengths identified yet.
+              No theological strengths available.
             </p>
           )}
 
@@ -172,11 +176,13 @@ export function BookDetailTabs({ book }: BookDetailTabsProps) {
           {book.theologicalConcerns.length > 0 ? (
             <ul className="list-disc pl-5 space-y-2 mb-6 text-gray-700">
               {book.theologicalConcerns.map((concern, index) => (
-                <li key={index}>{concern}</li>
+                <li key={`concern-${index}`}>{concern}</li>
               ))}
             </ul>
           ) : (
-            <p className="text-gray-500 italic mb-6">No concerns identified.</p>
+            <p className="text-gray-500 italic mb-6">
+              No theological concerns available.
+            </p>
           )}
 
           {/* Scoring Reasoning */}
@@ -210,7 +216,7 @@ export function BookDetailTabs({ book }: BookDetailTabsProps) {
             </p>
           ) : (
             <p className="text-gray-500 italic">
-              No organization endorsements yet.
+              No organization endorsements available.
             </p>
           )}
           {/* TODO Phase 3: Add endorsement details list */}

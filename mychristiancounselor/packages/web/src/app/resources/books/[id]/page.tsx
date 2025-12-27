@@ -222,20 +222,21 @@ export default function BookDetailPage() {
                     <strong>ISBN:</strong> {book.isbn}
                   </p>
                 )}
-                {book.evaluatedAt && (
-                  <p>
-                    <strong>Evaluated:</strong>{' '}
-                    {new Date(book.evaluatedAt).toLocaleDateString()}
-                  </p>
-                )}
+                {book.evaluatedAt &&
+                  !isNaN(new Date(book.evaluatedAt).getTime()) && (
+                    <p>
+                      <strong>Evaluated:</strong>{' '}
+                      {new Date(book.evaluatedAt).toLocaleDateString()}
+                    </p>
+                  )}
               </div>
 
               {/* Denominational Tags */}
               {book.denominationalTags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {book.denominationalTags.map((tag, index) => (
+                  {book.denominationalTags.map((tag) => (
                     <span
-                      key={index}
+                      key={tag}
                       className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded"
                     >
                       {tag}
