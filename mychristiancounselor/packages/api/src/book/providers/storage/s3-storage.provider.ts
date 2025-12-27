@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   S3Client,
   PutObjectCommand,
@@ -14,7 +14,7 @@ export class S3StorageProvider implements IStorageProvider {
   private readonly logger = new Logger(S3StorageProvider.name);
   private readonly s3Client: S3Client;
 
-  constructor(s3Client?: S3Client) {
+  constructor(@Optional() s3Client?: S3Client) {
     this.s3Client = s3Client || new S3Client({
       region: process.env.AWS_REGION || 'us-east-1',
       credentials: {

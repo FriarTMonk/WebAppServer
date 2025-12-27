@@ -42,7 +42,7 @@ export function UserMenu() {
       apiGet('/profile/organizations')
         .then(res => {
           if (res.ok) {
-            return res.json().then(orgs => {
+            res.json().then(orgs => {
               const hasOrgs = Array.isArray(orgs) && orgs.length > 0;
               const hasActiveSubscription = user?.subscriptionStatus === 'active';
               const hasAccess = hasActiveSubscription || hasOrgs;

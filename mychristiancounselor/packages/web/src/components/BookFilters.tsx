@@ -32,8 +32,16 @@ const INPUT_CLASSNAME = 'w-full px-3 py-2 border border-gray-300 rounded-md focu
 
 const SEARCH_DEBOUNCE_MS = 300;
 
+const DEFAULT_FILTERS = {
+  search: '',
+  genre: 'all',
+  visibilityTier: 'all',
+  showMatureContent: false,
+  sort: 'relevance',
+};
+
 interface BookFiltersProps {
-  filters: {
+  filters?: {
     search: string;
     genre: string;
     visibilityTier: string;
@@ -45,13 +53,15 @@ interface BookFiltersProps {
 }
 
 export function BookFilters({ filters, onFilterChange, showAlignmentFilter = false }: BookFiltersProps) {
-  const [localFilters, setLocalFilters] = useState(filters);
-  const [searchValue, setSearchValue] = useState(filters.search);
+  const safeFilters = filters || DEFAULT_FILTERS;
+  const [localFilters, setLocalFilters] = useState(safeFilters);
+  const [searchValue, setSearchValue] = useState(safeFilters.search);
 
   // Sync localFilters when parent filters prop changes
   useEffect(() => {
-    setLocalFilters(filters);
-    setSearchValue(filters.search);
+    const updatedFilters = filters || DEFAULT_FILTERS;
+    setLocalFilters(updatedFilters);
+    setSearchValue(updatedFilters.search);
   }, [filters]);
 
   // Debounce search input

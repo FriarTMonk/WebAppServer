@@ -44,17 +44,18 @@ import { getBullModuleOptions } from '../config/queue.config';
     ScheduleModule.forRoot(),
     // BullMQ job queue
     BullModule.forRoot(getBullModuleOptions()),
-    // Rate limiting: 100 requests per minute per IP
+    // Rate limiting: Temporarily high limits for development
+    // TODO: Restore to 100/10 for production deployment
     ThrottlerModule.forRoot([
       {
         name: 'default',
         ttl: 60000, // 60 seconds
-        limit: 100, // 100 requests
+        limit: 1000, // High limit for dev to prevent throttle during hot-reload
       },
       {
         name: 'strict', // Stricter limit for auth endpoints
         ttl: 60000,
-        limit: 10,
+        limit: 100, // High limit for dev
       },
     ]),
     // Winston logging
@@ -88,10 +89,11 @@ import { getBullModuleOptions } from '../config/queue.config';
       provide: APP_GUARD,
       useClass: JwtAuthGuard, // Authentication (JWT validation)
     },
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard, // Rate limiting (prevent abuse)
-    },
+    // Temporarily disabled for development - re-enable for production!
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard, // Rate limiting (prevent abuse)
+    // },
   ],
 })
 export class AppModule implements NestModule {

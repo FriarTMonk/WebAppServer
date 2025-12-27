@@ -47,7 +47,14 @@ export default function OrgAdminOverviewPage() {
           router.push('/login?redirect=/org-admin');
           return;
         }
-        throw new Error('Failed to fetch organization info');
+        const errorText = await orgResponse.text();
+        console.error('Failed to fetch organization info:', {
+          status: orgResponse.status,
+          statusText: orgResponse.statusText,
+          body: errorText,
+          url: orgResponse.url
+        });
+        throw new Error(`Failed to fetch organization info: ${orgResponse.status} ${orgResponse.statusText}`);
       }
 
       const orgData = await orgResponse.json();
@@ -65,7 +72,14 @@ export default function OrgAdminOverviewPage() {
           router.push('/login?redirect=/org-admin');
           return;
         }
-        throw new Error('Failed to fetch metrics');
+        const errorText = await metricsResponse.text();
+        console.error('Failed to fetch metrics:', {
+          status: metricsResponse.status,
+          statusText: metricsResponse.statusText,
+          body: errorText,
+          url: metricsResponse.url
+        });
+        throw new Error(`Failed to fetch metrics: ${metricsResponse.status} ${metricsResponse.statusText}`);
       }
 
       const metricsData = await metricsResponse.json();

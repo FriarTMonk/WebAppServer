@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserPermissions } from '../../../../hooks/useUserPermissions';
 import { bookApi, CreateBookData } from '../../../../lib/api';
@@ -38,11 +38,27 @@ export default function AddNewBookPage() {
   const [pdfLicenseType, setPdfLicenseType] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [permissionsChecked, setPermissionsChecked] = useState(false);
 
-  // Redirect if user doesn't have permission
-  if (!permissions.canAddBooks) {
-    router.push('/resources/books');
-    return null;
+  // Check permissions and redirect if needed
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPermissionsChecked(true);
+      if (!permissions.canAddBooks) {
+        router.push('/resources/books');
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [permissions.canAddBooks, router]);
+
+  // Show loading state while checking permissions
+  if (!permissionsChecked) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-pulse text-gray-600">Loading...</div>
+      </div>
+    );
   }
 
   const handleLookupContinue = () => {

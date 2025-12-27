@@ -213,7 +213,7 @@ export const bookApi = {
     if (filters.showMatureContent !== undefined) params.append('showMatureContent', String(filters.showMatureContent));
     if (filters.skip !== undefined) params.append('skip', String(filters.skip));
     if (filters.take !== undefined) params.append('take', String(filters.take));
-    if (filters.sort) params.append('sort', filters.sort);
+    // Note: API does not support sort parameter yet
 
     return apiGet(`/books?${params.toString()}`, options);
   },

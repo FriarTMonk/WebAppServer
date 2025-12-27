@@ -13,6 +13,7 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { SkipThrottle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { IsOrgAdminGuard } from '../admin/guards/is-org-admin.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -32,7 +33,9 @@ import { RequestWithOrgAdmin } from './interfaces/request-with-org-admin.interfa
 
 /**
  * Controller for book submission and management.
+ * Throttling temporarily disabled for development.
  */
+@SkipThrottle()
 @Controller('books')
 export class BookController {
   constructor(
