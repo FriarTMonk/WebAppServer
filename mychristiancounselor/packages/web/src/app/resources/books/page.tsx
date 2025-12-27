@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookCard } from '../../../components/BookCard';
 import { BookFilters } from '../../../components/BookFilters';
@@ -41,31 +41,73 @@ export default function BrowseBooksPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [filters, setFilters] = useState<BookFiltersType>(DEFAULT_FILTERS);
 
-  const loadBooks = useCallback(async () => {
+  // Use ref to track the latest request ID to ignore stale responses
+  const requestIdRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  const loadBooks = useCallback(async (filtersToUse: BookFiltersType, requestId: number) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await bookApi.list(filters);
+      const response = await bookApi.list(filtersToUse);
+
+      // Ignore response if this is not the latest request or component unmounted
+      if (requestId !== requestIdRef.current || !mountedRef.current) {
+        return;
+      }
 
       if (!response.ok) {
-        throw new Error('Failed to load books');
+        const errorText = await response.text();
+        console.error('API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText,
+          url: response.url
+        });
+        throw new Error(`Failed to load books: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+
+      // Double check request ID and mount status before setting state
+      if (requestId !== requestIdRef.current || !mountedRef.current) {
+        return;
+      }
+
       setBooks(data.books || []);
       setTotalCount(data.total || 0);
     } catch (err) {
-      setError('Failed to load books. Please try again.');
+      // Ignore errors from stale requests or unmounted component
+      if (requestId !== requestIdRef.current || !mountedRef.current) {
+        return;
+      }
+
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load books. Please try again.';
+      setError(errorMessage);
       console.error('Error loading books:', err);
     } finally {
-      setLoading(false);
+      // Only update loading state if this is still the latest request and component is mounted
+      if (requestId === requestIdRef.current && mountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, [filters]);
+  }, []);
 
+  // Track component mount status (only changes on unmount)
   useEffect(() => {
-    loadBooks();
-  }, [loadBooks]);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Load books when filters change
+  useEffect(() => {
+    // Increment request ID for new request
+    const currentRequestId = ++requestIdRef.current;
+    loadBooks(filters, currentRequestId);
+  }, [filters, loadBooks]);
 
   const handleFilterChange = (newFilters: Partial<BookFiltersType>) => {
     setFilters(prev => ({ ...prev, ...newFilters, skip: 0 }));
@@ -87,6 +129,15 @@ export default function BrowseBooksPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-6">
+          <button
+            onClick={() => router.push('/home')}
+            className="mb-4 flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to App
+          </button>
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Browse Books</h1>
@@ -134,7 +185,10 @@ export default function BrowseBooksPage() {
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
             <p className="text-red-800">{error}</p>
             <button
-              onClick={loadBooks}
+              onClick={() => {
+                const newRequestId = ++requestIdRef.current;
+                loadBooks(filters, newRequestId);
+              }}
               className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
             >
               Retry

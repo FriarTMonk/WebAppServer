@@ -28,6 +28,7 @@ interface BookCardProps {
   book: Book;
   showActions?: boolean;
   compact?: boolean;
+  onClick?: () => void;
 }
 
 // Validate URL to prevent XSS attacks
@@ -40,12 +41,16 @@ function isValidImageUrl(url: string): boolean {
   }
 }
 
-export function BookCard({ book, showActions = true, compact = false }: BookCardProps) {
+export function BookCard({ book, showActions = true, compact = false, onClick }: BookCardProps) {
   const router = useRouter();
   const [imageError, setImageError] = useState(false);
 
   const handleViewDetails = () => {
-    router.push(`/resources/books/${book.id}`);
+    if (onClick) {
+      onClick();
+    } else {
+      router.push(`/resources/books/${book.id}`);
+    }
   };
 
   const handleSaveToList = (status: string) => {
