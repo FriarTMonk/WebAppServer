@@ -16,6 +16,7 @@ interface BookDetailTabsProps {
     theologicalStrengths: string[];
     theologicalConcerns: string[];
     doctrineCategoryScores: DoctrineCategoryScore[];
+    scoringReasoning?: string;
     endorsementCount: number;
   };
 }
@@ -169,13 +170,25 @@ export function BookDetailTabs({ book }: BookDetailTabsProps) {
             Theological Concerns
           </h3>
           {book.theologicalConcerns.length > 0 ? (
-            <ul className="list-disc pl-5 space-y-2 text-gray-700">
+            <ul className="list-disc pl-5 space-y-2 mb-6 text-gray-700">
               {book.theologicalConcerns.map((concern, index) => (
                 <li key={index}>{concern}</li>
               ))}
             </ul>
           ) : (
-            <p className="text-gray-500 italic">No concerns identified.</p>
+            <p className="text-gray-500 italic mb-6">No concerns identified.</p>
+          )}
+
+          {/* Scoring Reasoning */}
+          {book.scoringReasoning && (
+            <>
+              <h3 className="text-lg font-bold mb-4 text-gray-900">
+                Scoring Reasoning
+              </h3>
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {book.scoringReasoning}
+              </p>
+            </>
           )}
         </div>
 

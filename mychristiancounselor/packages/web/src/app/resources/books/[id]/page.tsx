@@ -39,6 +39,7 @@ interface BookDetail {
   theologicalStrengths: string[];
   theologicalConcerns: string[];
   doctrineCategoryScores: DoctrineCategoryScore[];
+  scoringReasoning?: string;
   purchaseLinks: PurchaseLink[];
   endorsementCount: number;
   createdAt: Date;
