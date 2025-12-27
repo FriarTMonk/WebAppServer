@@ -1,10 +1,10 @@
 export class ReadingListItemDto {
   id: string;
   bookId: string;
-  status: string;
+  status: 'want_to_read' | 'currently_reading' | 'finished';
   progress: number | null;
-  personalNotes: string | null;
-  personalRating: number | null;
+  notes: string | null;
+  rating: number | null;
   dateStarted: string | null;
   dateFinished: string | null;
   addedAt: string;
