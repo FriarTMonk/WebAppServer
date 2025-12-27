@@ -3,6 +3,8 @@ import {
   Logger,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AddToReadingListDto } from '../dto/add-to-reading-list.dto';
@@ -168,11 +170,110 @@ export class ReadingListService {
     itemId: string,
     dto: UpdateReadingListDto,
   ) {
-    // Stub for now - will implement in next task
     this.logger.log(
       `Updating reading list item ${itemId} for user ${userId}`,
     );
-    return null;
+
+    // 1. Fetch and validate ownership
+    const existingEntry = await this.prisma.userReadingList.findUnique({
+      where: { id: itemId },
+    });
+
+    if (!existingEntry) {
+      throw new NotFoundException(
+        `Reading list item with ID ${itemId} not found`,
+      );
+    }
+
+    if (existingEntry.userId !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to update this reading list item',
+      );
+    }
+
+    // 2. Build update data with smart state machine logic
+    const updateData: any = {};
+
+    // Map DTO fields to database fields
+    if (dto.notes !== undefined) {
+      updateData.personalNotes = dto.notes;
+    }
+    if (dto.rating !== undefined) {
+      updateData.personalRating = dto.rating;
+    }
+
+    // Smart state transitions (priority order)
+
+    // PRIORITY 1: Progress = 100 auto-completes the book
+    if (dto.progress === 100) {
+      updateData.status = 'finished';
+      updateData.progress = 100;
+      // Set dateFinished if not provided and not already set
+      if (dto.dateFinished) {
+        updateData.dateFinished = new Date(dto.dateFinished);
+      } else if (!existingEntry.dateFinished) {
+        updateData.dateFinished = new Date();
+      }
+    }
+    // PRIORITY 2: Status change
+    else if (dto.status) {
+      updateData.status = dto.status;
+
+      if (dto.status === 'currently_reading') {
+        // Set dateStarted if not provided
+        if (dto.dateStarted) {
+          updateData.dateStarted = new Date(dto.dateStarted);
+        } else if (!existingEntry.dateStarted) {
+          updateData.dateStarted = new Date();
+        }
+        // Clear dateFinished
+        updateData.dateFinished = null;
+        // Update progress if provided (should be 1-99)
+        if (dto.progress !== undefined) {
+          updateData.progress = dto.progress;
+        }
+      } else if (dto.status === 'finished') {
+        // Set dateFinished if not provided
+        if (dto.dateFinished) {
+          updateData.dateFinished = new Date(dto.dateFinished);
+        } else if (!existingEntry.dateFinished) {
+          updateData.dateFinished = new Date();
+        }
+        // Force progress to 100
+        updateData.progress = 100;
+      } else if (dto.status === 'want_to_read') {
+        // Clear progress and dates
+        updateData.progress = null;
+        updateData.dateStarted = null;
+        updateData.dateFinished = null;
+      }
+    }
+    // PRIORITY 3: Progress update only (not 100, no status change)
+    else if (dto.progress !== undefined) {
+      updateData.progress = dto.progress;
+    }
+
+    // Handle manual date overrides when not already handled by status logic
+    if (!updateData.status && !updateData.progress) {
+      if (dto.dateStarted !== undefined) {
+        updateData.dateStarted = dto.dateStarted ? new Date(dto.dateStarted) : null;
+      }
+      if (dto.dateFinished !== undefined) {
+        updateData.dateFinished = dto.dateFinished ? new Date(dto.dateFinished) : null;
+      }
+    }
+
+    // 3. Perform the update
+    const updatedEntry = await this.prisma.userReadingList.update({
+      where: { id: itemId },
+      data: updateData,
+    });
+
+    this.logger.log(
+      `Successfully updated reading list item ${itemId} for user ${userId}`,
+    );
+
+    return updatedEntry;
   }
 
   async removeFromReadingList(userId: string, itemId: string) {

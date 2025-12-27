@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, ConflictException } from '@nestjs/common';
+import { NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { ReadingListService } from './reading-list.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AddToReadingListDto } from '../dto/add-to-reading-list.dto';
+import { UpdateReadingListDto } from '../dto/update-reading-list.dto';
 
 describe('ReadingListService', () => {
   let service: ReadingListService;
@@ -373,6 +374,178 @@ describe('ReadingListService', () => {
           orderBy: { progress: 'desc' },
         }),
       );
+    });
+  });
+
+  describe('updateReadingListItem', () => {
+    const userId = 'user-123';
+    const itemId = 'item-1';
+    const bookId = 'book-456';
+
+    const mockExistingEntry = {
+      id: itemId,
+      userId,
+      bookId,
+      status: 'want_to_read',
+      progress: null,
+      personalNotes: null,
+      personalRating: null,
+      dateStarted: null,
+      dateFinished: null,
+      addedAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+    };
+
+    it('should update status to currently_reading and set dateStarted', async () => {
+      const dto: UpdateReadingListDto = {
+        status: 'currently_reading',
+      };
+
+      mockPrismaService.userReadingList.findUnique.mockResolvedValue(mockExistingEntry);
+      mockPrismaService.userReadingList.update.mockResolvedValue({
+        ...mockExistingEntry,
+        status: 'currently_reading',
+        dateStarted: new Date('2024-02-01'),
+        updatedAt: new Date('2024-02-01'),
+      });
+
+      const result = await service.updateReadingListItem(userId, itemId, dto);
+
+      expect(prisma.userReadingList.findUnique).toHaveBeenCalledWith({
+        where: { id: itemId },
+      });
+      expect(prisma.userReadingList.update).toHaveBeenCalledWith({
+        where: { id: itemId },
+        data: expect.objectContaining({
+          status: 'currently_reading',
+          dateStarted: expect.any(Date),
+          dateFinished: null,
+        }),
+      });
+      expect(result.status).toBe('currently_reading');
+      expect(result.dateStarted).toBeDefined();
+    });
+
+    it('should auto-complete when progress reaches 100', async () => {
+      const currentlyReadingEntry = {
+        ...mockExistingEntry,
+        status: 'currently_reading',
+        dateStarted: new Date('2024-01-15'),
+      };
+
+      const dto: UpdateReadingListDto = {
+        progress: 100,
+      };
+
+      mockPrismaService.userReadingList.findUnique.mockResolvedValue(currentlyReadingEntry);
+      mockPrismaService.userReadingList.update.mockResolvedValue({
+        ...currentlyReadingEntry,
+        status: 'finished',
+        progress: 100,
+        dateFinished: new Date('2024-02-01'),
+        updatedAt: new Date('2024-02-01'),
+      });
+
+      const result = await service.updateReadingListItem(userId, itemId, dto);
+
+      expect(prisma.userReadingList.update).toHaveBeenCalledWith({
+        where: { id: itemId },
+        data: expect.objectContaining({
+          status: 'finished',
+          progress: 100,
+          dateFinished: expect.any(Date),
+        }),
+      });
+      expect(result.status).toBe('finished');
+      expect(result.progress).toBe(100);
+      expect(result.dateFinished).toBeDefined();
+    });
+
+    it('should validate progress is 1-99 for currently_reading', async () => {
+      const dto: UpdateReadingListDto = {
+        status: 'currently_reading',
+        progress: 100,
+      };
+
+      mockPrismaService.userReadingList.findUnique.mockResolvedValue(mockExistingEntry);
+      mockPrismaService.userReadingList.update.mockResolvedValue({
+        ...mockExistingEntry,
+        status: 'finished',
+        progress: 100,
+        dateFinished: new Date('2024-02-01'),
+        updatedAt: new Date('2024-02-01'),
+      });
+
+      const result = await service.updateReadingListItem(userId, itemId, dto);
+
+      // Should auto-transition to finished instead
+      expect(prisma.userReadingList.update).toHaveBeenCalledWith({
+        where: { id: itemId },
+        data: expect.objectContaining({
+          status: 'finished',
+          progress: 100,
+          dateFinished: expect.any(Date),
+        }),
+      });
+      expect(result.status).toBe('finished');
+    });
+
+    it('should use manual date override if provided', async () => {
+      const providedDate = '2024-01-15T10:30:00.000Z';
+      const dto: UpdateReadingListDto = {
+        status: 'currently_reading',
+        dateStarted: providedDate,
+      };
+
+      mockPrismaService.userReadingList.findUnique.mockResolvedValue(mockExistingEntry);
+      mockPrismaService.userReadingList.update.mockResolvedValue({
+        ...mockExistingEntry,
+        status: 'currently_reading',
+        dateStarted: new Date(providedDate),
+        updatedAt: new Date('2024-02-01'),
+      });
+
+      await service.updateReadingListItem(userId, itemId, dto);
+
+      expect(prisma.userReadingList.update).toHaveBeenCalledWith({
+        where: { id: itemId },
+        data: expect.objectContaining({
+          status: 'currently_reading',
+          dateStarted: new Date(providedDate),
+          dateFinished: null,
+        }),
+      });
+    });
+
+    it('should throw NotFoundException if item does not exist', async () => {
+      const dto: UpdateReadingListDto = {
+        status: 'currently_reading',
+      };
+
+      mockPrismaService.userReadingList.findUnique.mockResolvedValue(null);
+
+      await expect(service.updateReadingListItem(userId, itemId, dto)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prisma.userReadingList.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException if user does not own the item', async () => {
+      const dto: UpdateReadingListDto = {
+        status: 'currently_reading',
+      };
+
+      const otherUserEntry = {
+        ...mockExistingEntry,
+        userId: 'other-user-456',
+      };
+
+      mockPrismaService.userReadingList.findUnique.mockResolvedValue(otherUserEntry);
+
+      await expect(service.updateReadingListItem(userId, itemId, dto)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.userReadingList.update).not.toHaveBeenCalled();
     });
   });
 });
