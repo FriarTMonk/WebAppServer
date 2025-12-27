@@ -6,6 +6,9 @@ import { useTour } from '../contexts/TourContext';
 import { useRouter, usePathname } from 'next/navigation';
 import { apiGet } from '../lib/api';
 import { getTourForPage, getPageName } from '../config/tours';
+import { useUserPermissions } from '../hooks/useUserPermissions';
+import { ResourcesMenuSection } from './shared/ResourcesMenuSection';
+import { MenuButton } from './shared/MenuButton';
 
 export function UserMenu() {
   const { user, logout, isAuthenticated, morphSession } = useAuth();
@@ -13,112 +16,49 @@ export function UserMenu() {
   const router = useRouter();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const [_hasOrganizations, setHasOrganizations] = useState(false);
-  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [isSalesRep, setIsSalesRep] = useState(false);
-  const [isOrgAdmin, setIsOrgAdmin] = useState(false);
-  const [isCounselor, setIsCounselor] = useState(false);
   const [hasJournalAccess, setHasJournalAccess] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const permissions = useUserPermissions();
 
   useEffect(() => {
-    console.log('[UserMenu] useEffect triggered - isAuthenticated:', isAuthenticated, 'user:', user?.email);
     if (isAuthenticated && user) {
-      // Check for organizations
-      apiGet('/organizations')
-        .then(res => res.ok ? res.json() : [])
-        .then(data => setHasOrganizations(Array.isArray(data) && data.length > 0))
-        .catch(() => setHasOrganizations(false));
-
-      // Check if user is Platform Admin or Sales Rep
+      // Check if user is Sales Rep (not moved to hook yet)
       apiGet('/admin/health-check')
         .then(res => {
-          console.log('[UserMenu] Admin/Sales check response:', res.status);
           if (res.ok) {
             return res.json();
           }
           throw new Error('Not a platform admin or sales rep');
         })
         .then(data => {
-          console.log('[UserMenu] Admin/Sales check data:', data);
-          setIsPlatformAdmin(data.isPlatformAdmin === true);
           setIsSalesRep(data.isSalesRep === true);
         })
-        .catch((err) => {
-          console.error('[UserMenu] Admin/Sales check error:', err);
-          setIsPlatformAdmin(false);
+        .catch(() => {
           setIsSalesRep(false);
         });
 
-      // Check if user is Organization Admin
-      console.log('[UserMenu] Checking org admin status...');
-      apiGet('/org-admin/organization')
-        .then(res => {
-          console.log('[UserMenu] Org admin check response:', res.status);
-          if (res.ok) {
-            return res.json().then(data => {
-              console.log('[UserMenu] Org admin check succeeded:', data);
-              setIsOrgAdmin(true);
-            });
-          } else {
-            return res.json().then(errorData => {
-              console.log('[UserMenu] Org admin check failed:', res.status, errorData);
-              setIsOrgAdmin(false);
-            }).catch(() => {
-              console.log('[UserMenu] Org admin check failed:', res.status);
-              setIsOrgAdmin(false);
-            });
-          }
-        })
-        .catch((err) => {
-          console.error('[UserMenu] Org admin check error:', err);
-          setIsOrgAdmin(false);
-        });
-
-      // Check if user has Counselor role in any organization
-      console.log('[UserMenu] Checking counselor role status...');
+      // Check journal access: user has access if they have an active subscription OR are part of an organization
       apiGet('/profile/organizations')
         .then(res => {
-          console.log('[UserMenu] Organizations check response:', res.status);
           if (res.ok) {
-            res.json().then(orgs => {
-              console.log('[UserMenu] User organizations:', orgs);
-              // Check if user has Counselor role in any organization
-              const hasCounselorRole = Array.isArray(orgs) &&
-                orgs.some(org => org.role?.name?.includes('Counselor'));
-              console.log('[UserMenu] Has counselor role:', hasCounselorRole);
-              setIsCounselor(hasCounselorRole);
-
-              // Check journal access: user has access if they have an active subscription OR are part of an organization
+            return res.json().then(orgs => {
               const hasOrgs = Array.isArray(orgs) && orgs.length > 0;
               const hasActiveSubscription = user?.subscriptionStatus === 'active';
               const hasAccess = hasActiveSubscription || hasOrgs;
-              console.log('[UserMenu] Journal access check:', { hasOrgs, hasActiveSubscription, hasAccess });
               setHasJournalAccess(hasAccess);
             });
           } else {
-            console.log('[UserMenu] Organizations check failed:', res.status);
-            setIsCounselor(false);
-            // If no organizations, check if user has active subscription
             const hasActiveSubscription = user?.subscriptionStatus === 'active';
             setHasJournalAccess(hasActiveSubscription);
           }
         })
-        .catch((err) => {
-          console.error('[UserMenu] Organizations check error:', err);
-          setIsCounselor(false);
-          // If error fetching organizations, check if user has active subscription
+        .catch(() => {
           const hasActiveSubscription = user?.subscriptionStatus === 'active';
           setHasJournalAccess(hasActiveSubscription);
         });
     } else {
-      // Reset states when user logs out
-      console.log('[UserMenu] Resetting admin states (not authenticated or no user)');
-      setHasOrganizations(false);
-      setIsPlatformAdmin(false);
       setIsSalesRep(false);
-      setIsOrgAdmin(false);
-      setIsCounselor(false);
       setHasJournalAccess(false);
     }
   }, [isAuthenticated, user]);
@@ -152,11 +92,6 @@ export function UserMenu() {
     }
   };
 
-  const handleNavigateToResources = (path: string) => () => {
-    setIsOpen(false);
-    router.push(path);
-  };
-
   return (
     <div className="relative user-menu">
       <button
@@ -182,16 +117,10 @@ export function UserMenu() {
               📖 Page Tour: {getPageName(currentPageTour.tourId)}
             </button>
           )}
-          <button
-            onClick={() => {
-              setIsOpen(false);
-              router.push('/profile');
-            }}
-            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
+          <MenuButton onClick={() => { setIsOpen(false); router.push('/profile'); }}>
             Profile
-          </button>
-          <button
+          </MenuButton>
+          <MenuButton
             onClick={() => {
               setIsOpen(false);
               if (hasJournalAccess) {
@@ -200,88 +129,35 @@ export function UserMenu() {
                 setShowSubscriptionModal(true);
               }
             }}
-            className={`block w-full text-left px-4 py-2 text-sm ${
-              hasJournalAccess
-                ? 'text-gray-700 hover:bg-gray-100'
-                : 'text-gray-400 cursor-not-allowed bg-gray-50'
-            }`}
+            disabled={!hasJournalAccess}
+            variant={hasJournalAccess ? 'default' : 'disabled'}
           >
             Journal
-          </button>
-          {/* Resources Submenu */}
-          <div className="border-t border-gray-200" role="group" aria-label="Resources">
-            <button
-              onClick={handleNavigateToResources('/resources/books')}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              role="menuitem"
-            >
-              Browse Books
-            </button>
-            <button
-              onClick={handleNavigateToResources('/resources/reading-list')}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              role="menuitem"
-            >
-              My Reading List
-            </button>
-            <button
-              onClick={handleNavigateToResources('/resources/organizations')}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              role="menuitem"
-            >
-              Browse Organizations
-            </button>
-            <button
-              onClick={handleNavigateToResources('/resources/recommended')}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              role="menuitem"
-            >
-              Recommended for Me
-            </button>
-          </div>
-          {isCounselor && (
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                router.push('/counsel');
-              }}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
+          </MenuButton>
+          <ResourcesMenuSection onNavigate={() => setIsOpen(false)} />
+          {permissions.isCounselor && (
+            <MenuButton onClick={() => { setIsOpen(false); router.push('/counsel'); }}>
               Counselor
-            </button>
+            </MenuButton>
           )}
           {isSalesRep && (
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                router.push('/admin/sales');
-              }}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
+            <MenuButton onClick={() => { setIsOpen(false); router.push('/admin/sales'); }}>
               Sales Queue
-            </button>
+            </MenuButton>
           )}
-          {isOrgAdmin && !isPlatformAdmin && (
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                router.push('/org-admin');
-              }}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
+          {permissions.isOrgAdmin && !permissions.isPlatformAdmin && (
+            <MenuButton onClick={() => { setIsOpen(false); router.push('/org-admin'); }}>
               Organization Admin
-            </button>
+            </MenuButton>
           )}
-          {isPlatformAdmin && (
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                router.push('/admin');
-              }}
-              className="block w-full text-left px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 border-t border-gray-200"
+          {permissions.isPlatformAdmin && (
+            <MenuButton
+              onClick={() => { setIsOpen(false); router.push('/admin'); }}
+              variant="highlighted"
+              className="border-t border-gray-200"
             >
               Admin
-            </button>
+            </MenuButton>
           )}
           <a
             href={`mailto:support@mychristiancounselor.online?subject=Support%20Request&body=Please%20describe%20your%20issue%3A%0A%0A%0A%0AWhat%20were%20you%20trying%20to%20do%3F%0A%0A%0A%0AWhat%20happened%20instead%3F%0A%0A%0A%0ABrowser%2FDevice%20info%3A%0A`}
@@ -296,17 +172,16 @@ export function UserMenu() {
               <p className="text-xs">Use the "End Morph Session" button in the yellow banner above to return to your admin account.</p>
             </div>
           ) : (
-            <button
+            <MenuButton
               onClick={() => {
                 setIsOpen(false);
                 logout();
                 // Use window.location for immediate navigation (bypass component checks)
                 window.location.href = '/';
               }}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
               Sign out
-            </button>
+            </MenuButton>
           )}
         </div>
       )}
