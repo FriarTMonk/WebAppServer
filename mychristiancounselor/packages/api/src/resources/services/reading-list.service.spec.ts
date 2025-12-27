@@ -16,6 +16,7 @@ describe('ReadingListService', () => {
       findUnique: jest.fn(),
       create: jest.fn(),
       findMany: jest.fn(),
+      count: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     },
@@ -263,6 +264,115 @@ describe('ReadingListService', () => {
           dateFinished: null,
         }),
       });
+    });
+  });
+
+  describe('getReadingList', () => {
+    const userId = 'user-123';
+    const mockBook = {
+      id: 'book-1',
+      title: 'Test Book',
+      author: 'Test Author',
+      coverImageUrl: 'https://example.com/cover.jpg',
+      biblicalAlignmentScore: 85,
+      genreTag: 'Christian Living',
+      matureContent: false,
+    };
+
+    it('should return all reading list items when status is all', async () => {
+      const query = { status: 'all' as const };
+
+      const mockItems = [
+        {
+          id: 'item-1',
+          userId,
+          bookId: 'book-1',
+          status: 'want_to_read',
+          progress: null,
+          personalNotes: 'Looking forward to this',
+          personalRating: null,
+          dateStarted: null,
+          dateFinished: null,
+          addedAt: new Date('2024-01-01'),
+          updatedAt: new Date('2024-01-01'),
+          book: mockBook,
+        },
+        {
+          id: 'item-2',
+          userId,
+          bookId: 'book-2',
+          status: 'currently_reading',
+          progress: 50,
+          personalNotes: null,
+          personalRating: null,
+          dateStarted: new Date('2024-01-15'),
+          dateFinished: null,
+          addedAt: new Date('2024-01-10'),
+          updatedAt: new Date('2024-01-15'),
+          book: { ...mockBook, id: 'book-2', title: 'Second Book' },
+        },
+      ];
+
+      mockPrismaService.userReadingList.findMany.mockResolvedValue(mockItems);
+      mockPrismaService.userReadingList.count.mockResolvedValue(2);
+
+      const result = await service.getReadingList(userId, query);
+
+      expect(result.items).toHaveLength(2);
+      expect(result.total).toBe(2);
+      expect(result.items[0].bookId).toBe('book-1');
+      expect(result.items[0].notes).toBe('Looking forward to this');
+      expect(result.items[1].progress).toBe(50);
+    });
+
+    it('should filter by status when specified', async () => {
+      const query = { status: 'currently_reading' as const };
+
+      const mockItems = [
+        {
+          id: 'item-1',
+          userId,
+          bookId: 'book-1',
+          status: 'currently_reading',
+          progress: 75,
+          personalNotes: null,
+          personalRating: null,
+          dateStarted: new Date('2024-01-01'),
+          dateFinished: null,
+          addedAt: new Date('2024-01-01'),
+          updatedAt: new Date('2024-01-10'),
+          book: mockBook,
+        },
+      ];
+
+      mockPrismaService.userReadingList.findMany.mockResolvedValue(mockItems);
+      mockPrismaService.userReadingList.count.mockResolvedValue(1);
+
+      await service.getReadingList(userId, query);
+
+      expect(prisma.userReadingList.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId,
+            status: 'currently_reading',
+          }),
+        }),
+      );
+    });
+
+    it('should sort currently_reading by progress DESC', async () => {
+      const query = { status: 'currently_reading' as const };
+
+      mockPrismaService.userReadingList.findMany.mockResolvedValue([]);
+      mockPrismaService.userReadingList.count.mockResolvedValue(0);
+
+      await service.getReadingList(userId, query);
+
+      expect(prisma.userReadingList.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { progress: 'desc' },
+        }),
+      );
     });
   });
 });
