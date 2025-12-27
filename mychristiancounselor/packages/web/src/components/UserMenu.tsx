@@ -208,37 +208,14 @@ export function UserMenu() {
           >
             Journal
           </button>
-          {/* Resources Submenu */}
-          <div className="border-t border-gray-200" role="group" aria-label="Resources">
-            <button
-              onClick={handleNavigateToResources('/resources/books')}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              role="menuitem"
-            >
-              Browse Books
-            </button>
-            <button
-              onClick={handleNavigateToResources('/resources/reading-list')}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              role="menuitem"
-            >
-              My Reading List
-            </button>
-            <button
-              onClick={handleNavigateToResources('/resources/organizations')}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              role="menuitem"
-            >
-              Browse Organizations
-            </button>
-            <button
-              onClick={handleNavigateToResources('/resources/recommended')}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              role="menuitem"
-            >
-              Recommended for Me
-            </button>
-          </div>
+          {/* Resources */}
+          <button
+            onClick={handleNavigateToResources('/resources/books')}
+            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-t border-gray-200"
+            role="menuitem"
+          >
+            Browse Books
+          </button>
           {isCounselor && (
             <button
               onClick={() => {
