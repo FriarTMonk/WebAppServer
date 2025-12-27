@@ -24,6 +24,7 @@ import { WebhooksModule } from '../webhooks/webhooks.module';
 import { SalesModule } from '../sales/sales.module';
 import { ContentModule } from '../content/content.module';
 import { BookModule } from '../book/book.module';
+import { ResourcesModule } from '../resources/resources.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CsrfGuard } from '../common/guards/csrf.guard';
 import { configValidationSchema } from '../config/config.validation';
@@ -76,6 +77,7 @@ import { getBullModuleOptions } from '../config/queue.config';
     SalesModule,
     ContentModule,
     BookModule,
+    ResourcesModule,
   ],
   providers: [
     {
