@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { BookCard } from '../../../components/BookCard';
 import { BookFilters } from '../../../components/BookFilters';
 import { useUserPermissions } from '../../../hooks/useUserPermissions';
-import { bookApi, BookFilters as BookFiltersType } from '../../../lib/api';
+import { useAuth } from '../../../contexts/AuthContext';
+import { bookApi, BookFilters as BookFiltersType, apiGet } from '../../../lib/api';
 
 // Book interface for type safety
 interface Book {
@@ -35,11 +36,14 @@ const DEFAULT_FILTERS: BookFiltersType = {
 export default function BrowseBooksPage() {
   const router = useRouter();
   const permissions = useUserPermissions();
+  const { user } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [filters, setFilters] = useState<BookFiltersType>(DEFAULT_FILTERS);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [accessChecked, setAccessChecked] = useState(false);
 
   // Use ref to track the latest request ID to ignore stale responses
   const requestIdRef = useRef(0);
@@ -94,6 +98,46 @@ export default function BrowseBooksPage() {
     }
   }, []);
 
+  // Check access: user needs active subscription OR organization membership
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!user) {
+        setHasAccess(false);
+        setAccessChecked(true);
+        return;
+      }
+
+      try {
+        const hasActiveSubscription = user.subscriptionStatus === 'active';
+
+        // Check if user has organization membership
+        const orgResponse = await apiGet('/profile/organizations');
+        if (orgResponse.ok) {
+          const orgs = await orgResponse.json();
+          const hasOrgs = Array.isArray(orgs) && orgs.length > 0;
+          setHasAccess(hasActiveSubscription || hasOrgs);
+        } else {
+          setHasAccess(hasActiveSubscription);
+        }
+      } catch (error) {
+        console.error('Error checking access:', error);
+        // Fallback to subscription status only
+        setHasAccess(user.subscriptionStatus === 'active');
+      } finally {
+        setAccessChecked(true);
+      }
+    };
+
+    checkAccess();
+  }, [user]);
+
+  // Redirect if no access
+  useEffect(() => {
+    if (accessChecked && hasAccess === false) {
+      router.push('/home');
+    }
+  }, [accessChecked, hasAccess, router]);
+
   // Track component mount status (only changes on unmount)
   useEffect(() => {
     mountedRef.current = true;
@@ -102,12 +146,16 @@ export default function BrowseBooksPage() {
     };
   }, []);
 
-  // Load books when filters change
+  // Load books when filters change (only if access is granted)
   useEffect(() => {
+    if (!accessChecked || !hasAccess) {
+      return;
+    }
+
     // Increment request ID for new request
     const currentRequestId = ++requestIdRef.current;
     loadBooks(filters, currentRequestId);
-  }, [filters, loadBooks]);
+  }, [filters, loadBooks, accessChecked, hasAccess]);
 
   const handleFilterChange = (newFilters: Partial<BookFiltersType>) => {
     setFilters(prev => ({ ...prev, ...newFilters, skip: 0 }));
@@ -123,6 +171,23 @@ export default function BrowseBooksPage() {
 
   const currentPage = Math.floor((filters.skip || 0) / (filters.take || DEFAULT_PAGE_SIZE)) + 1;
   const totalPages = Math.ceil(totalCount / (filters.take || DEFAULT_PAGE_SIZE));
+
+  // Show loading state while checking access
+  if (!accessChecked) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Will redirect if no access, but show nothing while redirecting
+  if (!hasAccess) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

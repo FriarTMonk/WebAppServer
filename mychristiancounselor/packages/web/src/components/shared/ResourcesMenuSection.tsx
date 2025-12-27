@@ -22,12 +22,15 @@ interface ResourcesMenuSectionProps {
   showBorder?: boolean;
   /** Wrap content in a semantic group role */
   roleGroup?: boolean;
+  /** Whether user has access to book resources (subscription or organization membership) */
+  hasAccess?: boolean;
 }
 
 export function ResourcesMenuSection({
   onNavigate,
   showBorder = true,
   roleGroup = true,
+  hasAccess = true,
 }: ResourcesMenuSectionProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -47,13 +50,15 @@ export function ResourcesMenuSection({
     <>
       <MenuButton
         onClick={handleNavigate(RESOURCES_PATHS.books)}
-        disabled={isPending}
+        disabled={isPending || !hasAccess}
+        variant={!hasAccess ? 'disabled' : 'default'}
       >
         Browse Books
       </MenuButton>
       <MenuButton
         onClick={handleNavigate(RESOURCES_PATHS.readingList)}
-        disabled={isPending}
+        disabled={isPending || !hasAccess}
+        variant={!hasAccess ? 'disabled' : 'default'}
       >
         My Reading List
       </MenuButton>
@@ -65,7 +70,8 @@ export function ResourcesMenuSection({
       </MenuButton>
       <MenuButton
         onClick={handleNavigate(RESOURCES_PATHS.recommended)}
-        disabled={isPending}
+        disabled={isPending || !hasAccess}
+        variant={!hasAccess ? 'disabled' : 'default'}
       >
         Recommended for Me
       </MenuButton>

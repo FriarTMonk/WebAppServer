@@ -63,6 +63,10 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
             </li>
             <li className="flex items-start">
               <span className="mr-2">✓</span>
+              <span>Browse registered Christian organizations</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">✓</span>
               <span>Crisis & grief support resources</span>
             </li>
           </ul>
@@ -123,6 +127,22 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
             <li className="flex items-start">
               <span className="mr-2">✓</span>
               <span>Bible translation comparison mode</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">✓</span>
+              <span>Browse biblically-aligned Christian books</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">✓</span>
+              <span>Personal reading list (Want to Read, Currently Reading, Finished)</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">✓</span>
+              <span>AI-powered personalized book recommendations</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">✓</span>
+              <span>Browse registered Christian organizations</span>
             </li>
             <li className="flex items-start">
               <span className="mr-2">✓</span>
@@ -232,6 +252,26 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
             </li>
             <li className="flex items-start">
               <span className="mr-2">✓</span>
+              <span>Browse biblically-aligned Christian books</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">✓</span>
+              <span>Personal reading lists for all members</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">✓</span>
+              <span>AI-powered personalized book recommendations</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">✓</span>
+              <span>Org-specific book endorsements and curation</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">✓</span>
+              <span>Browse and endorse external Christian organizations</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">✓</span>
               <span>Priority email support</span>
             </li>
           </ul>
@@ -338,6 +378,36 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
               <td className="border border-gray-200 p-3 text-center">✓ (comparison)</td>
             </tr>
             <tr>
+              <td className="border border-gray-200 p-3 font-medium">Browse Christian Books</td>
+              <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
+              <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
+              <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
+            </tr>
+            <tr>
+              <td className="border border-gray-200 p-3 font-medium">Personal Reading List</td>
+              <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
+              <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
+              <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
+            </tr>
+            <tr>
+              <td className="border border-gray-200 p-3 font-medium">AI-Powered Book Recommendations</td>
+              <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
+              <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
+              <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
+            </tr>
+            <tr>
+              <td className="border border-gray-200 p-3 font-medium">Browse Christian Organizations</td>
+              <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
+              <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
+              <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
+            </tr>
+            <tr>
+              <td className="border border-gray-200 p-3 font-medium">Organization Book Endorsements</td>
+              <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
+              <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
+              <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
+            </tr>
+            <tr>
               <td className="border border-gray-200 p-3 font-medium">Crisis Support Resources</td>
               <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
               <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
@@ -424,6 +494,14 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
                 <span>Translations:</span>
                 <span className="font-medium">Single</span>
               </div>
+              <div className="flex justify-between">
+                <span>Book Resources:</span>
+                <span className="text-red-500">✗</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Organizations:</span>
+                <span className="text-green-500">✓</span>
+              </div>
             </div>
             <Link
               href="/register"
@@ -464,6 +542,14 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
               <div className="flex justify-between">
                 <span>Translations:</span>
                 <span className="font-medium">Comparison</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Book Resources:</span>
+                <span className="text-green-500">✓</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Organizations:</span>
+                <span className="text-green-500">✓</span>
               </div>
             </div>
             <Link
@@ -508,6 +594,18 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
               </div>
               <div className="flex justify-between">
                 <span>Dashboard:</span>
+                <span className="text-green-500">✓</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Book Resources:</span>
+                <span className="text-green-500">✓</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Book Endorsements:</span>
+                <span className="text-green-500">✓</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Organizations:</span>
                 <span className="text-green-500">✓</span>
               </div>
             </div>

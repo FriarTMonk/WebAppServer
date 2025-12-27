@@ -134,7 +134,10 @@ export function UserMenu() {
           >
             Journal
           </MenuButton>
-          <ResourcesMenuSection onNavigate={() => setIsOpen(false)} />
+          <ResourcesMenuSection
+            onNavigate={() => setIsOpen(false)}
+            hasAccess={hasJournalAccess}
+          />
           {permissions.isCounselor && (
             <MenuButton onClick={() => { setIsOpen(false); router.push('/counsel'); }}>
               Counselor

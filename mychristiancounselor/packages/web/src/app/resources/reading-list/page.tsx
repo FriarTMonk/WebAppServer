@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '../../../contexts/AuthContext';
+import { apiGet } from '../../../lib/api';
 
 type ReadingListTab = 'want_to_read' | 'currently_reading' | 'finished';
 
@@ -16,7 +18,49 @@ interface ReadingListItem {
 
 export default function ReadingListPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ReadingListTab>('want_to_read');
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [accessChecked, setAccessChecked] = useState(false);
+
+  // Check access: user needs active subscription OR organization membership
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!user) {
+        setHasAccess(false);
+        setAccessChecked(true);
+        return;
+      }
+
+      try {
+        const hasActiveSubscription = user.subscriptionStatus === 'active';
+
+        // Check if user has organization membership
+        const orgResponse = await apiGet('/profile/organizations');
+        if (orgResponse.ok) {
+          const orgs = await orgResponse.json();
+          const hasOrgs = Array.isArray(orgs) && orgs.length > 0;
+          setHasAccess(hasActiveSubscription || hasOrgs);
+        } else {
+          setHasAccess(hasActiveSubscription);
+        }
+      } catch (error) {
+        console.error('Error checking access:', error);
+        setHasAccess(user.subscriptionStatus === 'active');
+      } finally {
+        setAccessChecked(true);
+      }
+    };
+
+    checkAccess();
+  }, [user]);
+
+  // Redirect if no access
+  useEffect(() => {
+    if (accessChecked && hasAccess === false) {
+      router.push('/home');
+    }
+  }, [accessChecked, hasAccess, router]);
 
   // Placeholder data - will be replaced with API calls in future phase
   const readingListItems: ReadingListItem[] = [];
@@ -52,6 +96,23 @@ export default function ReadingListPage() {
         return '📚';
     }
   };
+
+  // Show loading state while checking access
+  if (!accessChecked) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Will redirect if no access, but show nothing while redirecting
+  if (!hasAccess) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
