@@ -9,6 +9,24 @@ import clsx from 'clsx';
 type WizardStep = 'lookup' | 'metadata' | 'pdf';
 type LookupMethod = 'auto' | 'manual';
 
+// Constants
+const MAX_FILE_SIZE_MB = 100;
+const MAX_TITLE_LENGTH = 255;
+const MAX_AUTHOR_LENGTH = 255;
+const MAX_PUBLISHER_LENGTH = 255;
+const MAX_DESCRIPTION_LENGTH = 2000;
+const MIN_PUBLICATION_YEAR = 1000;
+
+// Utility function for URL validation
+const isUrl = (str: string): boolean => {
+  try {
+    new URL(str);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export default function AddNewBookPage() {
   const router = useRouter();
   const permissions = useUserPermissions();
@@ -33,8 +51,8 @@ export default function AddNewBookPage() {
         setError('Please enter an ISBN or URL.');
         return;
       }
-      // Determine if it's ISBN or URL
-      if (lookupValue.includes('http')) {
+      // Determine if it's ISBN or URL using proper URL validation
+      if (isUrl(lookupValue.trim())) {
         setBookData({ lookupUrl: lookupValue.trim() });
       } else {
         setBookData({ isbn: lookupValue.trim() });
@@ -56,6 +74,11 @@ export default function AddNewBookPage() {
     }
     if (!bookData.author?.trim()) {
       setError('Author is required.');
+      return;
+    }
+    // Validate cover image URL if provided
+    if (bookData.coverImageUrl && !isUrl(bookData.coverImageUrl)) {
+      setError('Please enter a valid URL for the cover image.');
       return;
     }
     setError(null);
@@ -119,8 +142,8 @@ export default function AddNewBookPage() {
   const handlePdfFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 100 * 1024 * 1024) {
-        setError('File must be under 100MB.');
+      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+        setError(`File must be under ${MAX_FILE_SIZE_MB}MB.`);
         return;
       }
       if (file.type !== 'application/pdf') {
@@ -163,7 +186,7 @@ export default function AddNewBookPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200 p-8">
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+            <div id="error-message" className="mb-6 bg-red-50 border border-red-200 rounded-md p-4" role="alert">
               <p className="text-red-800">{error}</p>
             </div>
           )}
@@ -174,7 +197,7 @@ export default function AddNewBookPage() {
               <h2 className="text-xl font-bold text-gray-900 mb-4">How would you like to add this book?</h2>
 
               <div className="space-y-4 mb-6">
-                <label className="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors" style={{ borderColor: lookupMethod === 'auto' ? '#2563eb' : '#e5e7eb' }}>
+                <label className={clsx('flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors', lookupMethod === 'auto' ? 'border-blue-600' : 'border-gray-300')}>
                   <input
                     type="radio"
                     name="lookupMethod"
@@ -198,7 +221,7 @@ export default function AddNewBookPage() {
                   />
                 )}
 
-                <label className="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors" style={{ borderColor: lookupMethod === 'manual' ? '#2563eb' : '#e5e7eb' }}>
+                <label className={clsx('flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors', lookupMethod === 'manual' ? 'border-blue-600' : 'border-gray-300')}>
                   <input
                     type="radio"
                     name="lookupMethod"
@@ -229,62 +252,78 @@ export default function AddNewBookPage() {
 
               <div className="space-y-4 mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="book-title" className="block text-sm font-medium text-gray-700 mb-1">
                     Title <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="book-title"
                     type="text"
                     value={bookData.title || ''}
                     onChange={(e) => setBookData({ ...bookData, title: e.target.value })}
+                    maxLength={MAX_TITLE_LENGTH}
+                    required
+                    aria-describedby={error && !bookData.title?.trim() ? 'error-message' : undefined}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="book-author" className="block text-sm font-medium text-gray-700 mb-1">
                     Author <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="book-author"
                     type="text"
                     value={bookData.author || ''}
                     onChange={(e) => setBookData({ ...bookData, author: e.target.value })}
+                    maxLength={MAX_AUTHOR_LENGTH}
+                    required
+                    aria-describedby={error && !bookData.author?.trim() ? 'error-message' : undefined}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Publisher (optional)</label>
+                  <label htmlFor="book-publisher" className="block text-sm font-medium text-gray-700 mb-1">Publisher (optional)</label>
                   <input
+                    id="book-publisher"
                     type="text"
                     value={bookData.publisher || ''}
                     onChange={(e) => setBookData({ ...bookData, publisher: e.target.value })}
+                    maxLength={MAX_PUBLISHER_LENGTH}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Year (optional)</label>
+                  <label htmlFor="book-year" className="block text-sm font-medium text-gray-700 mb-1">Year (optional)</label>
                   <input
+                    id="book-year"
                     type="number"
                     value={bookData.publicationYear || ''}
                     onChange={(e) => setBookData({ ...bookData, publicationYear: parseInt(e.target.value) })}
+                    min={MIN_PUBLICATION_YEAR}
+                    max={new Date().getFullYear()}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                  <label htmlFor="book-description" className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
                   <textarea
+                    id="book-description"
                     value={bookData.description || ''}
                     onChange={(e) => setBookData({ ...bookData, description: e.target.value })}
+                    maxLength={MAX_DESCRIPTION_LENGTH}
                     rows={4}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image URL (optional)</label>
+                  <label htmlFor="book-cover-url" className="block text-sm font-medium text-gray-700 mb-1">Cover Image URL (optional)</label>
                   <input
+                    id="book-cover-url"
                     type="url"
                     value={bookData.coverImageUrl || ''}
                     onChange={(e) => setBookData({ ...bookData, coverImageUrl: e.target.value })}
@@ -334,7 +373,7 @@ export default function AddNewBookPage() {
                       </>
                     )}
                   </div>
-                  <div className="text-sm text-gray-500">Max size: 100MB</div>
+                  <div className="text-sm text-gray-500">Max size: {MAX_FILE_SIZE_MB}MB</div>
                 </label>
               </div>
 
