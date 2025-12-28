@@ -14,13 +14,6 @@ interface BookEndorsement {
   organizationName: string;
 }
 
-interface PurchaseLink {
-  retailer: string;
-  url: string;
-  isPrimary: boolean;
-  price?: string;
-}
-
 interface BookDetailTabsProps {
   book: {
     theologicalSummary?: string;
@@ -31,8 +24,6 @@ interface BookDetailTabsProps {
     scoringReasoning?: string;
     endorsements: BookEndorsement[];
     endorsementCount: number;
-    purchaseUrl?: string;
-    purchaseLinks: PurchaseLink[];
   };
 }
 
@@ -230,7 +221,7 @@ export function BookDetailTabs({ book }: BookDetailTabsProps) {
                 <strong>{book.endorsementCount}</strong> organization
                 {book.endorsementCount !== 1 ? 's' : ''}:
               </p>
-              <ul className="list-disc pl-5 space-y-2 mb-6 text-gray-700">
+              <ul className="list-disc pl-5 space-y-2 text-gray-700">
                 {book.endorsements.map((endorsement) => (
                   <li key={endorsement.organizationId}>
                     {endorsement.organizationName}
@@ -239,72 +230,9 @@ export function BookDetailTabs({ book }: BookDetailTabsProps) {
               </ul>
             </>
           ) : (
-            <p className="text-gray-500 italic mb-6">
+            <p className="text-gray-500 italic">
               No organization endorsements available.
             </p>
-          )}
-
-          {/* Purchase Button */}
-          {(book.purchaseLinks.length > 0 || book.purchaseUrl) && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              {(() => {
-                // Use purchaseLinks if available, otherwise fallback to purchaseUrl
-                if (book.purchaseLinks.length > 0) {
-                  const primaryLink = book.purchaseLinks.find((link) => link.isPrimary) || book.purchaseLinks[0];
-                  return (
-                    <a
-                      href={primaryLink.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                    >
-                      <svg
-                        className="w-5 h-5 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                        />
-                      </svg>
-                      Purchase at {primaryLink.retailer}
-                      {primaryLink.price && (
-                        <span className="ml-2 text-blue-100">({primaryLink.price})</span>
-                      )}
-                    </a>
-                  );
-                } else if (book.purchaseUrl) {
-                  return (
-                    <a
-                      href={book.purchaseUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                    >
-                      <svg
-                        className="w-5 h-5 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                        />
-                      </svg>
-                      Purchase Book
-                    </a>
-                  );
-                }
-                return null;
-              })()}
-            </div>
           )}
         </div>
       </div>

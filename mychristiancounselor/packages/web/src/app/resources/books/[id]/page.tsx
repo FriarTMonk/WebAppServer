@@ -274,7 +274,7 @@ export default function BookDetailPage() {
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-3 mt-4">
+              <div className="flex gap-3 mt-4 items-center">
                 <button
                   className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
                   onClick={() => alert('Reading list feature coming in Phase 3')}
@@ -287,6 +287,69 @@ export default function BookDetailPage() {
                 >
                   Share
                 </button>
+
+                {/* Purchase Button - Right Aligned */}
+                {(book.purchaseUrl || book.purchaseLinks.length > 0) && (
+                  <div className="ml-auto">
+                    {(() => {
+                      // Use purchaseLinks if available, otherwise fallback to purchaseUrl
+                      if (book.purchaseLinks.length > 0) {
+                        const primaryLink = book.purchaseLinks.find((link) => link.isPrimary) || book.purchaseLinks[0];
+                        return (
+                          <a
+                            href={primaryLink.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition-colors font-medium"
+                          >
+                            <svg
+                              className="w-5 h-5 mr-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                              />
+                            </svg>
+                            Purchase at {primaryLink.retailer}
+                            {primaryLink.price && (
+                              <span className="ml-2 text-green-100">({primaryLink.price})</span>
+                            )}
+                          </a>
+                        );
+                      } else if (book.purchaseUrl) {
+                        return (
+                          <a
+                            href={book.purchaseUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition-colors font-medium"
+                          >
+                            <svg
+                              className="w-5 h-5 mr-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                              />
+                            </svg>
+                            Purchase Book
+                          </a>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
           </div>
