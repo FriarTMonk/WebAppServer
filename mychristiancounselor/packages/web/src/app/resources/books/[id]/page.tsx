@@ -19,6 +19,11 @@ interface PurchaseLink {
   price?: string;
 }
 
+interface BookEndorsement {
+  organizationId: string;
+  organizationName: string;
+}
+
 interface BookDetail {
   id: string;
   title: string;
@@ -41,6 +46,7 @@ interface BookDetail {
   doctrineCategoryScores: DoctrineCategoryScore[];
   scoringReasoning?: string;
   purchaseLinks: PurchaseLink[];
+  endorsements: BookEndorsement[];
   endorsementCount: number;
   createdAt: Date;
   updatedAt: Date;

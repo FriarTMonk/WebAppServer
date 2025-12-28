@@ -9,6 +9,18 @@ interface DoctrineCategoryScore {
   notes?: string;
 }
 
+interface BookEndorsement {
+  organizationId: string;
+  organizationName: string;
+}
+
+interface PurchaseLink {
+  retailer: string;
+  url: string;
+  isPrimary: boolean;
+  price?: string;
+}
+
 interface BookDetailTabsProps {
   book: {
     theologicalSummary?: string;
@@ -17,7 +29,9 @@ interface BookDetailTabsProps {
     theologicalConcerns: string[];
     doctrineCategoryScores: DoctrineCategoryScore[];
     scoringReasoning?: string;
+    endorsements: BookEndorsement[];
     endorsementCount: number;
+    purchaseLinks: PurchaseLink[];
   };
 }
 
@@ -209,17 +223,61 @@ export function BookDetailTabs({ book }: BookDetailTabsProps) {
             Organization Endorsements
           </h3>
           {book.endorsementCount > 0 ? (
-            <p className="text-gray-700">
-              This book has been recommended by{' '}
-              <strong>{book.endorsementCount}</strong> organization
-              {book.endorsementCount !== 1 ? 's' : ''}.
-            </p>
+            <>
+              <p className="text-gray-700 mb-4">
+                This book has been recommended by{' '}
+                <strong>{book.endorsementCount}</strong> organization
+                {book.endorsementCount !== 1 ? 's' : ''}:
+              </p>
+              <ul className="list-disc pl-5 space-y-2 mb-6 text-gray-700">
+                {book.endorsements.map((endorsement) => (
+                  <li key={endorsement.organizationId}>
+                    {endorsement.organizationName}
+                  </li>
+                ))}
+              </ul>
+            </>
           ) : (
-            <p className="text-gray-500 italic">
+            <p className="text-gray-500 italic mb-6">
               No organization endorsements available.
             </p>
           )}
-          {/* TODO Phase 3: Add endorsement details list */}
+
+          {/* Purchase Button */}
+          {book.purchaseLinks.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              {(() => {
+                // Find primary link or use first link
+                const primaryLink = book.purchaseLinks.find((link) => link.isPrimary) || book.purchaseLinks[0];
+                return (
+                  <a
+                    href={primaryLink.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    <svg
+                      className="w-5 h-5 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                      />
+                    </svg>
+                    Purchase at {primaryLink.retailer}
+                    {primaryLink.price && (
+                      <span className="ml-2 text-blue-100">({primaryLink.price})</span>
+                    )}
+                  </a>
+                );
+              })()}
+            </div>
+          )}
         </div>
       </div>
     </div>

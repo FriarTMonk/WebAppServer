@@ -20,7 +20,7 @@ export class BookQueryService {
 
   async findBooks(
     query: BookQueryDto,
-    userId?: string,
+    userId: string,
   ): Promise<BookListResponseDto> {
     const {
       search,
@@ -32,18 +32,15 @@ export class BookQueryService {
     } = query;
 
     this.logger.log(
-      `Finding books with query: ${JSON.stringify(query)}, userId: ${userId || 'anonymous'}`,
+      `Finding books with query: ${JSON.stringify(query)}, userId: ${userId}`,
     );
 
     // Check if user is platform admin (for WHERE clause optimization)
-    let isPlatformAdmin = false;
-    if (userId) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { isPlatformAdmin: true },
-      });
-      isPlatformAdmin = user?.isPlatformAdmin ?? false;
-    }
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isPlatformAdmin: true },
+    });
+    const isPlatformAdmin = user?.isPlatformAdmin ?? false;
 
     // Build where clause for filtering
     const where = await this.buildWhereClause(
@@ -110,19 +107,18 @@ export class BookQueryService {
     visibilityTier?: string,
     genre?: string,
     showMatureContent?: boolean,
-    userId?: string,
-    isPlatformAdmin?: boolean,
+    userId: string,
+    isPlatformAdmin: boolean,
   ): Promise<any> {
     const where: any = {
-      AND: [
-        // Only show evaluated books
-        { evaluationStatus: 'completed' },
-      ],
+      AND: [],
     };
 
-    // Exclude not_aligned books for non-platform-admins
-    // Platform admins can see all books including not_aligned for oversight
+    // Only show evaluated books for non-platform-admins
+    // Platform admins can see all books including pending ones for oversight
     if (!isPlatformAdmin) {
+      where.AND.push({ evaluationStatus: 'completed' });
+      // Exclude not_aligned books for non-platform-admins
       where.AND.push({ visibilityTier: { not: 'not_aligned' } });
     }
 
@@ -160,15 +156,10 @@ export class BookQueryService {
 
   private async shouldShowMatureContent(
     showMatureContent?: boolean,
-    userId?: string,
+    userId: string,
   ): Promise<boolean> {
     // If explicitly set to false, don't show
     if (showMatureContent === false) {
-      return false;
-    }
-
-    // Anonymous users never see mature content
-    if (!userId) {
       return false;
     }
 
@@ -178,7 +169,7 @@ export class BookQueryService {
       select: {
         accountType: true,
         birthDate: true,
-        organizationMembers: {
+        organizationMemberships: {
           select: {
             organization: {
               select: { matureContentAccountTypeThreshold: true },
@@ -196,7 +187,7 @@ export class BookQueryService {
     // Default to showing if user is adult, unless explicitly disabled
     const accountType = user.accountType || this.inferAccountType(user.birthDate);
     const threshold =
-      user.organizationMembers?.[0]?.organization?.matureContentAccountTypeThreshold || 'teen';
+      user.organizationMemberships?.[0]?.organization?.matureContentAccountTypeThreshold || 'teen';
 
     const typeOrder = ['child', 'teen', 'adult'];
     const userTypeIndex = typeOrder.indexOf(accountType);
@@ -236,21 +227,13 @@ export class BookQueryService {
 
   private async filterByVisibility(
     books: any[],
-    userId?: string,
+    userId: string,
   ): Promise<any[]> {
-    if (!userId) {
-      // Anonymous users only see globally_aligned books without mature content
-      return books.filter(
-        (book) =>
-          book.visibilityTier === 'globally_aligned' && !book.matureContent,
-      );
-    }
-
     // Fetch user once with organization memberships for batch filtering
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
-        organizationMembers: {
+        organizationMemberships: {
           select: {
             organizationId: true,
             organization: {
@@ -262,11 +245,8 @@ export class BookQueryService {
     });
 
     if (!user) {
-      // If user not found, treat as anonymous
-      return books.filter(
-        (book) =>
-          book.visibilityTier === 'globally_aligned' && !book.matureContent,
-      );
+      // User not found - should not happen since authentication is required
+      throw new Error('User not found');
     }
 
     // Platform admins can see ALL books (including not_aligned) for evaluation oversight
@@ -274,7 +254,7 @@ export class BookQueryService {
       return books;
     }
 
-    const userOrgIds = user.organizationMembers?.map(m => m.organizationId) || [];
+    const userOrgIds = user.organizationMemberships?.map(m => m.organizationId) || [];
     const canViewMature = this.canViewMatureContentBatch(user);
 
     // Filter books in-memory using pre-fetched user data
@@ -309,7 +289,7 @@ export class BookQueryService {
     const accountType = user.accountType || this.inferAccountType(user.birthDate);
 
     // Check user's org settings, fallback to platform default
-    const threshold = user.organizationMembers?.[0]?.organization?.matureContentAccountTypeThreshold
+    const threshold = user.organizationMemberships?.[0]?.organization?.matureContentAccountTypeThreshold
       || resourcesConfig.ageGating.defaultMatureContentThreshold;
 
     const typeOrder = ['child', 'teen', 'adult'];
@@ -321,10 +301,10 @@ export class BookQueryService {
 
   async findBookById(
     bookId: string,
-    userId?: string,
+    userId: string,
   ): Promise<BookDetailDto> {
     this.logger.log(
-      `Finding book by ID: ${bookId}, userId: ${userId || 'anonymous'}`,
+      `Finding book by ID: ${bookId}, userId: ${userId}`,
     );
 
     // Fetch book with all related data
@@ -355,6 +335,11 @@ export class BookQueryService {
         endorsements: {
           select: {
             organizationId: true,
+            organization: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
         evaluationHistory: {
@@ -380,35 +365,24 @@ export class BookQueryService {
     }
 
     // Check access using VisibilityCheckerService
-    if (userId) {
-      // Check if user is platform admin first (admins can see all books)
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { isPlatformAdmin: true },
-      });
+    // Check if user is platform admin first (admins can see all books)
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isPlatformAdmin: true },
+    });
 
-      const isPlatformAdmin = user?.isPlatformAdmin ?? false;
+    const isPlatformAdmin = user?.isPlatformAdmin ?? false;
 
-      // Platform admins bypass all visibility restrictions
-      if (!isPlatformAdmin) {
-        // Regular users - delegate to visibility checker
-        const canAccess = await this.visibilityChecker.canAccess(
-          userId,
-          bookId,
-          'book',
-        );
+    // Platform admins bypass all visibility restrictions
+    if (!isPlatformAdmin) {
+      // Regular users - delegate to visibility checker
+      const canAccess = await this.visibilityChecker.canAccess(
+        userId,
+        bookId,
+        'book',
+      );
 
-        if (!canAccess) {
-          throw new ForbiddenException('You do not have access to this book');
-        }
-      }
-    } else {
-      // Anonymous users can only access globally_aligned books without mature content
-      if (book.visibilityTier !== 'globally_aligned') {
-        throw new ForbiddenException('You do not have access to this book');
-      }
-
-      if (book.matureContent) {
+      if (!canAccess) {
         throw new ForbiddenException('You do not have access to this book');
       }
     }
@@ -438,11 +412,16 @@ export class BookQueryService {
         score: score.score,
         notes: score.notes ?? undefined,
       })),
+      scoringReasoning: book.scoringReasoning ?? undefined,
       purchaseLinks: book.purchaseLinks.map((link) => ({
         retailer: link.retailer,
         url: link.url,
         isPrimary: link.isPrimary,
         price: link.price ?? undefined,
+      })),
+      endorsements: book.endorsements.map((endorsement) => ({
+        organizationId: endorsement.organizationId,
+        organizationName: endorsement.organization.name,
       })),
       endorsementCount: book._count.endorsements,
       createdAt: book.createdAt,

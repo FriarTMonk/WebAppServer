@@ -11,6 +11,11 @@ export class PurchaseLinkDto {
   price?: string;
 }
 
+export class BookEndorsementDto {
+  organizationId: string;
+  organizationName: string;
+}
+
 export class BookDetailDto {
   // Basic book fields
   id: string;
@@ -39,10 +44,14 @@ export class BookDetailDto {
   // Doctrine scores
   doctrineCategoryScores: DoctrineCategoryScoreDto[];
 
+  // Evaluation reasoning
+  scoringReasoning?: string;
+
   // Purchase links
   purchaseLinks: PurchaseLinkDto[];
 
-  // Endorsement count
+  // Endorsements
+  endorsements: BookEndorsementDto[];
   endorsementCount: number;
 
   // Metadata
