@@ -14,6 +14,7 @@ import { PdfLicenseType, BookEvaluationStatus } from '@prisma/client';
 interface CreateBookInput {
   isbn?: string;
   lookupUrl?: string;
+  purchaseUrl?: string;  // Where to buy the book (stored separately from lookup)
   title?: string;
   author?: string;
   publisher?: string;
@@ -86,7 +87,13 @@ export class BookOrchestratorService {
         publicationYear: metadata.publicationYear,
         description: metadata.description,
         coverImageUrl: metadata.coverImageUrl,
+        purchaseUrl: input.purchaseUrl || input.lookupUrl,  // Use explicit purchaseUrl or fallback to lookupUrl
         evaluationStatus: 'pending',
+        evaluationVersion: '1.0', // Will be updated after evaluation
+        genreTag: 'general', // Will be updated after evaluation
+        aiModel: 'pending', // Will be updated after evaluation
+        visibilityTier: 'not_aligned', // Will be updated after evaluation
+        analysisLevel: 'isbn_summary', // Will be updated after evaluation
         submittedById: userId,
         submittedByOrganizationId: organizationId,
       },
@@ -119,39 +126,50 @@ export class BookOrchestratorService {
   private async getMetadata(input: CreateBookInput): Promise<BookMetadata> {
     // Try ISBN lookup first
     if (input.isbn) {
+      this.logger.log(`Attempting ISBN lookup: ${input.isbn}`);
       const metadata = await this.metadataService.lookup(input.isbn);
       if (metadata) {
+        this.logger.log('Successfully retrieved metadata via ISBN');
         return metadata;
       }
       this.logger.warn(`ISBN lookup failed: ${input.isbn}`);
     }
 
-    // Try URL lookup
+    // Try URL lookup second
     if (input.lookupUrl) {
+      this.logger.log(`Attempting URL lookup: ${input.lookupUrl}`);
       const metadata = await this.metadataService.lookup(input.lookupUrl);
       if (metadata) {
+        this.logger.log('Successfully retrieved metadata via URL scraping');
         return metadata;
       }
       this.logger.warn(`URL lookup failed: ${input.lookupUrl}`);
     }
 
-    // Fall back to manual entry if available
+    // Fall back to manual entry if available (only if both ISBN and URL failed)
     if (input.title && input.author) {
-      this.logger.log('Using manual entry fields');
-      return {
+      this.logger.log('Using manual entry fields as fallback');
+      const metadata: BookMetadata = {
         title: input.title,
         author: input.author,
-        isbn: input.isbn,
-        publisher: input.publisher,
-        publicationYear: input.publicationYear,
-        description: input.description,
-        coverImageUrl: input.coverImageUrl,
       };
+
+      // Only include optional fields if they have truthy values
+      if (input.isbn) metadata.isbn = input.isbn;
+      if (input.publisher) metadata.publisher = input.publisher;
+      if (input.publicationYear) metadata.publicationYear = input.publicationYear;
+      if (input.description) metadata.description = input.description;
+      if (input.coverImageUrl) metadata.coverImageUrl = input.coverImageUrl;
+
+      return metadata;
     }
 
     // No lookup method succeeded and no manual data provided
+    if (input.isbn && input.lookupUrl) {
+      throw new BadRequestException('Could not find book via ISBN or URL, and no manual entry provided');
+    }
     if (input.isbn) {
-      throw new BadRequestException('ISBN not found');
+      throw new BadRequestException('ISBN not found and no manual entry provided');
     }
     if (input.lookupUrl) {
       throw new BadRequestException('Could not extract book info from URL and no manual entry provided');

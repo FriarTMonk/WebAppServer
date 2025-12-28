@@ -20,6 +20,10 @@ export class CreateBookDto {
   @IsUrl()
   lookupUrl?: string;
 
+  @IsOptional()
+  @IsUrl()
+  purchaseUrl?: string;
+
   // Manual entry fields (required if no ISBN/URL)
   @ValidateIf((o) => !o.isbn && !o.lookupUrl)
   @IsString()

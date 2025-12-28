@@ -102,6 +102,9 @@ model Organization {
   name                              String
   description                       String?
   specialtyTags                     String[]                 @default([])
+  website                           String?
+  organizationAddressId             String?
+  organizationAddress               OrganizationAddress?     @relation(fields: [organizationAddressId], references: [id])
   licenseType                       String?
   licenseStatus                     String                   @default("trial")
   licenseExpiresAt                  DateTime?
@@ -123,11 +126,12 @@ model Organization {
   roles                             OrganizationRole[]
   salesOpportunities                SalesOpportunity[]
   supportTickets                    SupportTicket[]
-  externalOrgsRecommended           ExternalOrganization[] @relation("ExternalOrgsRecommended")
+  externalOrgsRecommended           ExternalOrganization[]   @relation("ExternalOrgsRecommended")
 
   @@index([licenseStatus])
   @@index([licenseExpiresAt])
   @@index([isSystemOrganization])
+  @@index([organizationAddressId])
 }
 
 model OrganizationMember {
@@ -921,19 +925,35 @@ enum PdfLicenseType {
   analysis_only
 }
 
+// Deduplicated address table for organizations
+model OrganizationAddress {
+  id                     String                 @id @default(uuid())
+  street                 String
+  city                   String
+  state                  String
+  zipCode                String
+  country                String                 @default("USA")
+  latitude               Float?
+  longitude              Float?
+  // Normalized address for deduplication (e.g., "123 MAIN ST|CITY|STATE|ZIP")
+  normalizedAddress      String                 @unique
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  organizations          Organization[]
+  externalOrganizations  ExternalOrganization[]
+
+  @@index([city, state])
+  @@index([zipCode])
+}
+
 // External organization referrals (Phase 2 of Biblical Resources)
 model ExternalOrganization {
   id                          String                        @id @default(uuid())
   name                        String
   organizationTypes           String[]
   specialtyTags               String[]
-  address                     String
-  city                        String
-  state                       String
-  zipCode                     String
-  country                     String
-  latitude                    Float?
-  longitude                   Float?
+  organizationAddressId       String?
+  organizationAddress         OrganizationAddress?          @relation(fields: [organizationAddressId], references: [id])
   phone                       String?
   email                       String?
   website                     String?
@@ -948,7 +968,7 @@ model ExternalOrganization {
   recommendedBy               Organization                  @relation("ExternalOrgsRecommended", fields: [recommendedByOrganizationId], references: [id], onDelete: Cascade)
 
   @@index([recommendedByOrganizationId])
-  @@index([city, state])
+  @@index([organizationAddressId])
 }
 
 // User reading lists for personal book tracking

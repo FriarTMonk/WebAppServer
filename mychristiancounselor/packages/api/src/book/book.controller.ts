@@ -47,8 +47,9 @@ export class BookController {
    * List books with filtering and pagination.
    * GET /api/books
    *
-   * Public endpoint - returns globally aligned books for anonymous users.
-   * Authenticated users see more books based on their organization memberships.
+   * Requires authentication. All users (Registered, Subscribed, Organization) can access.
+   * Visibility filtering is applied based on user type and organization memberships.
+   * Platform admins see ALL books including pending evaluations.
    *
    * Query parameters:
    * - search: Filter by title or author (optional)
@@ -59,16 +60,16 @@ export class BookController {
    * - take: Pagination limit (optional, default: 20, max: 100)
    *
    * @param query - Query parameters for filtering and pagination
-   * @param user - Optional authenticated user from JWT token
+   * @param user - Authenticated user from JWT token
    * @returns Paginated list of books with metadata
    */
-  @Public()
+  @UseGuards(JwtAuthGuard)
   @Get()
   async listBooks(
     @Query() query: BookQueryDto,
-    @CurrentUser() user?: User,
+    @CurrentUser() user: User,
   ): Promise<BookListResponseDto> {
-    const userId = user?.id;
+    const userId = user.id;
     return this.queryService.findBooks(query, userId);
   }
 
@@ -76,8 +77,8 @@ export class BookController {
    * Get detailed information about a specific book.
    * GET /api/books/:id
    *
-   * Public endpoint with visibility enforcement:
-   * - globally_aligned books: accessible by everyone
+   * Requires authentication with visibility enforcement:
+   * - globally_aligned books: accessible by all authenticated users
    * - conceptually_aligned books: accessible by organization members
    * - not_aligned books: accessible by platform admins only
    * - mature content: respects age-gating rules
@@ -86,16 +87,16 @@ export class BookController {
    * Returns 403 if user doesn't have access to the book.
    *
    * @param id - Book ID
-   * @param user - Optional authenticated user from JWT token
+   * @param user - Authenticated user from JWT token
    * @returns Full book details including evaluation data
    */
-  @Public()
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   async getBookById(
     @Param('id') id: string,
-    @CurrentUser() user?: User,
+    @CurrentUser() user: User,
   ): Promise<BookDetailDto> {
-    const userId = user?.id;
+    const userId = user.id;
     return this.queryService.findBookById(id, userId);
   }
 

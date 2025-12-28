@@ -11,7 +11,7 @@ export class DuplicateDetectorService implements IDuplicateDetector {
   async findDuplicate(metadata: BookMetadata): Promise<string | null> {
     // Strategy 1: Exact ISBN match
     if (metadata.isbn) {
-      const byISBN = await this.prisma.book.findUnique({
+      const byISBN = await this.prisma.book.findFirst({
         where: { isbn: metadata.isbn },
       });
 

@@ -7,7 +7,7 @@ type UserWithOrgAccess = {
   id: string;
   accountType?: string;
   birthDate?: Date;
-  organizationMembers?: Array<{
+  organizationMemberships?: Array<{
     organizationId: string;
     organization?: {
       matureContentAccountTypeThreshold?: string;
@@ -48,7 +48,7 @@ export class VisibilityCheckerService implements IVisibilityChecker {
       this.prisma.user.findUnique({
         where: { id: userId },
         include: {
-          organizationMembers: {
+          organizationMemberships: {
             select: { organizationId: true, organization: true },
           },
         },
@@ -67,7 +67,7 @@ export class VisibilityCheckerService implements IVisibilityChecker {
     // Rule 2: Age-gating for mature content (data-driven)
     if (book.matureContent) {
       if (!user) {
-        this.logger.log(`Anonymous user cannot view mature content for book ${bookId}`);
+        this.logger.warn(`User ${userId} not found in database - cannot view mature content for book ${bookId}`);
         return false;
       }
       const canViewMature = this.canViewMatureContent(user);
@@ -85,11 +85,11 @@ export class VisibilityCheckerService implements IVisibilityChecker {
     // Rule 4: conceptually_aligned = org members only
     if (book.visibilityTier === 'conceptually_aligned') {
       if (!user) {
-        this.logger.log(`Anonymous user cannot access conceptually_aligned book ${bookId}`);
+        this.logger.warn(`User ${userId} not found in database - cannot access conceptually_aligned book ${bookId}`);
         return false;
       }
 
-      const userOrgIds = user.organizationMembers?.map(m => m.organizationId) || [];
+      const userOrgIds = user.organizationMemberships?.map(m => m.organizationId) || [];
       const bookOrgIds = book.endorsements.map(e => e.organizationId);
 
       const hasAccess = userOrgIds.some(id => bookOrgIds.includes(id));
@@ -109,7 +109,7 @@ export class VisibilityCheckerService implements IVisibilityChecker {
     const accountType = user.accountType || this.inferAccountType(user.birthDate);
 
     // Check user's org settings, fallback to platform default
-    const threshold = user.organizationMembers?.[0]?.organization?.matureContentAccountTypeThreshold
+    const threshold = user.organizationMemberships?.[0]?.organization?.matureContentAccountTypeThreshold
       || resourcesConfig.ageGating.defaultMatureContentThreshold;
 
     const typeOrder = ['child', 'teen', 'adult'];

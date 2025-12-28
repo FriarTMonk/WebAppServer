@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminResetPasswordDto, UpdateMemberRoleRequest } from '@mychristiancounselor/shared';
 import { EmailMetricsService } from '../email/email-metrics.service';
 import { CreateAdminOrganizationDto } from './dto/create-admin-organization.dto';
+import { UpdateAdminOrganizationDto } from './dto/update-admin-organization.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, IsPlatformAdminGuard)
@@ -236,6 +237,19 @@ export class AdminController {
     @Body() dto: CreateAdminOrganizationDto,
   ) {
     return this.adminService.createOrganization(user.id, dto);
+  }
+
+  /**
+   * Update an existing client organization
+   * PATCH /admin/organizations/:id
+   */
+  @Patch('organizations/:id')
+  async updateOrganization(
+    @CurrentUser() user: User,
+    @Param('id') organizationId: string,
+    @Body() dto: UpdateAdminOrganizationDto,
+  ) {
+    return this.adminService.updateOrganization(user.id, organizationId, dto);
   }
 
   /**

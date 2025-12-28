@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminLayout } from '../../../components/AdminLayout';
+import { AddRegisteredOrganizationForm } from '../../../components/AddRegisteredOrganizationForm';
 
 interface Organization {
   id: string;
@@ -12,8 +13,17 @@ interface Organization {
   licenseStatus: string;
   licenseExpiresAt: string | null;
   maxMembers: number;
+  specialtyTags: string[];
+  website: string | null;
   createdAt: string;
   archivedAt: string | null;
+  organizationAddress?: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
   _count: {
     members: number;
   };
@@ -28,6 +38,7 @@ export default function OrganizationsListPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Debounce search input
@@ -146,6 +157,12 @@ export default function OrganizationsListPage() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleEdit = (org: Organization, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingOrg(org);
+    setShowCreateModal(true);
   };
 
   return (
@@ -268,23 +285,31 @@ export default function OrganizationsListPage() {
                       {new Date(org.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      {org.licenseStatus === 'archived' ? (
+                      <div className="flex gap-2">
                         <button
-                          onClick={(e) => handleUnarchive(org.id, e)}
-                          disabled={actionLoading === org.id}
-                          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-xs"
+                          onClick={(e) => handleEdit(org, e)}
+                          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs"
                         >
-                          {actionLoading === org.id ? 'Unarchiving...' : 'Unarchive'}
+                          Edit
                         </button>
-                      ) : (
-                        <button
-                          onClick={(e) => handleArchive(org.id, e)}
-                          disabled={actionLoading === org.id}
-                          className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-xs"
-                        >
-                          {actionLoading === org.id ? 'Archiving...' : 'Archive'}
-                        </button>
-                      )}
+                        {org.licenseStatus === 'archived' ? (
+                          <button
+                            onClick={(e) => handleUnarchive(org.id, e)}
+                            disabled={actionLoading === org.id}
+                            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-xs"
+                          >
+                            {actionLoading === org.id ? 'Unarchiving...' : 'Unarchive'}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => handleArchive(org.id, e)}
+                            disabled={actionLoading === org.id}
+                            className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-xs"
+                          >
+                            {actionLoading === org.id ? 'Archiving...' : 'Archive'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -299,209 +324,37 @@ export default function OrganizationsListPage() {
           </div>
         )}
 
-        {/* Create Organization Modal */}
+        {/* Create/Edit Organization Modal */}
         {showCreateModal && (
-          <CreateOrganizationModal
-            onClose={() => setShowCreateModal(false)}
+          <AddRegisteredOrganizationForm
+            onClose={() => {
+              setShowCreateModal(false);
+              setEditingOrg(null);
+            }}
             onSuccess={() => {
               setShowCreateModal(false);
+              setEditingOrg(null);
               fetchOrganizations();
             }}
+            editingOrg={editingOrg ? {
+              id: editingOrg.id,
+              name: editingOrg.name,
+              description: editingOrg.description || '',
+              ownerEmail: '', // Not needed for edit, but required by interface
+              licenseType: editingOrg.licenseType || '',
+              licenseStatus: editingOrg.licenseStatus,
+              maxMembers: editingOrg.maxMembers,
+              specialtyTags: editingOrg.specialtyTags,
+              website: editingOrg.website || '',
+              street: editingOrg.organizationAddress?.street || '',
+              city: editingOrg.organizationAddress?.city || '',
+              state: editingOrg.organizationAddress?.state || '',
+              zipCode: editingOrg.organizationAddress?.zipCode || '',
+              country: editingOrg.organizationAddress?.country || 'USA',
+            } : undefined}
           />
         )}
       </div>
     </AdminLayout>
-  );
-}
-
-// Create Organization Modal Component
-interface CreateOrganizationModalProps {
-  onClose: () => void;
-  onSuccess: () => void;
-}
-
-function CreateOrganizationModal({ onClose, onSuccess }: CreateOrganizationModalProps) {
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    ownerEmail: '',
-    licenseType: '',
-    licenseStatus: 'trial',
-    maxMembers: 10,
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
-      const response = await fetch(`${apiUrl}/admin/organizations`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create organization');
-      }
-
-      const data = await response.json();
-      alert(data.message); // Show success message with invitation status
-      onSuccess();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900">Create New Organization</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-              disabled={loading}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Organization Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter organization name"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter organization description (optional)"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Owner Email <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              value={formData.ownerEmail}
-              onChange={(e) => setFormData({ ...formData, ownerEmail: e.target.value })}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="owner@example.com"
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              This person will be able to manage the organization. If they don't have an account, they'll receive an invitation.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                License Type
-              </label>
-              <select
-                value={formData.licenseType}
-                onChange={(e) => setFormData({ ...formData, licenseType: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">None</option>
-                <option value="Family">Family</option>
-                <option value="Small">Small</option>
-                <option value="Medium">Medium</option>
-                <option value="Large">Large</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                License Status
-              </label>
-              <select
-                value={formData.licenseStatus}
-                onChange={(e) => setFormData({ ...formData, licenseStatus: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="trial">Trial</option>
-                <option value="active">Active</option>
-                <option value="expired">Expired</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Max Members
-            </label>
-            <input
-              type="number"
-              value={formData.maxMembers}
-              onChange={(e) => setFormData({ ...formData, maxMembers: parseInt(e.target.value) })}
-              min={1}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Footer */}
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? 'Creating...' : 'Create Organization'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
   );
 }

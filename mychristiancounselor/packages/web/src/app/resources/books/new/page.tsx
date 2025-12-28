@@ -6,8 +6,7 @@ import { useUserPermissions } from '../../../../hooks/useUserPermissions';
 import { bookApi, CreateBookData } from '../../../../lib/api';
 import clsx from 'clsx';
 
-type WizardStep = 'lookup' | 'metadata' | 'pdf';
-type LookupMethod = 'auto' | 'manual';
+type WizardStep = 'metadata' | 'pdf';
 
 // Constants
 const MAX_FILE_SIZE_MB = 100;
@@ -30,9 +29,7 @@ const isUrl = (str: string): boolean => {
 export default function AddNewBookPage() {
   const router = useRouter();
   const permissions = useUserPermissions();
-  const [step, setStep] = useState<WizardStep>('lookup');
-  const [lookupMethod, setLookupMethod] = useState<LookupMethod>('auto');
-  const [lookupValue, setLookupValue] = useState('');
+  const [step, setStep] = useState<WizardStep>('metadata');
   const [bookData, setBookData] = useState<CreateBookData>({});
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfLicenseType, setPdfLicenseType] = useState('');
@@ -61,25 +58,8 @@ export default function AddNewBookPage() {
     );
   }
 
-  const handleLookupContinue = () => {
-    if (lookupMethod === 'auto') {
-      if (!lookupValue.trim()) {
-        setError('Please enter an ISBN or URL.');
-        return;
-      }
-      // Determine if it's ISBN or URL using proper URL validation
-      if (isUrl(lookupValue.trim())) {
-        setBookData({ lookupUrl: lookupValue.trim() });
-      } else {
-        setBookData({ isbn: lookupValue.trim() });
-      }
-    }
-    setError(null);
-    setStep('metadata');
-  };
-
   const handleMetadataBack = () => {
-    setStep('lookup');
+    router.push('/resources/books');
   };
 
   const handleMetadataContinue = () => {
@@ -188,11 +168,9 @@ export default function AddNewBookPage() {
             </div>
             {/* Progress Indicator */}
             <div className="flex items-center gap-2">
-              <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium', step === 'lookup' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600')}>1</div>
+              <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium', step === 'metadata' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600')}>1</div>
               <div className="w-8 h-0.5 bg-gray-300"></div>
-              <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium', step === 'metadata' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600')}>2</div>
-              <div className="w-8 h-0.5 bg-gray-300"></div>
-              <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium', step === 'pdf' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600')}>3</div>
+              <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium', step === 'pdf' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600')}>2</div>
             </div>
           </div>
         </div>
@@ -207,61 +185,7 @@ export default function AddNewBookPage() {
             </div>
           )}
 
-          {/* Step 1: Lookup Method */}
-          {step === 'lookup' && (
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-4">How would you like to add this book?</h2>
-
-              <div className="space-y-4 mb-6">
-                <label className={clsx('flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors', lookupMethod === 'auto' ? 'border-blue-600' : 'border-gray-300')}>
-                  <input
-                    type="radio"
-                    name="lookupMethod"
-                    checked={lookupMethod === 'auto'}
-                    onChange={() => setLookupMethod('auto')}
-                    className="mt-1"
-                  />
-                  <div>
-                    <div className="font-medium text-gray-900">ISBN or URL Lookup (Recommended)</div>
-                    <div className="text-sm text-gray-600">Enter ISBN, Amazon URL, or Christian bookstore link</div>
-                  </div>
-                </label>
-
-                {lookupMethod === 'auto' && (
-                  <input
-                    type="text"
-                    value={lookupValue}
-                    onChange={(e) => setLookupValue(e.target.value)}
-                    placeholder="ISBN, Amazon URL, or Christian bookstore link..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                )}
-
-                <label className={clsx('flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors', lookupMethod === 'manual' ? 'border-blue-600' : 'border-gray-300')}>
-                  <input
-                    type="radio"
-                    name="lookupMethod"
-                    checked={lookupMethod === 'manual'}
-                    onChange={() => setLookupMethod('manual')}
-                    className="mt-1"
-                  />
-                  <div>
-                    <div className="font-medium text-gray-900">Manual Entry</div>
-                    <div className="text-sm text-gray-600">I'll enter the details myself</div>
-                  </div>
-                </label>
-              </div>
-
-              <button
-                onClick={handleLookupContinue}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Continue →
-              </button>
-            </div>
-          )}
-
-          {/* Step 2: Metadata */}
+          {/* Step 1: Metadata */}
           {step === 'metadata' && (
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-4">Book Information</h2>
@@ -297,6 +221,36 @@ export default function AddNewBookPage() {
                     aria-describedby={error && !bookData.author?.trim() ? 'error-message' : undefined}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                </div>
+
+                <div>
+                  <label htmlFor="book-isbn" className="block text-sm font-medium text-gray-700 mb-1">
+                    ISBN (optional - for automatic lookup)
+                  </label>
+                  <input
+                    id="book-isbn"
+                    type="text"
+                    value={bookData.isbn || ''}
+                    onChange={(e) => setBookData({ ...bookData, isbn: e.target.value })}
+                    placeholder="e.g., 9781451673333"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">If provided, we'll try to auto-fill book details</p>
+                </div>
+
+                <div>
+                  <label htmlFor="book-purchase-url" className="block text-sm font-medium text-gray-700 mb-1">
+                    Purchase URL (optional)
+                  </label>
+                  <input
+                    id="book-purchase-url"
+                    type="url"
+                    value={bookData.purchaseUrl || ''}
+                    onChange={(e) => setBookData({ ...bookData, purchaseUrl: e.target.value })}
+                    placeholder="e.g., https://www.christianbook.com/..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Link where the book can be purchased (e.g., ChristianBook.com)</p>
                 </div>
 
                 <div>
@@ -365,7 +319,7 @@ export default function AddNewBookPage() {
             </div>
           )}
 
-          {/* Step 3: PDF Upload */}
+          {/* Step 2: PDF Upload */}
           {step === 'pdf' && (
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">PDF Upload (Optional but Recommended)</h2>
