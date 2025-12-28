@@ -1,11 +1,24 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { IBookMetadataProvider, BookMetadata } from './metadata.provider.interface';
+import { GoogleBooksProvider } from './google-books.provider';
+import { ChristianBookProvider } from './christianbook.provider';
 import { resourcesConfig } from '../../../config/resources.config';
 
 @Injectable()
-export class MetadataAggregatorService {
+export class MetadataAggregatorService implements OnModuleInit {
   private readonly logger = new Logger(MetadataAggregatorService.name);
   private providers: Map<string, IBookMetadataProvider> = new Map();
+
+  constructor(
+    private readonly googleBooksProvider: GoogleBooksProvider,
+    private readonly christianBookProvider: ChristianBookProvider,
+  ) {}
+
+  onModuleInit() {
+    // Register providers in priority order
+    this.registerProvider('christianbook', this.christianBookProvider);
+    this.registerProvider('google-books', this.googleBooksProvider);
+  }
 
   registerProvider(name: string, provider: IBookMetadataProvider): void {
     this.providers.set(name, provider);

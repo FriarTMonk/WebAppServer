@@ -117,23 +117,27 @@ export class BookOrchestratorService {
   }
 
   private async getMetadata(input: CreateBookInput): Promise<BookMetadata> {
+    // Try ISBN lookup first
     if (input.isbn) {
       const metadata = await this.metadataService.lookup(input.isbn);
-      if (!metadata) {
-        throw new BadRequestException('ISBN not found');
+      if (metadata) {
+        return metadata;
       }
-      return metadata;
+      this.logger.warn(`ISBN lookup failed: ${input.isbn}`);
     }
 
+    // Try URL lookup
     if (input.lookupUrl) {
       const metadata = await this.metadataService.lookup(input.lookupUrl);
-      if (!metadata) {
-        throw new BadRequestException('Could not extract book info from URL');
+      if (metadata) {
+        return metadata;
       }
-      return metadata;
+      this.logger.warn(`URL lookup failed: ${input.lookupUrl}`);
     }
 
+    // Fall back to manual entry if available
     if (input.title && input.author) {
+      this.logger.log('Using manual entry fields');
       return {
         title: input.title,
         author: input.author,
@@ -145,6 +149,13 @@ export class BookOrchestratorService {
       };
     }
 
+    // No lookup method succeeded and no manual data provided
+    if (input.isbn) {
+      throw new BadRequestException('ISBN not found');
+    }
+    if (input.lookupUrl) {
+      throw new BadRequestException('Could not extract book info from URL and no manual entry provided');
+    }
     throw new BadRequestException('Must provide ISBN, URL, or title+author');
   }
 

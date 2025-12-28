@@ -6,6 +6,7 @@ import {
   ValidateIf,
   Min,
   Max,
+  IsNotEmpty,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 
@@ -22,10 +23,12 @@ export class CreateBookDto {
   // Manual entry fields (required if no ISBN/URL)
   @ValidateIf((o) => !o.isbn && !o.lookupUrl)
   @IsString()
+  @IsNotEmpty()
   title?: string;
 
   @ValidateIf((o) => !o.isbn && !o.lookupUrl)
   @IsString()
+  @IsNotEmpty()
   author?: string;
 
   // Optional fields for manual entry or override

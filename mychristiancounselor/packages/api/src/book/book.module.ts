@@ -11,6 +11,7 @@ import { EvaluationScorerService } from './services/evaluation-scorer.service';
 import { EvaluationOrchestratorService } from './services/evaluation-orchestrator.service';
 import { MetadataAggregatorService } from './providers/metadata/metadata-aggregator.service';
 import { GoogleBooksProvider } from './providers/metadata/google-books.provider';
+import { ChristianBookProvider } from './providers/metadata/christianbook.provider';
 import { S3StorageProvider } from './providers/storage/s3-storage.provider';
 import { StorageOrchestratorService } from './services/storage-orchestrator.service';
 import { BookEvaluationProcessor } from './processors/book-evaluation.processor';
@@ -38,6 +39,7 @@ import { queueConfig } from '../config/queue.config';
     EvaluationOrchestratorService,
     MetadataAggregatorService,
     GoogleBooksProvider,
+    ChristianBookProvider,
     S3StorageProvider,
     StorageOrchestratorService,
     BookEvaluationProcessor,
