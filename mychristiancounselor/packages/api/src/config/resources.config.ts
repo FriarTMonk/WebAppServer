@@ -105,10 +105,44 @@ Genre: {{genre}}
 Content to Analyze:
 {{content}}
 
+EVALUATION CRITERIA:
+
+1. **Biblical Alignment Score (0-100%)**: Does this book agree with Scripture itself (Sola Scriptura)?
+   - Core doctrines (deity of Christ, resurrection, salvation): Strict adherence required
+   - Non-core doctrines (eschatology, baptism, spiritual gifts): Lenient if biblically grounded
+
+2. **Genre-Specific Evaluation**:
+
+   **For Non-Fiction (Theology, Devotional, Study, Commentary):**
+   - Doctrinal precision matters
+   - Scripture usage and accuracy
+   - Theological soundness
+   - Direct teaching should align with biblical doctrine
+
+   **For Fiction (Novels, Allegory, Christian Fiction):**
+   - Evaluate themes and values, NOT doctrinal precision of creative elements
+   - Key questions:
+     * Are the spiritual lessons biblical?
+     * Does the worldview align with Scripture?
+     * Does it draw readers toward truth?
+   - Creative narrative elements (angels, demons, spiritual warfare depictions) should not be judged as theological statements
+   - Fiction can score ≥90% if themes honor God and align with biblical values, even with creative liberties in storytelling
+
+3. **Theological Analysis**:
+   - Summarize the book's theological positions or themes
+   - Identify per-doctrine alignment (Soteriology, Ecclesiology, Eschatology, Pneumatology, Christology)
+   - Tag denominational perspective (Reformed, Arminian, Catholic, Orthodox, etc.) - informational only
+   - Note theological strengths and any concerns
+
+4. **Mature Content Detection**:
+   - Flag if contains sexual content or violence/trauma themes
+   - Does NOT include theological complexity
+
 Provide your evaluation as a JSON object with the following structure:
 {
   "biblicalAlignmentScore": <number 0-100>,
-  "theologicalSummary": "<brief summary of theological position>",
+  "genreTag": "<detected genre: 'fiction', 'theology', 'devotional', 'study', 'commentary', or 'general'>",
+  "theologicalSummary": "<brief summary of theological position or themes>",
   "doctrineCategoryScores": [
     {
       "category": "<doctrine name>",
@@ -122,7 +156,7 @@ Provide your evaluation as a JSON object with the following structure:
   "scriptureComparisonNotes": "<how well it aligns with Scripture>",
   "theologicalStrengths": ["<strength1>", "<strength2>"],
   "theologicalConcerns": ["<concern1>", "<concern2>"],
-  "scoringReasoning": "<detailed explanation of the score>"
+  "scoringReasoning": "<detailed explanation of the score, noting whether evaluated as fiction or non-fiction>"
 }
 
 Focus on alignment with core Christian doctrines, scriptural accuracy, and theological soundness.`,

@@ -41,11 +41,25 @@ export class EvaluationScorerService implements IEvaluationScorer {
       return {
         ...result,
         modelUsed: modelConfig.name,
-        analysisLevel: input.contentType,
+        analysisLevel: this.mapContentTypeToAnalysisLevel(input.contentType),
       };
     } catch (error) {
       this.logger.error(`Evaluation failed: ${error.message}`);
       throw error;
+    }
+  }
+
+  private mapContentTypeToAnalysisLevel(contentType: 'description' | 'summary' | 'full_text'): 'isbn_summary' | 'pdf_summary' | 'full_text' {
+    // Map internal content types to Prisma enum values
+    switch (contentType) {
+      case 'description':
+        return 'isbn_summary'; // Description comes from ISBN metadata
+      case 'summary':
+        return 'pdf_summary';
+      case 'full_text':
+        return 'full_text';
+      default:
+        return 'isbn_summary'; // Safe fallback
     }
   }
 
@@ -66,11 +80,21 @@ export class EvaluationScorerService implements IEvaluationScorer {
       throw new Error('No text content in Claude response');
     }
 
+    // Strip markdown code fences if present (Claude sometimes wraps JSON in ```json ... ```)
+    let jsonText = textContent.text.trim();
+    if (jsonText.startsWith('```')) {
+      // Remove opening fence (```json or ```)
+      jsonText = jsonText.replace(/^```(?:json)?\s*\n/, '');
+      // Remove closing fence (```)
+      jsonText = jsonText.replace(/\n```\s*$/, '');
+    }
+
     // Parse JSON response
-    const parsed = JSON.parse(textContent.text);
+    const parsed = JSON.parse(jsonText);
 
     return {
       score: parsed.biblicalAlignmentScore,
+      genreTag: parsed.genreTag || 'general', // Extract genre from AI response
       summary: parsed.theologicalSummary,
       doctrineCategoryScores: parsed.doctrineCategoryScores || [],
       denominationalTags: parsed.denominationalTags || [],

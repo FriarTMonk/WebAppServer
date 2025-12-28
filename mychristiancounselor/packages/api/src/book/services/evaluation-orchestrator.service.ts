@@ -41,6 +41,7 @@ export class EvaluationOrchestratorService {
       },
       content: content.text,
       contentType: content.type,
+      genre: book.genreTag, // Pass genre for fiction-aware evaluation
     });
 
     this.logger.log(`Sonnet evaluation: ${sonnetResult.score}%`);
@@ -61,6 +62,7 @@ export class EvaluationOrchestratorService {
         },
         content: content.text,
         contentType: content.type,
+        genre: book.genreTag, // Pass genre for fiction-aware evaluation
         useEscalationModel: true, // Signal to use Opus
       });
 
@@ -172,6 +174,7 @@ export class EvaluationOrchestratorService {
       data: {
         biblicalAlignmentScore: result.score,
         visibilityTier,
+        genreTag: result.genreTag, // Save AI-detected genre
         theologicalSummary: result.summary,
         denominationalTags: result.denominationalTags,
         matureContent: result.matureContent,
@@ -188,7 +191,7 @@ export class EvaluationOrchestratorService {
     });
 
     // Create evaluation record
-    await this.prisma.evaluationRecord.create({
+    await this.prisma.bookEvaluation.create({
       data: {
         bookId,
         version: resourcesConfig.evaluation.currentVersion,

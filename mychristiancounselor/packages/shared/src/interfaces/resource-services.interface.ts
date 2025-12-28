@@ -53,6 +53,7 @@ export interface EvaluationInput {
 
 export interface EvaluationResult {
   score: number; // 0-100
+  genreTag: string; // AI-detected genre (fiction, theology, devotional, etc.)
   summary: string;
   doctrineCategoryScores: Array<{ category: string; score: number; notes?: string }>;
   denominationalTags: string[];
