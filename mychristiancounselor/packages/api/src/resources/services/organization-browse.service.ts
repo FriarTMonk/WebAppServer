@@ -1,0 +1,216 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import {
+  OrganizationBrowseQueryDto,
+  OrganizationBrowseResponseDto,
+  OrganizationListItemDto,
+} from '../dto';
+
+@Injectable()
+export class OrganizationBrowseService {
+  private readonly logger = new Logger(OrganizationBrowseService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  async browseOrganizations(
+    query: OrganizationBrowseQueryDto,
+    userId: string,
+  ): Promise<OrganizationBrowseResponseDto> {
+    const {
+      search,
+      organizationType,
+      city,
+      state,
+      skip = 0,
+      take = 20,
+    } = query;
+
+    this.logger.log(
+      `Browsing organizations with query: ${JSON.stringify(query)}, userId: ${userId}`,
+    );
+
+    // Get user info (org memberships and platform admin status)
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        isPlatformAdmin: true,
+        organizationMemberships: {
+          select: { organizationId: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const userOrgIds = user.organizationMemberships?.map(m => m.organizationId) || [];
+    const isPlatformAdmin = user.isPlatformAdmin ?? false;
+
+    // Build WHERE clause for registered organizations
+    const registeredOrgWhere = this.buildRegisteredOrgWhereClause(
+      search,
+      organizationType,
+      city,
+      state,
+    );
+
+    // Build WHERE clause for external organizations
+    const externalOrgWhere = this.buildExternalOrgWhereClause(
+      search,
+      organizationType,
+      city,
+      state,
+      userOrgIds,
+      isPlatformAdmin,
+    );
+
+    // Fetch both registered and external organizations in parallel
+    const [registeredOrgs, externalOrgs] = await Promise.all([
+      this.prisma.organization.findMany({
+        where: registeredOrgWhere,
+        skip,
+        take,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          specialtyTags: true,
+        },
+        orderBy: [{ name: 'asc' }],
+      }),
+      // Only fetch external orgs if user is in an org or is platform admin
+      (userOrgIds.length > 0 || isPlatformAdmin)
+        ? this.prisma.externalOrganization.findMany({
+            where: externalOrgWhere,
+            select: {
+              id: true,
+              name: true,
+              organizationTypes: true,
+              city: true,
+              state: true,
+              zipCode: true,
+              phone: true,
+              email: true,
+              website: true,
+            },
+            orderBy: [{ name: 'asc' }],
+          })
+        : Promise.resolve([]),
+    ]);
+
+    // Map to DTOs
+    const registeredOrgDtos: OrganizationListItemDto[] = registeredOrgs.map((org) => ({
+      id: org.id,
+      name: org.name,
+      description: org.description ?? undefined,
+      organizationTypes: org.specialtyTags,
+      isExternal: false,
+    }));
+
+    const externalOrgDtos: OrganizationListItemDto[] = externalOrgs.map((org) => ({
+      id: org.id,
+      name: org.name,
+      organizationTypes: org.organizationTypes,
+      city: org.city ?? undefined,
+      state: org.state ?? undefined,
+      zipCode: org.zipCode ?? undefined,
+      phone: org.phone ?? undefined,
+      email: org.email ?? undefined,
+      website: org.website ?? undefined,
+      isExternal: true,
+    }));
+
+    // Combine and sort by name
+    const allOrgs = [...registeredOrgDtos, ...externalOrgDtos].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+
+    return {
+      organizations: allOrgs,
+      total: allOrgs.length,
+      skip,
+      take,
+    };
+  }
+
+  private buildRegisteredOrgWhereClause(
+    search?: string,
+    organizationType?: string,
+    city?: string,
+    state?: string,
+  ): any {
+    const where: any = {
+      AND: [],
+    };
+
+    // Exclude archived organizations
+    where.AND.push({ archivedAt: null });
+
+    // Search filter (name or description)
+    if (search) {
+      where.AND.push({
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+        ],
+      });
+    }
+
+    // Note: Registered organizations don't have organizationType, city, state fields
+    // These filters only apply to external organizations
+
+    return where;
+  }
+
+  private buildExternalOrgWhereClause(
+    search?: string,
+    organizationType?: string,
+    city?: string,
+    state?: string,
+    userOrgIds?: string[],
+    isPlatformAdmin?: boolean,
+  ): any {
+    const where: any = {
+      AND: [],
+    };
+
+    // Visibility filter: only show external orgs from user's organizations
+    // Unless user is platform admin
+    if (!isPlatformAdmin && userOrgIds && userOrgIds.length > 0) {
+      where.AND.push({
+        recommendedByOrganizationId: { in: userOrgIds },
+      });
+    }
+
+    // Search filter (name)
+    if (search) {
+      where.AND.push({
+        name: { contains: search, mode: 'insensitive' },
+      });
+    }
+
+    // Organization type filter
+    if (organizationType) {
+      where.AND.push({
+        organizationTypes: { has: organizationType },
+      });
+    }
+
+    // City filter
+    if (city) {
+      where.AND.push({
+        city: { contains: city, mode: 'insensitive' },
+      });
+    }
+
+    // State filter
+    if (state) {
+      where.AND.push({
+        state: { equals: state, mode: 'insensitive' },
+      });
+    }
+
+    return where;
+  }
+}

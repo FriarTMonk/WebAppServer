@@ -82,6 +82,14 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
 
     return response;
   } catch (error) {
+    // Silently handle AbortError (expected when component unmounts or request is cancelled)
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw error; // Re-throw without logging - this is expected behavior
+    }
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
+      throw error; // Re-throw without logging - this is expected behavior
+    }
+
     // Network errors, etc.
     console.error('[API] Fetch error:', error);
     throw error;
@@ -192,6 +200,7 @@ export interface CreateBookData {
   // Lookup methods (mutually exclusive with manual entry)
   isbn?: string;
   lookupUrl?: string;
+  purchaseUrl?: string;
 
   // Manual entry fields (required if no ISBN/URL)
   title?: string;
@@ -233,5 +242,28 @@ export const bookApi = {
       method: 'POST',
       body: formData, // FormData passed directly, not stringified
     });
+  },
+};
+
+export interface OrganizationFilters {
+  search?: string;
+  organizationType?: string;
+  city?: string;
+  state?: string;
+  skip?: number;
+  take?: number;
+}
+
+export const organizationApi = {
+  browse: (filters: OrganizationFilters, options?: FetchOptions) => {
+    const params = new URLSearchParams();
+    if (filters.search) params.append('search', filters.search);
+    if (filters.organizationType) params.append('organizationType', filters.organizationType);
+    if (filters.city) params.append('city', filters.city);
+    if (filters.state) params.append('state', filters.state);
+    if (filters.skip !== undefined) params.append('skip', String(filters.skip));
+    if (filters.take !== undefined) params.append('take', String(filters.take));
+
+    return apiGet(`/resources/organizations?${params.toString()}`, options);
   },
 };

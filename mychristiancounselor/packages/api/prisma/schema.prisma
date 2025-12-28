@@ -101,6 +101,7 @@ model Organization {
   id                                String                   @id @default(uuid())
   name                              String
   description                       String?
+  specialtyTags                     String[]                 @default([])
   licenseType                       String?
   licenseStatus                     String                   @default("trial")
   licenseExpiresAt                  DateTime?
@@ -671,6 +672,7 @@ model Book {
   publicationYear           Int?
   description               String?
   coverImageUrl             String?
+  purchaseUrl               String?                 // URL where book can be purchased
   biblicalAlignmentScore    Int?
   evaluationVersion         String
   theologicalSummary        String?
