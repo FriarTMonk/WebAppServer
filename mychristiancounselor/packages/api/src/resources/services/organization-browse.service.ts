@@ -21,6 +21,7 @@ export class OrganizationBrowseService {
       organizationType,
       city,
       state,
+      externalOnly = false,
       skip = 0,
       take = 20,
     } = query;
@@ -66,8 +67,9 @@ export class OrganizationBrowseService {
     );
 
     // Fetch both registered and external organizations in parallel
+    // If externalOnly is true, skip fetching client organizations
     const [registeredOrgs, externalOrgs] = await Promise.all([
-      this.prisma.organization.findMany({
+      externalOnly ? Promise.resolve([]) : this.prisma.organization.findMany({
         where: registeredOrgWhere,
         skip,
         take,
@@ -76,6 +78,16 @@ export class OrganizationBrowseService {
           name: true,
           description: true,
           specialtyTags: true,
+          website: true,
+          organizationAddress: {
+            select: {
+              street: true,
+              city: true,
+              state: true,
+              zipCode: true,
+              country: true,
+            },
+          },
         },
         orderBy: [{ name: 'asc' }],
       }),
@@ -87,12 +99,18 @@ export class OrganizationBrowseService {
               id: true,
               name: true,
               organizationTypes: true,
-              city: true,
-              state: true,
-              zipCode: true,
               phone: true,
               email: true,
               website: true,
+              organizationAddress: {
+                select: {
+                  street: true,
+                  city: true,
+                  state: true,
+                  zipCode: true,
+                  country: true,
+                },
+              },
             },
             orderBy: [{ name: 'asc' }],
           })
@@ -105,6 +123,10 @@ export class OrganizationBrowseService {
       name: org.name,
       description: org.description ?? undefined,
       organizationTypes: org.specialtyTags,
+      website: org.website ?? undefined,
+      city: org.organizationAddress?.city,
+      state: org.organizationAddress?.state,
+      zipCode: org.organizationAddress?.zipCode,
       isExternal: false,
     }));
 
@@ -112,9 +134,9 @@ export class OrganizationBrowseService {
       id: org.id,
       name: org.name,
       organizationTypes: org.organizationTypes,
-      city: org.city ?? undefined,
-      state: org.state ?? undefined,
-      zipCode: org.zipCode ?? undefined,
+      city: org.organizationAddress?.city,
+      state: org.organizationAddress?.state,
+      zipCode: org.organizationAddress?.zipCode,
       phone: org.phone ?? undefined,
       email: org.email ?? undefined,
       website: org.website ?? undefined,
@@ -147,6 +169,9 @@ export class OrganizationBrowseService {
     // Exclude archived organizations
     where.AND.push({ archivedAt: null });
 
+    // NEVER show platform organizations (isSystemOrganization=true) in browse
+    where.AND.push({ isSystemOrganization: false });
+
     // Search filter (name or description)
     if (search) {
       where.AND.push({
@@ -157,8 +182,25 @@ export class OrganizationBrowseService {
       });
     }
 
-    // Note: Registered organizations don't have organizationType, city, state fields
-    // These filters only apply to external organizations
+    // City and State filters for registered organizations
+    if (city) {
+      where.AND.push({
+        organizationAddress: {
+          city: { contains: city, mode: 'insensitive' },
+        },
+      });
+    }
+
+    if (state) {
+      where.AND.push({
+        organizationAddress: {
+          state: { equals: state, mode: 'insensitive' },
+        },
+      });
+    }
+
+    // Note: Registered organizations don't have organizationType field
+    // That filter only applies to external organizations
 
     return where;
   }
@@ -197,17 +239,20 @@ export class OrganizationBrowseService {
       });
     }
 
-    // City filter
+    // City and State filters now reference the organizationAddress relationship
     if (city) {
       where.AND.push({
-        city: { contains: city, mode: 'insensitive' },
+        organizationAddress: {
+          city: { contains: city, mode: 'insensitive' },
+        },
       });
     }
 
-    // State filter
     if (state) {
       where.AND.push({
-        state: { equals: state, mode: 'insensitive' },
+        organizationAddress: {
+          state: { equals: state, mode: 'insensitive' },
+        },
       });
     }
 

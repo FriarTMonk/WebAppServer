@@ -362,6 +362,7 @@ export class AdminService {
                 members: true,
               },
             },
+            organizationAddress: true,
           },
           orderBy: { createdAt: 'desc' },
           skip: filters?.skip || 0,
@@ -1139,6 +1140,14 @@ export class AdminService {
     return role;
   }
 
+  /**
+   * Normalize address for deduplication
+   */
+  private normalizeAddress(street: string, city: string, state: string, zipCode: string): string {
+    const normalize = (str: string) => str.toUpperCase().trim().replace(/\s+/g, ' ');
+    return `${normalize(street)}|${normalize(city)}|${normalize(state)}|${normalize(zipCode)}`;
+  }
+
   async createOrganization(
     adminUserId: string,
     data: {
@@ -1148,6 +1157,13 @@ export class AdminService {
       licenseType?: string;
       licenseStatus?: string;
       maxMembers?: number;
+      specialtyTags: string[];
+      website?: string;
+      street: string;
+      city: string;
+      state: string;
+      zipCode: string;
+      country?: string;
     },
   ): Promise<any> {
     this.logger.log(`[createOrganization] Admin ${adminUserId} creating organization: ${data.name} with owner: ${data.ownerEmail}`);
@@ -1158,6 +1174,21 @@ export class AdminService {
       throw new BadRequestException('Invalid owner email format');
     }
 
+    // Upsert address (deduplication)
+    const normalizedAddress = this.normalizeAddress(data.street, data.city, data.state, data.zipCode);
+    const address = await this.prisma.organizationAddress.upsert({
+      where: { normalizedAddress },
+      create: {
+        street: data.street,
+        city: data.city,
+        state: data.state,
+        zipCode: data.zipCode,
+        country: data.country || 'USA',
+        normalizedAddress,
+      },
+      update: {},
+    });
+
     // Create organization with provided data
     const organization = await this.prisma.organization.create({
       data: {
@@ -1166,6 +1197,9 @@ export class AdminService {
         licenseType: data.licenseType || null,
         licenseStatus: data.licenseStatus || 'trial',
         maxMembers: data.maxMembers || 10,
+        specialtyTags: data.specialtyTags,
+        website: data.website,
+        organizationAddressId: address.id,
       },
     });
 
@@ -1279,6 +1313,115 @@ export class AdminService {
       message: ownerInvitationSent
         ? `Organization created successfully. Invitation sent to ${data.ownerEmail}`
         : `Organization created successfully. ${data.ownerEmail} added as owner.`,
+    };
+  }
+
+  /**
+   * Update an existing client organization (Platform Admin only)
+   */
+  async updateOrganization(
+    adminUserId: string,
+    organizationId: string,
+    data: {
+      name: string;
+      description?: string;
+      licenseType?: string;
+      licenseStatus?: string;
+      maxMembers?: number;
+      specialtyTags?: string[];
+      website?: string;
+      street?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+      country?: string;
+    },
+  ): Promise<any> {
+    this.logger.log(`[updateOrganization] Admin ${adminUserId} updating organization: ${organizationId}`);
+
+    // Verify organization exists
+    const existingOrg = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+    });
+
+    if (!existingOrg) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    // Only update address if all address fields are provided
+    let addressId = existingOrg.organizationAddressId;
+    if (data.street && data.city && data.state && data.zipCode) {
+      // Upsert address (deduplication)
+      const normalizedAddress = this.normalizeAddress(data.street, data.city, data.state, data.zipCode);
+      const address = await this.prisma.organizationAddress.upsert({
+        where: { normalizedAddress },
+        create: {
+          street: data.street,
+          city: data.city,
+          state: data.state,
+          zipCode: data.zipCode,
+          country: data.country || 'USA',
+          normalizedAddress,
+        },
+        update: {},
+      });
+      addressId = address.id;
+    }
+
+    // Build update data object
+    const updateData: any = {
+      name: data.name,
+      description: data.description,
+      licenseType: data.licenseType || null,
+      licenseStatus: data.licenseStatus || 'trial',
+      maxMembers: data.maxMembers || 10,
+      website: data.website,
+      organizationAddressId: addressId,
+    };
+
+    // Only update specialtyTags if provided
+    if (data.specialtyTags !== undefined) {
+      updateData.specialtyTags = data.specialtyTags;
+    }
+
+    // Update organization
+    const organization = await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: updateData,
+      include: {
+        organizationAddress: true,
+      },
+    });
+
+    // Log admin action
+    await this.logAdminAction(
+      adminUserId,
+      'update_organization',
+      {
+        organizationId,
+        organizationName: organization.name,
+        licenseType: data.licenseType,
+        maxMembers: data.maxMembers,
+      },
+      undefined,
+      organizationId,
+    );
+
+    this.logger.log(`[updateOrganization] Successfully updated organization ${organizationId}`);
+
+    return {
+      organization: {
+        id: organization.id,
+        name: organization.name,
+        description: organization.description,
+        licenseStatus: organization.licenseStatus,
+        licenseType: organization.licenseType,
+        maxMembers: organization.maxMembers,
+        specialtyTags: organization.specialtyTags,
+        website: organization.website,
+        organizationAddress: organization.organizationAddress,
+      },
+      message: 'Organization updated successfully',
     };
   }
 

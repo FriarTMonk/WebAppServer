@@ -1,13 +1,42 @@
+import { IsOptional, IsString, IsInt, Min, IsBoolean } from 'class-validator';
+import { Type } from 'class-transformer';
+
 export class OrganizationBrowseQueryDto {
   // Pagination
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
   skip?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
   take?: number;
 
   // Filters
+  @IsOptional()
+  @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsString()
   organizationType?: string;
+
+  @IsOptional()
+  @IsString()
   city?: string;
+
+  @IsOptional()
+  @IsString()
   state?: string;
+
+  // External organizations only (excludes client organizations)
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  externalOnly?: boolean;
 }
 
 export class OrganizationListItemDto {

@@ -2,14 +2,12 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { BookFilters } from '@/components/BookFilters';
 import { BookCard } from '@/components/BookCard';
 import { bookApi, BookFilters as BookFiltersType } from '@/lib/api';
 
 export default function OrgAdminEndorsedBooksPage() {
   const router = useRouter();
-  const permissions = useUserPermissions();
   const [books, setBooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,18 +21,6 @@ export default function OrgAdminEndorsedBooksPage() {
     showMatureContent: false,
     sort: 'relevance',
   });
-  const [permissionsChecked, setPermissionsChecked] = useState(false);
-
-  // Check permissions
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPermissionsChecked(true);
-      if (!permissions.isOrgAdmin) {
-        router.push('/dashboard');
-      }
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [permissions.isOrgAdmin, router]);
 
   // Use ref to track the latest request ID to ignore stale responses
   const requestIdRef = useRef(0);
@@ -101,16 +87,12 @@ export default function OrgAdminEndorsedBooksPage() {
     };
   }, []);
 
-  // Load books when filters/permissions change
+  // Load books when filters change
   useEffect(() => {
-    if (!permissionsChecked || !permissions.isOrgAdmin) {
-      return;
-    }
-
     // Increment request ID for new request
     const currentRequestId = ++requestIdRef.current;
     fetchBooks(filters, currentRequestId);
-  }, [fetchBooks, filters, permissionsChecked, permissions.isOrgAdmin]);
+  }, [fetchBooks, filters]);
 
   const handleFilterChange = (newFilters: any) => {
     setFilters((prev: any) => ({ ...prev, ...newFilters }));
@@ -127,26 +109,6 @@ export default function OrgAdminEndorsedBooksPage() {
       sort: 'relevance',
     });
   };
-
-  if (!permissionsChecked) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse">
-          <div className="h-8 w-64 bg-gray-200 rounded mb-4" />
-          <div className="h-10 w-full bg-gray-200 rounded mb-6" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-96 bg-gray-200 rounded" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!permissions.isOrgAdmin) {
-    return null; // Will redirect in useEffect
-  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -233,7 +195,7 @@ export default function OrgAdminEndorsedBooksPage() {
             <BookCard
               key={book.id}
               book={book}
-              onClick={() => router.push(`/org-admin/resources/books/${book.id}`)}
+              onClick={() => router.push(`/resources/books/${book.id}`)}
             />
           ))}
         </div>

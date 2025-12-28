@@ -62,7 +62,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                       href="/admin/organizations"
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/organizations')}`}
                     >
-                      Organizations
+                      Customers
                     </Link>
                   </li>
                   <li>

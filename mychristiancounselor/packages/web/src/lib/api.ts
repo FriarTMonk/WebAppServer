@@ -250,6 +250,7 @@ export interface OrganizationFilters {
   organizationType?: string;
   city?: string;
   state?: string;
+  externalOnly?: boolean;
   skip?: number;
   take?: number;
 }
@@ -261,6 +262,7 @@ export const organizationApi = {
     if (filters.organizationType) params.append('organizationType', filters.organizationType);
     if (filters.city) params.append('city', filters.city);
     if (filters.state) params.append('state', filters.state);
+    if (filters.externalOnly) params.append('externalOnly', 'true');
     if (filters.skip !== undefined) params.append('skip', String(filters.skip));
     if (filters.take !== undefined) params.append('take', String(filters.take));
 

@@ -624,7 +624,7 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center z-10">
           <div className="text-sm text-gray-500">Plan Details</div>
           <button
             onClick={onClose}
