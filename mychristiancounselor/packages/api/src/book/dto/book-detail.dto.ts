@@ -31,6 +31,7 @@ export class BookDetailDto {
   evaluationStatus: string;
   biblicalAlignmentScore?: number;
   visibilityTier: string;
+  genreTag?: string;
   matureContent: boolean;
   evaluatedAt?: Date;
 
@@ -48,6 +49,7 @@ export class BookDetailDto {
   scoringReasoning?: string;
 
   // Purchase links
+  purchaseUrl?: string;
   purchaseLinks: PurchaseLinkDto[];
 
   // Endorsements

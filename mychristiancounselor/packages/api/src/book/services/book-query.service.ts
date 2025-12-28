@@ -400,6 +400,7 @@ export class BookQueryService {
       evaluationStatus: book.evaluationStatus,
       biblicalAlignmentScore: book.biblicalAlignmentScore ?? undefined,
       visibilityTier: book.visibilityTier,
+      genreTag: book.genreTag ?? undefined,
       matureContent: book.matureContent,
       evaluatedAt: book.evaluationHistory[0]?.evaluatedAt,
       theologicalSummary: book.theologicalSummary ?? undefined,
@@ -413,6 +414,7 @@ export class BookQueryService {
         notes: score.notes ?? undefined,
       })),
       scoringReasoning: book.scoringReasoning ?? undefined,
+      purchaseUrl: book.purchaseUrl ?? undefined,
       purchaseLinks: book.purchaseLinks.map((link) => ({
         retailer: link.retailer,
         url: link.url,
