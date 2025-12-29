@@ -19,6 +19,7 @@ interface Organization {
   description?: string;
   organizationTypes?: string[];
   specialtyTags?: string[];
+  street?: string;
   city?: string;
   state?: string;
   zipCode?: string;
@@ -184,10 +185,10 @@ export function ExternalOrganizationsList({
             name: editingOrg.name,
             organizationTypes: editingOrg.organizationTypes || [],
             specialtyTags: editingOrg.specialtyTags || [],
-            street: editingOrg.organizationAddress?.street || '',
-            city: editingOrg.organizationAddress?.city || editingOrg.city || '',
-            state: editingOrg.organizationAddress?.state || editingOrg.state || '',
-            zipCode: editingOrg.organizationAddress?.zipCode || editingOrg.zipCode || '',
+            street: editingOrg.street || editingOrg.organizationAddress?.street || '',
+            city: editingOrg.city || editingOrg.organizationAddress?.city || '',
+            state: editingOrg.state || editingOrg.organizationAddress?.state || '',
+            zipCode: editingOrg.zipCode || editingOrg.organizationAddress?.zipCode || '',
             country: editingOrg.organizationAddress?.country || 'USA',
             phone: editingOrg.phone || '',
             email: editingOrg.email || '',

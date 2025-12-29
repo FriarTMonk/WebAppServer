@@ -44,12 +44,16 @@ export class OrganizationListItemDto {
   name: string;
   description?: string;
   organizationTypes?: string[];
+  specialtyTags?: string[];
+  street?: string;
   city?: string;
   state?: string;
   zipCode?: string;
   phone?: string;
   email?: string;
   website?: string;
+  hours?: string;
+  recommendationNote?: string;
   isExternal: boolean; // true for ExternalOrganization, false for Organization
 }
 

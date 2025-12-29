@@ -99,9 +99,12 @@ export class OrganizationBrowseService {
               id: true,
               name: true,
               organizationTypes: true,
+              specialtyTags: true,
               phone: true,
               email: true,
               website: true,
+              hours: true,
+              recommendationNote: true,
               organizationAddress: {
                 select: {
                   street: true,
@@ -134,12 +137,16 @@ export class OrganizationBrowseService {
       id: org.id,
       name: org.name,
       organizationTypes: org.organizationTypes,
+      specialtyTags: org.specialtyTags,
+      street: org.organizationAddress?.street,
       city: org.organizationAddress?.city,
       state: org.organizationAddress?.state,
       zipCode: org.organizationAddress?.zipCode,
       phone: org.phone ?? undefined,
       email: org.email ?? undefined,
       website: org.website ?? undefined,
+      hours: org.hours ?? undefined,
+      recommendationNote: org.recommendationNote ?? undefined,
       isExternal: true,
     }));
 
