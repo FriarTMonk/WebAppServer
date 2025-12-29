@@ -40,6 +40,37 @@ aws lightsail create-container-service-deployment --service-name web --cli-input
 ### Why This Happens:
 If you run `npx nx build web` WITHOUT the environment variables set, Next.js will use defaults (localhost) and bake those into the bundle. The .env.production file is NOT automatically loaded by NX builds.
 
+## CRITICAL: AWS Lightsail Redis Configuration
+
+**REDIS_HOST MUST BE "localhost" NOT "redis"**
+
+In AWS Lightsail container services, all containers in the same service share the same network namespace. They communicate via **localhost**, NOT via container names.
+
+### Problem:
+- Setting `REDIS_HOST: "redis"` causes DNS resolution errors: `ENOTFOUND redis`
+- BullMQ job queue cannot connect to Redis
+- Book evaluation jobs never run (books stuck with no scores)
+- Any background job processing fails
+
+### Solution:
+In `lightsail-api-deployment.json`, set:
+```json
+"REDIS_HOST": "localhost"
+```
+
+### Verification:
+Check API logs for Redis connection:
+```bash
+aws lightsail get-container-log --service-name api --container-name api --region us-east-2 | grep -i "redis\|bullmq"
+```
+
+Should NOT see: `Error: getaddrinfo ENOTFOUND redis`
+
+### Related Symptoms:
+- Books created but `evaluationStatus` stays 'pending' forever
+- No theological scores generated
+- Job queue operations fail silently
+
 ## Authentication & User Types
 
 **CRITICAL: There are NO anonymous users in this system.**
