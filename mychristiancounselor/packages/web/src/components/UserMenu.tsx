@@ -178,9 +178,7 @@ export function UserMenu() {
             <MenuButton
               onClick={() => {
                 setIsOpen(false);
-                logout();
-                // Use window.location for immediate navigation (bypass component checks)
-                window.location.href = '/';
+                logout(); // Logout now handles redirect to landing page
               }}
             >
               Sign out

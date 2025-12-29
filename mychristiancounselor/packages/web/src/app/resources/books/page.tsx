@@ -98,7 +98,7 @@ export default function BrowseBooksPage() {
     }
   }, []);
 
-  // Check access: user needs active subscription OR organization membership
+  // Check access: platform admin OR active subscription OR organization membership
   useEffect(() => {
     const checkAccess = async () => {
       if (!user) {
@@ -108,6 +108,14 @@ export default function BrowseBooksPage() {
       }
 
       try {
+        // Platform admins have access to everything
+        const isPlatformAdmin = permissions?.isPlatformAdmin || false;
+        if (isPlatformAdmin) {
+          setHasAccess(true);
+          setAccessChecked(true);
+          return;
+        }
+
         const hasActiveSubscription = user.subscriptionStatus === 'active';
 
         // Check if user has organization membership
@@ -129,7 +137,7 @@ export default function BrowseBooksPage() {
     };
 
     checkAccess();
-  }, [user]);
+  }, [user, permissions]);
 
   // Redirect if no access
   useEffect(() => {

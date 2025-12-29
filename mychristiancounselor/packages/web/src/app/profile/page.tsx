@@ -23,6 +23,7 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    birthDate: '',
     preferredTranslation: 'KJV',
     comparisonTranslations: ['ESV', 'NASB', 'NIV', 'NKJV'],
   });
@@ -52,6 +53,7 @@ export default function ProfilePage() {
           setFormData({
             firstName: data.firstName || '',
             lastName: data.lastName || '',
+            birthDate: data.birthDate ? new Date(data.birthDate).toISOString().split('T')[0] : '',
             preferredTranslation: data.preferredTranslation || 'KJV',
             comparisonTranslations: data.comparisonTranslations || ['ESV', 'NASB', 'NIV', 'NKJV'],
           });
@@ -220,6 +222,14 @@ export default function ProfilePage() {
                 <p className="text-gray-900">{profile?.lastName || 'Not set'}</p>
               </div>
               <div>
+                <label className="text-sm text-gray-600">Birth Date</label>
+                <p className="text-gray-900">
+                  {profile?.birthDate
+                    ? new Date(profile.birthDate).toLocaleDateString()
+                    : 'Not set'}
+                </p>
+              </div>
+              <div>
                 <label className="text-sm text-gray-600">Account Type</label>
                 <p className="text-gray-900 capitalize">{profile?.accountType}</p>
               </div>
@@ -248,6 +258,17 @@ export default function ProfilePage() {
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Birth Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.birthDate}
+                  onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
               <div className="flex gap-2">
                 <button
                   type="submit"
@@ -262,6 +283,7 @@ export default function ProfilePage() {
                     setFormData({
                       firstName: profile?.firstName || '',
                       lastName: profile?.lastName || '',
+                      birthDate: profile?.birthDate ? new Date(profile.birthDate).toISOString().split('T')[0] : '',
                       preferredTranslation: profile?.preferredTranslation || 'KJV',
                       comparisonTranslations: profile?.comparisonTranslations || ['ESV', 'NASB', 'NIV', 'NKJV'],
                     });

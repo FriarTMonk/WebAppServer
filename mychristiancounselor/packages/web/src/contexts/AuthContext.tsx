@@ -159,6 +159,10 @@ export function AuthProvider({ children }: { children: React.ReactNode}) {
     clearTokens();
     setUser(null);
     setMorphSession(null);
+    // Always redirect to landing page after logout
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
   };
 
   const refreshAuth = async (): Promise<void> => {

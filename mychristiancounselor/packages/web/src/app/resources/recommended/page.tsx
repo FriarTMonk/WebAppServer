@@ -3,15 +3,17 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useUserPermissions } from '../../../hooks/useUserPermissions';
 import { apiGet } from '../../../lib/api';
 
 export default function RecommendedForMePage() {
   const router = useRouter();
   const { user } = useAuth();
+  const permissions = useUserPermissions();
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [accessChecked, setAccessChecked] = useState(false);
 
-  // Check access: user needs active subscription OR organization membership
+  // Check access: platform admin OR active subscription OR organization membership
   useEffect(() => {
     const checkAccess = async () => {
       if (!user) {
@@ -21,6 +23,14 @@ export default function RecommendedForMePage() {
       }
 
       try {
+        // Platform admins have access to everything
+        const isPlatformAdmin = permissions?.isPlatformAdmin || false;
+        if (isPlatformAdmin) {
+          setHasAccess(true);
+          setAccessChecked(true);
+          return;
+        }
+
         const hasActiveSubscription = user.subscriptionStatus === 'active';
 
         // Check if user has organization membership
@@ -41,7 +51,7 @@ export default function RecommendedForMePage() {
     };
 
     checkAccess();
-  }, [user]);
+  }, [user, permissions]);
 
   // Redirect if no access
   useEffect(() => {
