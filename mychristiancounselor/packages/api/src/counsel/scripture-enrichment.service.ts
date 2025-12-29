@@ -61,9 +61,14 @@ export class ScriptureEnrichmentService {
     // Extract scripture references from AI response
     const extractedRefs = this.counselingAi.extractScriptureReferences(aiContent);
 
+    this.logger.log(`Scripture extraction: found ${extractedRefs.length} references in AI response`);
+    if (extractedRefs.length > 0) {
+      this.logger.log(`Extracted references: ${JSON.stringify(extractedRefs)}`);
+    }
+
     if (extractedRefs.length === 0) {
       // No verses extracted - fall back to theme-based scriptures
-      this.logger.debug('No scripture references extracted from AI response, using theme-based scriptures');
+      this.logger.log('No scripture references extracted from AI response, using theme-based scriptures');
       return themeBasedScriptures.map(s => ({ ...s, source: 'theme' as const }));
     }
 
@@ -79,6 +84,7 @@ export class ScriptureEnrichmentService {
       return themeBasedScriptures.map(s => ({ ...s, source: 'theme' as const }));
     }
 
+    this.logger.log(`Successfully enriched ${enrichedVerses.length} scripture references (${extractedRefs.length} extracted)`);
     return enrichedVerses;
   }
 

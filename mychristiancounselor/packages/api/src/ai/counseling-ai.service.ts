@@ -235,9 +235,9 @@ You'll have opportunities for more specific questions after this.`;
     }> = [];
 
     // Regular expression to match Bible verse patterns
-    // Matches: "John 3:16", "1 Corinthians 13:4-7", "Genesis 1:1-3", etc.
-    // Uses lookbehind and alternation: numbered books allow 2 words, others allow 1 word only
-    const bibleVersePattern = /(?<=^|\s)(?:(\d)\s([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)|([A-Z][a-z]+))\s(\d+):(\d+)(?:-(\d+))?/g;
+    // Matches: "John 3:16", "(Psalm 13:1, KJV)", "1 Corinthians 13:4-7", etc.
+    // Uses lookbehind to allow whitespace, punctuation, or start of string before book name
+    const bibleVersePattern = /(?<=^|[\s(":,])(?:(\d)\s([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)|([A-Z][a-z]+))\s(\d+):(\d+)(?:-(\d+))?/g;
 
     let match;
     while ((match = bibleVersePattern.exec(text)) !== null) {
