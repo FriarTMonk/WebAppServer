@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { HttpModule } from '@nestjs/axios';
 import { PrismaModule } from '../prisma/prisma.module';
+import { AiModule } from '../ai/ai.module';
 import { BookController } from './book.controller';
 import { BookOrchestratorService } from './book-orchestrator.service';
 import { DuplicateDetectorService } from './services/duplicate-detector.service';
@@ -21,6 +22,7 @@ import { queueConfig } from '../config/queue.config';
 @Module({
   imports: [
     PrismaModule,
+    AiModule,
     HttpModule,
     BullModule.registerQueue({
       name: queueConfig.evaluationQueue.name,
