@@ -43,12 +43,13 @@ export default function AddNewBookPage() {
     // OR after 3 seconds (assume they're actually false)
     if (permissions.canAddBooks || permissions.isOrgAdmin || permissions.isPlatformAdmin || permissions.isCounselor) {
       setPermissionsLoaded(true);
-    } else {
-      const timer = setTimeout(() => {
-        setPermissionsLoaded(true);
-      }, 3000);
-      return () => clearTimeout(timer);
+      return;
     }
+
+    const timer = setTimeout(() => {
+      setPermissionsLoaded(true);
+    }, 3000);
+    return () => clearTimeout(timer);
   }, [permissions]);
 
   // Check permissions and redirect if needed (only AFTER they're loaded)
