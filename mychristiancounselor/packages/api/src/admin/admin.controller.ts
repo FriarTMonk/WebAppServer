@@ -8,6 +8,10 @@ import { AdminResetPasswordDto, UpdateMemberRoleRequest } from '@mychristiancoun
 import { EmailMetricsService } from '../email/email-metrics.service';
 import { CreateAdminOrganizationDto } from './dto/create-admin-organization.dto';
 import { UpdateAdminOrganizationDto } from './dto/update-admin-organization.dto';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { PrismaService } from '../prisma/prisma.service';
+import { queueConfig } from '../config/queue.config';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, IsPlatformAdminGuard)
@@ -17,6 +21,9 @@ export class AdminController {
   constructor(
     private adminService: AdminService,
     private emailMetricsService: EmailMetricsService,
+    private prisma: PrismaService,
+    @InjectQueue(queueConfig.evaluationQueue.name)
+    private readonly evaluationQueue: Queue,
   ) {}
 
   @Get('audit-log')
@@ -370,5 +377,66 @@ export class AdminController {
       status,
       organizationId,
     });
+  }
+
+  /**
+   * Manually trigger book evaluation
+   * POST /api/admin/books/:id/trigger-evaluation
+   *
+   * Platform admin only. Queues an evaluation job for a specific book.
+   * Useful for re-triggering evaluations or fixing books stuck in pending status.
+   */
+  @Post('books/:id/trigger-evaluation')
+  async triggerBookEvaluation(
+    @CurrentUser() user: User,
+    @Param('id') bookId: string,
+  ) {
+    await this.adminService.logAdminAction(
+      user.id,
+      'trigger_book_evaluation',
+      { bookId },
+    );
+
+    // Verify book exists
+    const book = await this.prisma.book.findUnique({
+      where: { id: bookId },
+      select: {
+        id: true,
+        title: true,
+        author: true,
+        evaluationStatus: true,
+      },
+    });
+
+    if (!book) {
+      return {
+        success: false,
+        message: 'Book not found',
+      };
+    }
+
+    // Queue evaluation job
+    await this.evaluationQueue.add(
+      'evaluate-book',
+      { bookId: book.id },
+      {
+        priority: 1, // High priority for manual trigger
+        attempts: queueConfig.defaultJobOptions.attempts,
+        backoff: queueConfig.defaultJobOptions.backoff,
+      }
+    );
+
+    this.logger.log(`Manually triggered evaluation for book ${book.id} by admin ${user.id}`);
+
+    return {
+      success: true,
+      message: `Evaluation job queued for "${book.title}" by ${book.author}`,
+      book: {
+        id: book.id,
+        title: book.title,
+        author: book.author,
+        currentStatus: book.evaluationStatus,
+      },
+    };
   }
 }
