@@ -16,6 +16,9 @@ COPY --chown=nextjs:nodejs packages/web/.next/standalone ./
 COPY --chown=nextjs:nodejs packages/web/.next/static ./packages/web/.next/static
 COPY --chown=nextjs:nodejs packages/web/public ./packages/web/public
 
+# Copy environment file to project root where Next.js expects it
+COPY --chown=nextjs:nodejs packages/web/.env.production ./packages/web/.env.production
+
 # Switch to non-root user
 USER nextjs
 

@@ -128,13 +128,13 @@ export default function OrgAdminEndorsedBooksPage() {
         <h1 className="text-3xl font-bold">Our Endorsed Books</h1>
         <div className="flex gap-2">
           <button
-            onClick={() => router.push('/org-admin/resources/books/evaluations')}
+            onClick={() => router.push('/org-admin/resources/books/pending')}
             className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             View Pending Evaluations
           </button>
           <button
-            onClick={() => router.push('/org-admin/resources/books/new')}
+            onClick={() => router.push('/resources/books/new')}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Add New Book
@@ -211,7 +211,7 @@ export default function OrgAdminEndorsedBooksPage() {
           </p>
           {!filters.search && (!filters.genre || filters.genre === 'all') && (
             <button
-              onClick={() => router.push('/org-admin/resources/books/new')}
+              onClick={() => router.push('/resources/books/new')}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               Add First Book

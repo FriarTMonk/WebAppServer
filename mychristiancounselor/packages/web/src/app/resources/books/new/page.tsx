@@ -35,27 +35,41 @@ export default function AddNewBookPage() {
   const [pdfLicenseType, setPdfLicenseType] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [permissionsChecked, setPermissionsChecked] = useState(false);
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
 
-  // Check permissions and redirect if needed
+  // Wait for permissions to actually load before checking them
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setPermissionsChecked(true);
-      if (!permissions.canAddBooks) {
-        router.push('/resources/books');
-      }
-    }, 100);
+    // Permissions are loaded when any permission is true (not default state)
+    // OR after 3 seconds (assume they're actually false)
+    if (permissions.canAddBooks || permissions.isOrgAdmin || permissions.isPlatformAdmin || permissions.isCounselor) {
+      setPermissionsLoaded(true);
+    } else {
+      const timer = setTimeout(() => {
+        setPermissionsLoaded(true);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [permissions]);
 
-    return () => clearTimeout(timer);
-  }, [permissions.canAddBooks, router]);
+  // Check permissions and redirect if needed (only AFTER they're loaded)
+  useEffect(() => {
+    if (permissionsLoaded && !permissions.canAddBooks) {
+      router.push('/resources/books');
+    }
+  }, [permissionsLoaded, permissions.canAddBooks, router]);
 
-  // Show loading state while checking permissions
-  if (!permissionsChecked) {
+  // Show loading state while permissions are loading
+  if (!permissionsLoaded) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-pulse text-gray-600">Loading...</div>
       </div>
     );
+  }
+
+  // If no permission after loading, return null (redirect will happen)
+  if (!permissions.canAddBooks) {
+    return null;
   }
 
   const handleMetadataBack = () => {

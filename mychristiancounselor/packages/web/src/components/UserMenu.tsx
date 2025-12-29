@@ -136,7 +136,7 @@ export function UserMenu() {
           </MenuButton>
           <ResourcesMenuSection
             onNavigate={() => setIsOpen(false)}
-            hasAccess={true}
+            hasAccess={hasJournalAccess}
           />
           {permissions.isCounselor && (
             <MenuButton onClick={() => { setIsOpen(false); router.push('/counsel'); }}>
@@ -178,7 +178,9 @@ export function UserMenu() {
             <MenuButton
               onClick={() => {
                 setIsOpen(false);
-                logout(); // Logout now handles redirect to landing page
+                logout();
+                // Use window.location for immediate navigation (bypass component checks)
+                window.location.href = '/';
               }}
             >
               Sign out
