@@ -209,19 +209,62 @@ export class BedrockService {
     }
 
     try {
-      // Strip markdown code fences if present (```json ... ```)
-      let jsonText = textContent.text.trim();
-      if (jsonText.startsWith('```json')) {
-        jsonText = jsonText.replace(/^```json\s*\n?/, '').replace(/\n?```\s*$/, '');
-      } else if (jsonText.startsWith('```')) {
-        jsonText = jsonText.replace(/^```\s*\n?/, '').replace(/\n?```\s*$/, '');
-      }
+      const rawText = textContent.text.trim();
+      let jsonText = this.extractJSON(rawText);
 
       return JSON.parse(jsonText);
     } catch (error) {
-      this.logger.error(`Failed to parse JSON response: ${textContent.text}`);
+      this.logger.error(`Failed to parse JSON response: ${textContent.text.substring(0, 500)}...`);
       throw new Error('Model did not return valid JSON');
     }
+  }
+
+  /**
+   * Intelligently extract JSON from text that may contain markdown or other formatting
+   */
+  private extractJSON(text: string): string {
+    // Remove leading/trailing whitespace
+    let cleaned = text.trim();
+
+    // Strategy 1: Try to strip markdown code fences with language identifier
+    if (cleaned.match(/^```(?:json|JSON)\s*\n/)) {
+      cleaned = cleaned.replace(/^```(?:json|JSON)\s*\n?/, '').replace(/\n?```\s*$/, '');
+    }
+    // Strategy 2: Try to strip generic markdown code fences
+    else if (cleaned.match(/^```\s*\n/)) {
+      cleaned = cleaned.replace(/^```\s*\n?/, '').replace(/\n?```\s*$/, '');
+    }
+    // Strategy 3: Look for JSON embedded within markdown code blocks anywhere in text
+    else {
+      const markdownMatch = cleaned.match(/```(?:json|JSON)?\s*\n?([\s\S]*?)\n?```/);
+      if (markdownMatch) {
+        cleaned = markdownMatch[1].trim();
+      }
+    }
+
+    // Strategy 4: If still no valid JSON start, try to find JSON object/array in the text
+    if (!cleaned.startsWith('{') && !cleaned.startsWith('[')) {
+      // Look for first { or [ and try to extract from there
+      const objectMatch = cleaned.match(/(\{[\s\S]*\})/);
+      const arrayMatch = cleaned.match(/(\[[\s\S]*\])/);
+
+      if (objectMatch) {
+        cleaned = objectMatch[1];
+      } else if (arrayMatch) {
+        cleaned = arrayMatch[1];
+      }
+    }
+
+    // Strategy 5: Remove any trailing non-JSON text after the last } or ]
+    if (cleaned.includes('}')) {
+      const lastBrace = cleaned.lastIndexOf('}');
+      cleaned = cleaned.substring(0, lastBrace + 1);
+    } else if (cleaned.includes(']')) {
+      const lastBracket = cleaned.lastIndexOf(']');
+      cleaned = cleaned.substring(0, lastBracket + 1);
+    }
+
+    return cleaned.trim();
   }
 
   /**
