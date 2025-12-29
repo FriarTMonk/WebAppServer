@@ -91,6 +91,18 @@ export function getBullModuleOptions(): BullModuleOptions {
       port: queueConfig.redis.port,
       password: queueConfig.redis.password,
       db: queueConfig.redis.db,
+      // Connection timeout and retry configuration
+      connectTimeout: 5000, // 5 seconds timeout
+      retryStrategy: (times: number) => {
+        // Exponential backoff with max 30 seconds between retries
+        const delay = Math.min(times * 1000, 30000);
+        console.log(`[Redis] Connection attempt ${times}, retrying in ${delay}ms`);
+        return delay;
+      },
+      // Prevent connection errors from bubbling up
+      lazyConnect: true,
+      enableOfflineQueue: true,
+      maxRetriesPerRequest: 3,
     },
   };
 }
