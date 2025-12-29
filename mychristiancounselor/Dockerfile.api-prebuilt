@@ -1,7 +1,7 @@
 # Simple Dockerfile for pre-built API app
 # Use this when the app is already built locally to avoid memory issues
 
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
