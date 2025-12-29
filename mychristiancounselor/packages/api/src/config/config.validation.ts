@@ -21,9 +21,10 @@ export const configValidationSchema = Joi.object({
   POSTMARK_MOCK_MODE: Joi.string().valid('true', 'false').default('true'),
   SUPPORT_EMAIL: Joi.string().email().default('support@mychristiancounselor.com'),
 
-  // AI Services
-  OPENAI_API_KEY: Joi.string().required(),
-  ANTHROPIC_API_KEY: Joi.string().optional(),
+  // AI Services - AWS Bedrock (HIPAA-compliant)
+  AWS_ACCESS_KEY_ID: Joi.string().required(),
+  AWS_SECRET_ACCESS_KEY: Joi.string().required(),
+  AWS_REGION: Joi.string().default('us-east-1'),
 
   // Payment Service (Stripe)
   STRIPE_SECRET_KEY: Joi.string().required(),

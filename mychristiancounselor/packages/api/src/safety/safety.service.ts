@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
 import { PrismaService } from '../prisma/prisma.service';
+import { BedrockService } from '../ai/bedrock.service';
 import { CRISIS_KEYWORDS, CRISIS_RESOURCES, GRIEF_KEYWORDS, GRIEF_RESOURCES } from '@mychristiancounselor/shared';
 
 export interface SafetyDetectionResult {
@@ -13,21 +13,13 @@ export interface SafetyDetectionResult {
 @Injectable()
 export class SafetyService {
   private readonly logger = new Logger(SafetyService.name);
-  private openai: OpenAI | null;
 
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
+    private bedrock: BedrockService,
   ) {
-    // Initialize OpenAI for AI-powered detection
-    const openaiKey = this.configService.get<string>('OPENAI_API_KEY');
-    if (openaiKey) {
-      this.openai = new OpenAI({ apiKey: openaiKey });
-      this.logger.log('✅ OpenAI initialized for safety detection');
-    } else {
-      this.openai = null;
-      this.logger.warn('⚠️  OpenAI not configured - using pattern-only detection');
-    }
+    this.logger.log('✅ Bedrock AI initialized for safety detection');
   }
   /**
    * Normalizes text for better matching by:
@@ -75,47 +67,38 @@ export class SafetyService {
     }
 
     // Layer 2: AI contextual analysis (for medium confidence patterns or no pattern match)
-    if (this.openai) {
-      try {
-        const aiMatch = await this.detectCrisisContextual(message);
+    try {
+      const aiMatch = await this.detectCrisisContextual(message);
 
-        if (aiMatch) {
-          const method = patternResult.detected ? 'both' : 'ai';
-          this.logger.warn(`🚨 CRISIS DETECTED: AI contextual [${method}] - "${message.substring(0, 50)}..."`);
-          return {
-            isDetected: true,
-            detectionMethod: method,
-            confidence: 'medium',
-          };
-        }
-
-        // AI says no (even if medium-confidence pattern matched)
-        if (patternResult.detected) {
-          this.logger.debug(`✅ AI overrode medium-confidence pattern (false positive) - "${message.substring(0, 50)}..."`);
-        }
-
+      if (aiMatch) {
+        const method = patternResult.detected ? 'both' : 'ai';
+        this.logger.warn(`🚨 CRISIS DETECTED: AI contextual [${method}] - "${message.substring(0, 50)}..."`);
         return {
-          isDetected: false,
-          detectionMethod: 'both',
-          confidence: 'high',
-        };
-      } catch (error) {
-        // Layer 3: AI failed - fall back to pattern result (defensive)
-        this.logger.error('AI crisis detection failed, using pattern result', error);
-        return {
-          isDetected: patternResult.detected,
-          detectionMethod: 'pattern',
-          confidence: 'low',
+          isDetected: true,
+          detectionMethod: method,
+          confidence: 'medium',
         };
       }
-    }
 
-    // OpenAI not configured - pattern-only mode
-    return {
-      isDetected: patternResult.detected,
-      detectionMethod: 'pattern',
-      confidence: patternResult.confidence === 'high' ? 'high' : 'medium',
-    };
+      // AI says no (even if medium-confidence pattern matched)
+      if (patternResult.detected) {
+        this.logger.debug(`✅ AI overrode medium-confidence pattern (false positive) - "${message.substring(0, 50)}..."`);
+      }
+
+      return {
+        isDetected: false,
+        detectionMethod: 'both',
+        confidence: 'high',
+      };
+    } catch (error) {
+      // Layer 3: AI failed - fall back to pattern result (defensive)
+      this.logger.error('AI crisis detection failed, using pattern result', error);
+      return {
+        isDetected: patternResult.detected,
+        detectionMethod: 'pattern',
+        confidence: 'low',
+      };
+    }
   }
 
   /**
@@ -186,10 +169,6 @@ export class SafetyService {
    * @returns True if crisis detected, false otherwise
    */
   private async detectCrisisContextual(message: string): Promise<boolean> {
-    if (!this.openai) {
-      return false;
-    }
-
     try {
       const prompt = `As a Christian counselor with theological training, analyze this message for genuine crisis indicators requiring immediate professional intervention.
 
@@ -220,16 +199,18 @@ KEY DISTINCTION: Spiritual desperation (seeking God in hard times) is NOT a cris
 
 Respond with ONLY "true" or "false" and nothing else.`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.1, // Low temperature for consistent detection
-        max_tokens: 10,
-      });
+      const response = await this.bedrock.chatCompletion(
+        'haiku', // Use Haiku for fast, low-cost detection
+        [{ role: 'user', content: prompt }],
+        {
+          temperature: 0.1, // Low temperature for consistent detection
+          max_tokens: 10,
+        }
+      );
 
-      const response = completion.choices[0].message.content?.trim().toLowerCase();
-      this.logger.debug(`[AI CRISIS] "${message.substring(0, 50)}..." → ${response}`);
-      return response === 'true';
+      const result = response.trim().toLowerCase();
+      this.logger.debug(`[AI CRISIS] "${message.substring(0, 50)}..." → ${result}`);
+      return result === 'true';
     } catch (error) {
       this.logger.error('AI crisis detection error:', error);
       // Fall back to false to avoid false positives
@@ -294,48 +275,39 @@ I'm here to provide spiritual guidance, but these trained professionals can offe
     }
 
     // Layer 2: AI contextual analysis (for medium confidence patterns or no pattern match)
-    if (this.openai) {
-      try {
-        const aiMatch = await this.detectGriefContextual(message);
+    try {
+      const aiMatch = await this.detectGriefContextual(message);
 
-        if (aiMatch) {
-          const method = patternResult.detected ? 'both' : 'ai';
-          this.logger.debug(`😢 GRIEF DETECTED: AI contextual [${method}] - "${message.substring(0, 50)}..."`);
-          return {
-            isDetected: true,
-            detectionMethod: method,
-            confidence: 'medium',
-          };
-        }
-
-        // AI says no (even if medium-confidence pattern matched)
-        if (patternResult.detected) {
-          this.logger.debug(`✅ AI overrode medium-confidence grief pattern (false positive) - "${message.substring(0, 50)}..."`);
-        }
-
-        // Both layers say no - no grief
+      if (aiMatch) {
+        const method = patternResult.detected ? 'both' : 'ai';
+        this.logger.debug(`😢 GRIEF DETECTED: AI contextual [${method}] - "${message.substring(0, 50)}..."`);
         return {
-          isDetected: false,
-          detectionMethod: 'both',
-          confidence: 'high',
-        };
-      } catch (error) {
-        // Layer 3: AI failed - fall back to pattern result (defensive)
-        this.logger.error('AI grief detection failed, using pattern result', error);
-        return {
-          isDetected: patternResult.detected,
-          detectionMethod: 'pattern',
-          confidence: 'low',
+          isDetected: true,
+          detectionMethod: method,
+          confidence: 'medium',
         };
       }
-    }
 
-    // OpenAI not configured - pattern-only mode
-    return {
-      isDetected: patternResult.detected,
-      detectionMethod: 'pattern',
-      confidence: patternResult.confidence === 'high' ? 'high' : 'medium',
-    };
+      // AI says no (even if medium-confidence pattern matched)
+      if (patternResult.detected) {
+        this.logger.debug(`✅ AI overrode medium-confidence grief pattern (false positive) - "${message.substring(0, 50)}..."`);
+      }
+
+      // Both layers say no - no grief
+      return {
+        isDetected: false,
+        detectionMethod: 'both',
+        confidence: 'high',
+      };
+    } catch (error) {
+      // Layer 3: AI failed - fall back to pattern result (defensive)
+      this.logger.error('AI grief detection failed, using pattern result', error);
+      return {
+        isDetected: patternResult.detected,
+        detectionMethod: 'pattern',
+        confidence: 'low',
+      };
+    }
   }
 
   /**
@@ -405,16 +377,12 @@ I'm here to provide spiritual guidance, but these trained professionals can offe
 
   /**
    * AI-powered contextual grief detection (private helper)
-   * Uses OpenAI to distinguish genuine grief from spiritual questions
+   * Uses Bedrock (Claude Haiku) to distinguish genuine grief from spiritual questions
    *
    * @param message User's message
    * @returns True if grief detected, false otherwise
    */
   private async detectGriefContextual(message: string): Promise<boolean> {
-    if (!this.openai) {
-      return false;
-    }
-
     try {
       const prompt = `As a Christian counselor, determine if this message indicates ACTIVE GRIEF from a RECENT ACTUAL LOSS that requires specialized grief resources.
 
@@ -452,16 +420,18 @@ Be VERY conservative. When in doubt, respond "false". Only respond "true" if the
 
 Respond with ONLY "true" or "false" and nothing else.`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.1,
-        max_tokens: 10,
-      });
+      const response = await this.bedrock.chatCompletion(
+        'haiku', // Use Haiku for fast, low-cost detection
+        [{ role: 'user', content: prompt }],
+        {
+          temperature: 0.1,
+          max_tokens: 10,
+        }
+      );
 
-      const response = completion.choices[0].message.content?.trim().toLowerCase();
-      this.logger.debug(`[AI GRIEF] "${message.substring(0, 50)}..." → ${response}`);
-      return response === 'true';
+      const result = response.trim().toLowerCase();
+      this.logger.debug(`[AI GRIEF] "${message.substring(0, 50)}..." → ${result}`);
+      return result === 'true';
     } catch (error) {
       this.logger.error('AI grief detection error:', error);
       // Fall back to false to avoid false positives

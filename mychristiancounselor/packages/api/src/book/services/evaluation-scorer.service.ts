@@ -1,23 +1,19 @@
-import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
-import Anthropic from '@anthropic-ai/sdk';
+import { Injectable, Logger } from '@nestjs/common';
 import { IEvaluationScorer, EvaluationInput, EvaluationResult } from '@mychristiancounselor/shared';
 import { resourcesConfig } from '../../config/resources.config';
+import { BedrockService } from '../../ai/bedrock.service';
 
 @Injectable()
 export class EvaluationScorerService implements IEvaluationScorer {
   private readonly logger = new Logger(EvaluationScorerService.name);
-  private readonly anthropic: Anthropic;
 
-  constructor(@Optional() @Inject('ANTHROPIC_CLIENT') anthropicClient?: Anthropic) {
-    this.anthropic = anthropicClient || new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
-  }
+  constructor(private readonly bedrock: BedrockService) {}
 
   async evaluate(input: EvaluationInput & { useEscalationModel?: boolean }): Promise<EvaluationResult> {
     this.logger.log(`Evaluating book: ${input.metadata.title}`);
 
     // Use escalation model (Opus) if requested, otherwise primary (Sonnet)
+    const model = input.useEscalationModel ? 'opus' : 'sonnet';
     const modelConfig = input.useEscalationModel
       ? resourcesConfig.aiEvaluation.models.escalation
       : resourcesConfig.aiEvaluation.models.primary;
@@ -26,17 +22,17 @@ export class EvaluationScorerService implements IEvaluationScorer {
     const prompt = this.buildPrompt(input);
 
     try {
-      const response = await this.anthropic.messages.create({
-        model: modelConfig.name,
-        max_tokens: modelConfig.maxTokens,
-        temperature: modelConfig.temperature,
-        messages: [{
-          role: 'user',
-          content: prompt,
-        }],
-      });
+      // Use Bedrock's jsonCompletion for structured output
+      const parsed = await this.bedrock.jsonCompletion(
+        model,
+        [{ role: 'user', content: prompt }],
+        {
+          max_tokens: modelConfig.maxTokens,
+          temperature: modelConfig.temperature,
+        }
+      );
 
-      const result = this.parseResponse(response);
+      const result = this.parseJsonResult(parsed);
 
       return {
         ...result,
@@ -74,24 +70,7 @@ export class EvaluationScorerService implements IEvaluationScorer {
       .replace('{{content}}', input.content);
   }
 
-  private parseResponse(response: any): Omit<EvaluationResult, 'modelUsed' | 'analysisLevel'> {
-    const textContent = response.content.find((block: any) => block.type === 'text');
-    if (!textContent) {
-      throw new Error('No text content in Claude response');
-    }
-
-    // Strip markdown code fences if present (Claude sometimes wraps JSON in ```json ... ```)
-    let jsonText = textContent.text.trim();
-    if (jsonText.startsWith('```')) {
-      // Remove opening fence (```json or ```)
-      jsonText = jsonText.replace(/^```(?:json)?\s*\n/, '');
-      // Remove closing fence (```)
-      jsonText = jsonText.replace(/\n```\s*$/, '');
-    }
-
-    // Parse JSON response
-    const parsed = JSON.parse(jsonText);
-
+  private parseJsonResult(parsed: any): Omit<EvaluationResult, 'modelUsed' | 'analysisLevel'> {
     return {
       score: parsed.biblicalAlignmentScore,
       genreTag: parsed.genreTag || 'general', // Extract genre from AI response

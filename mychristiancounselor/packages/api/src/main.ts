@@ -25,7 +25,8 @@ function validateEnvironment(): void {
     'DATABASE_URL',
     'JWT_SECRET',
     'JWT_REFRESH_SECRET',
-    'OPENAI_API_KEY',
+    'AWS_ACCESS_KEY_ID',
+    'AWS_SECRET_ACCESS_KEY',
     // POSTMARK_API_KEY is optional because mock mode is default
     // 'POSTMARK_API_KEY',
     // 'POSTMARK_FROM_EMAIL',

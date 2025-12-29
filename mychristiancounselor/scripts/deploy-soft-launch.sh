@@ -97,36 +97,79 @@ fi
 
 echo ""
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  Step 1: Build and Deploy API${NC}"
+echo -e "${BLUE}  Step 1: Build Docker Images (Parallel)${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Build API Docker image (using prebuilt)
+# Build both Docker images in parallel
 echo -e "${YELLOW}Building API Docker image from prebuilt artifacts...${NC}"
-docker build -f Dockerfile.api-prebuilt -t api:${API_VERSION} .
+docker build -f Dockerfile.api-prebuilt -t api:${API_VERSION} . &
+API_BUILD_PID=$!
 
-if [ $? -ne 0 ]; then
+echo -e "${YELLOW}Building Web Docker image from prebuilt artifacts...${NC}"
+docker build -f Dockerfile.web-prebuilt -t web:${WEB_VERSION} . &
+WEB_BUILD_PID=$!
+
+# Wait for both builds to complete
+echo -e "${YELLOW}Waiting for both builds to complete...${NC}"
+wait $API_BUILD_PID
+API_BUILD_STATUS=$?
+wait $WEB_BUILD_PID
+WEB_BUILD_STATUS=$?
+
+if [ $API_BUILD_STATUS -ne 0 ]; then
     echo -e "${RED}ERROR: API Docker build failed${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ API Docker image built successfully${NC}"
+if [ $WEB_BUILD_STATUS -ne 0 ]; then
+    echo -e "${RED}ERROR: Web Docker build failed${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Both Docker images built successfully${NC}"
 echo ""
 
-# Push API image to Lightsail (no pre-tagging needed)
-echo -e "${YELLOW}Pushing API image to Lightsail (this may take a few minutes)...${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}  Step 2: Push Images to Lightsail (Parallel)${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+
+# Push both images in parallel
+echo -e "${YELLOW}Pushing API image to Lightsail...${NC}"
 aws lightsail push-container-image \
   --service-name ${API_SERVICE} \
   --label ${API_VERSION} \
   --image api:${API_VERSION} \
-  --region ${REGION}
+  --region ${REGION} &
+API_PUSH_PID=$!
 
-if [ $? -ne 0 ]; then
+echo -e "${YELLOW}Pushing Web image to Lightsail...${NC}"
+aws lightsail push-container-image \
+  --service-name ${WEB_SERVICE} \
+  --label ${WEB_VERSION} \
+  --image web:${WEB_VERSION} \
+  --region ${REGION} &
+WEB_PUSH_PID=$!
+
+# Wait for both pushes to complete
+echo -e "${YELLOW}Waiting for both pushes to complete (this may take a few minutes)...${NC}"
+wait $API_PUSH_PID
+API_PUSH_STATUS=$?
+wait $WEB_PUSH_PID
+WEB_PUSH_STATUS=$?
+
+if [ $API_PUSH_STATUS -ne 0 ]; then
     echo -e "${RED}ERROR: Failed to push API image to Lightsail${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ API image pushed to Lightsail${NC}"
+if [ $WEB_PUSH_STATUS -ne 0 ]; then
+    echo -e "${RED}ERROR: Failed to push Web image to Lightsail${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Both images pushed to Lightsail${NC}"
 echo ""
 
 # Deploy API service
