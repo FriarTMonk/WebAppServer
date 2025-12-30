@@ -6,6 +6,9 @@
     "start:api": "nx serve api",
     "start:web": "nx serve web",
     "start:all": "nx run-many --target=serve --projects=api,web --parallel",
+    "build:api:prod": "nx build api --configuration=production",
+    "build:web:prod": "NEXT_PUBLIC_API_URL=https://api.mychristiancounselor.online NEXT_PUBLIC_SENTRY_DSN=https://450be74fd3d263728ebd3656fd772438@o4510468923326464.ingest.us.sentry.io/4510468927062016 nx build web --configuration=production --skip-nx-cache",
+    "build:prod": "npm run build:api:prod && npm run build:web:prod",
     "test:api": "nx test api",
     "test:web": "nx test web"
   },

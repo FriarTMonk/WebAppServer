@@ -50,9 +50,10 @@ export class CsrfGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    // Skip CSRF validation for webhook endpoints (they're public and come from external services)
-    if (isPublic && request.url.includes('/webhooks/')) {
-      this.logger.log(`Allowing webhook request: ${method} ${request.url}`);
+    // Skip CSRF validation for all public endpoints
+    // Public endpoints include: auth (login, register), webhooks, password reset, etc.
+    if (isPublic) {
+      this.logger.log(`Allowing public endpoint: ${method} ${request.url}`);
       return true;
     }
 

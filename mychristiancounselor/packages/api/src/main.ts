@@ -1,5 +1,21 @@
 // Node.js 20+ has native global.crypto, no polyfill needed
 
+// Polyfill File API for undici compatibility
+// This is required because undici's fetch implementation expects File to be globally available
+// but Node.js doesn't provide it natively. This prevents "File is not defined" errors.
+if (typeof global.File === 'undefined') {
+  // @ts-ignore - File is not in Node.js global types by default
+  global.File = class File extends Blob {
+    constructor(bits: BlobPart[], name: string, options?: FilePropertyBag) {
+      super(bits, options);
+      this.name = name;
+      this.lastModified = options?.lastModified ?? Date.now();
+    }
+    name: string;
+    lastModified: number;
+  };
+}
+
 // Initialize Sentry as early as possible
 import { initializeSentry } from './common/sentry/sentry.config';
 initializeSentry();
