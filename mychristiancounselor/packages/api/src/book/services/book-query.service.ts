@@ -27,6 +27,7 @@ export class BookQueryService {
       visibilityTier,
       genre,
       showMatureContent,
+      evaluationStatus,
       skip = 0,
       take = 20,
     } = query;
@@ -48,6 +49,7 @@ export class BookQueryService {
       visibilityTier,
       genre,
       showMatureContent,
+      evaluationStatus,
       userId,
       isPlatformAdmin,
     );
@@ -64,6 +66,9 @@ export class BookQueryService {
           },
           _count: {
             select: { endorsements: true },
+          },
+          submittedByOrganization: {
+            select: { name: true },
           },
         },
         orderBy: [
@@ -92,6 +97,10 @@ export class BookQueryService {
       genreTag: book.genreTag ?? undefined,
       matureContent: book.matureContent,
       endorsementCount: book._count.endorsements,
+      submittedByOrganization: book.submittedByOrganization
+        ? { name: book.submittedByOrganization.name }
+        : undefined,
+      createdAt: book.createdAt,
     }));
 
     return {
@@ -107,6 +116,7 @@ export class BookQueryService {
     visibilityTier?: string,
     genre?: string,
     showMatureContent?: boolean,
+    evaluationStatus?: string,
     userId: string,
     isPlatformAdmin: boolean,
   ): Promise<any> {
@@ -114,11 +124,17 @@ export class BookQueryService {
       AND: [],
     };
 
-    // Only show evaluated books for non-platform-admins
-    // Platform admins can see all books including pending ones for oversight
-    if (!isPlatformAdmin) {
+    // Evaluation status filter (explicit filter takes precedence)
+    if (evaluationStatus) {
+      where.AND.push({ evaluationStatus });
+    } else if (!isPlatformAdmin) {
+      // Only show evaluated books for non-platform-admins (if no explicit filter)
+      // Platform admins can see all books including pending ones for oversight
       where.AND.push({ evaluationStatus: 'completed' });
-      // Exclude not_aligned books for non-platform-admins
+    }
+
+    // Exclude not_aligned books for non-platform-admins
+    if (!isPlatformAdmin) {
       where.AND.push({ visibilityTier: { not: 'not_aligned' } });
     }
 

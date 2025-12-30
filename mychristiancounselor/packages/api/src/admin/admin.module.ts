@@ -1,4 +1,5 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 import { AdminStatusController } from './admin-status.controller';
@@ -8,9 +9,19 @@ import { EmailModule } from '../email/email.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { SalesModule } from '../sales/sales.module';
 import { MorphAuditMiddleware } from './middleware/morph-audit.middleware';
+import { queueConfig } from '../config/queue.config';
 
 @Module({
-  imports: [PrismaModule, AuthModule, EmailModule, SubscriptionModule, SalesModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    EmailModule,
+    SubscriptionModule,
+    SalesModule,
+    BullModule.registerQueue({
+      name: queueConfig.evaluationQueue.name,
+    }),
+  ],
   providers: [AdminService, MorphAuditMiddleware],
   controllers: [AdminController, AdminStatusController],
   exports: [AdminService],

@@ -39,16 +39,16 @@ export class ExternalOrganizationService {
       throw new ForbiddenException('You must be a member of an organization to add external organizations');
     }
 
-    // Check if user has permission (org admin or counselor)
+    // Check if user has permission (org admin, counselor, or owner)
     const membership = user.organizationMemberships[0];
-    const roleName = membership.role.name.toLowerCase();
-    const hasPermission = roleName === 'counselor' ||
-                          roleName === 'administrator' ||
-                          roleName === 'admin' ||
-                          roleName === 'org-admin' ||
-                          roleName === 'organization admin';
+    const roleName = membership.role.name.toLowerCase().trim();
 
-    this.logger.log(`User role: ${roleName}, hasPermission: ${hasPermission}`);
+    // More flexible role checking - check if role name contains admin, counselor, or owner
+    const hasPermission = roleName.includes('counselor') ||
+                          roleName.includes('admin') ||
+                          roleName.includes('owner');
+
+    this.logger.log(`CREATE - User role: "${membership.role.name}", normalized: "${roleName}", hasPermission: ${hasPermission}`);
 
     if (!hasPermission) {
       throw new ForbiddenException('Only organization administrators and counselors can add external organizations');
@@ -141,14 +141,14 @@ export class ExternalOrganizationService {
     }
 
     const membership = user.organizationMemberships[0];
-    const roleName = membership.role.name.toLowerCase();
-    const hasPermission = roleName === 'counselor' ||
-                          roleName === 'administrator' ||
-                          roleName === 'admin' ||
-                          roleName === 'org-admin' ||
-                          roleName === 'organization admin';
+    const roleName = membership.role.name.toLowerCase().trim();
 
-    this.logger.log(`User role: ${roleName}, hasPermission: ${hasPermission}`);
+    // More flexible role checking - check if role name contains admin, counselor, or owner
+    const hasPermission = roleName.includes('counselor') ||
+                          roleName.includes('admin') ||
+                          roleName.includes('owner');
+
+    this.logger.log(`UPDATE - User role: "${membership.role.name}", normalized: "${roleName}", hasPermission: ${hasPermission}`);
 
     if (!hasPermission) {
       throw new ForbiddenException('Only organization administrators and counselors can update external organizations');

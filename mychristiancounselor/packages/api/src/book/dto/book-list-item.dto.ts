@@ -11,4 +11,8 @@ export class BookListItemDto {
   genreTag?: string;
   matureContent: boolean;
   endorsementCount: number;
+  submittedByOrganization?: {
+    name: string;
+  };
+  createdAt?: Date;
 }

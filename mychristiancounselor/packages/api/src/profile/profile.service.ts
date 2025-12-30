@@ -21,6 +21,7 @@ export class ProfileService {
         email: true,
         firstName: true,
         lastName: true,
+        birthDate: true,
         accountType: true,
         emailVerified: true,
         isActive: true,
@@ -40,14 +41,21 @@ export class ProfileService {
   }
 
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
+    // Convert birthDate string to Date if provided
+    const data: any = { ...updateProfileDto };
+    if (data.birthDate) {
+      data.birthDate = new Date(data.birthDate);
+    }
+
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
-      data: updateProfileDto,
+      data,
       select: {
         id: true,
         email: true,
         firstName: true,
         lastName: true,
+        birthDate: true,
         accountType: true,
         preferredTranslation: true,
         comparisonTranslations: true,

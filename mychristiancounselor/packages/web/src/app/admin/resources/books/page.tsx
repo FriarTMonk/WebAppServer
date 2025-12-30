@@ -44,20 +44,30 @@ export default function PlatformAdminAllBooksPage() {
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [filters, setFilters] = useState<BookFiltersType>(DEFAULT_FILTERS);
-  const [permissionsChecked, setPermissionsChecked] = useState(false);
+  const [permissionsLoading, setPermissionsLoading] = useState(true);
 
-  // Check permissions and redirect if not platform admin
+  // Wait for permissions to load: render immediately when authorized, wait before redirecting
   useEffect(() => {
-    // Wait a moment for permissions to load
+    if (permissions.isPlatformAdmin) {
+      // User is confirmed as platform admin, render immediately
+      setPermissionsLoading(false);
+      return;
+    }
+
+    // Wait for permissions to load before deciding to redirect
     const timer = setTimeout(() => {
-      setPermissionsChecked(true);
-      if (!permissions.isPlatformAdmin) {
-        router.push('/resources/books');
-      }
-    }, 100);
+      setPermissionsLoading(false);
+    }, 1500); // Allow time for permissions API calls to complete
 
     return () => clearTimeout(timer);
-  }, [permissions.isPlatformAdmin, router]);
+  }, [permissions.isPlatformAdmin]);
+
+  // Redirect only after permissions have loaded AND user is not authorized
+  useEffect(() => {
+    if (!permissionsLoading && !permissions.isPlatformAdmin) {
+      router.push('/resources/books');
+    }
+  }, [permissionsLoading, permissions.isPlatformAdmin, router]);
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -151,35 +161,21 @@ export default function PlatformAdminAllBooksPage() {
   const currentPage = Math.floor((filters.skip || 0) / (filters.take || DEFAULT_PAGE_SIZE)) + 1;
   const totalPages = Math.ceil(totalCount / (filters.take || DEFAULT_PAGE_SIZE));
 
-  // Show loading skeleton while checking permissions
-  if (!permissionsChecked) {
+  // Show loading state while permissions load
+  if (permissionsLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-white border-b border-gray-200">
-          <div className="container mx-auto px-4 py-6">
-            <div className="animate-pulse">
-              <div className="h-8 bg-gray-200 rounded w-48 mb-2" />
-              <div className="h-4 bg-gray-200 rounded w-96" />
-            </div>
-          </div>
-        </div>
-        <div className="container mx-auto px-4 py-6">
-          <div className="grid grid-cols-1 gap-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
-                <div className="flex gap-4">
-                  <div className="w-24 h-36 bg-gray-200 rounded" />
-                  <div className="flex-1">
-                    <div className="h-6 bg-gray-200 rounded w-3/4 mb-2" />
-                    <div className="h-4 bg-gray-200 rounded w-1/2" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
+  }
+
+  // Return null while redirecting
+  if (!permissions.isPlatformAdmin) {
+    return null;
   }
 
   return (

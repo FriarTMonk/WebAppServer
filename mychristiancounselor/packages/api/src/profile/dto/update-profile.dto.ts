@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MinLength, IsArray } from 'class-validator';
+import { IsString, IsOptional, MinLength, IsArray, IsDateString } from 'class-validator';
 
 export class UpdateProfileDto {
   @IsString()
@@ -8,6 +8,10 @@ export class UpdateProfileDto {
   @IsString()
   @IsOptional()
   lastName?: string;
+
+  @IsDateString()
+  @IsOptional()
+  birthDate?: string;
 
   @IsString()
   @IsOptional()

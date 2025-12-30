@@ -23,15 +23,32 @@ export default function PendingEvaluationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [triggeringId, setTriggeringId] = useState<string | null>(null);
+  const [permissionsLoading, setPermissionsLoading] = useState(true);
 
-  // Redirect if not org admin
+  // Wait for permissions to load: render immediately when authorized, wait before redirecting
   useEffect(() => {
-    if (!permissions.isOrgAdmin && !permissions.isPlatformAdmin) {
+    if (permissions.isOrgAdmin || permissions.isPlatformAdmin) {
+      // User is confirmed as authorized, render immediately
+      setPermissionsLoading(false);
+      return;
+    }
+
+    // Wait for permissions to load before deciding to redirect
+    const timer = setTimeout(() => {
+      setPermissionsLoading(false);
+    }, 1500); // Allow time for permissions API calls to complete
+
+    return () => clearTimeout(timer);
+  }, [permissions.isOrgAdmin, permissions.isPlatformAdmin]);
+
+  // Redirect only after permissions have loaded AND user is not authorized
+  useEffect(() => {
+    if (!permissionsLoading && !permissions.isOrgAdmin && !permissions.isPlatformAdmin) {
       router.push('/resources/books');
     }
-  }, [permissions, router]);
+  }, [permissionsLoading, permissions.isOrgAdmin, permissions.isPlatformAdmin, router]);
 
-  // Fetch pending books
+  // Fetch pending books (only after permissions have loaded)
   useEffect(() => {
     async function fetchPendingBooks() {
       try {
@@ -46,10 +63,10 @@ export default function PendingEvaluationsPage() {
       }
     }
 
-    if (permissions.isOrgAdmin || permissions.isPlatformAdmin) {
+    if (!permissionsLoading && (permissions.isOrgAdmin || permissions.isPlatformAdmin)) {
       fetchPendingBooks();
     }
-  }, [permissions]);
+  }, [permissionsLoading, permissions.isOrgAdmin, permissions.isPlatformAdmin]);
 
   const handleTriggerEvaluation = async (bookId: string) => {
     if (!permissions.isPlatformAdmin) {
@@ -78,6 +95,19 @@ export default function PendingEvaluationsPage() {
     }
   };
 
+  // Show loading state while permissions load
+  if (permissionsLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Return null while redirecting
   if (!permissions.isOrgAdmin && !permissions.isPlatformAdmin) {
     return null;
   }

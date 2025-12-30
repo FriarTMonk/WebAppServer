@@ -32,6 +32,10 @@ export class BookQueryDto {
   showMatureContent?: boolean;
 
   @IsOptional()
+  @IsIn(['pending', 'processing', 'completed', 'failed'])
+  evaluationStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(0)
