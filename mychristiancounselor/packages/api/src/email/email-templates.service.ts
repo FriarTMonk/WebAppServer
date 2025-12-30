@@ -243,4 +243,27 @@ export class EmailTemplatesService {
         throw new Error(`Unknown billing email subtype: ${data.emailSubType}`);
     }
   }
+
+  /**
+   * Render marketing campaign email template
+   * Wraps user-provided HTML in base template
+   */
+  renderMarketingCampaignEmail(data: {
+    recipientName?: string;
+    subject: string;
+    htmlBody: string;
+    textBody: string;
+    prospectId: string;
+  }): EmailTemplate {
+    // For now, just return the content as-is
+    // In the future, we can add:
+    // - Unsubscribe link
+    // - Tracking pixel for opens
+    // - Link tracking for clicks
+    return {
+      subject: data.subject,
+      html: data.htmlBody,
+      text: data.textBody,
+    };
+  }
 }

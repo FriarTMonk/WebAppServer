@@ -295,6 +295,41 @@ MyChristianCounselor Support Team`,
       const subject = emailData.Subject || 'No Subject';
       const body = emailData.TextBody || emailData.HtmlBody || '';
 
+      // Check if this email is from a prospect contact in a marketing campaign
+      let campaignRecipientId: string | undefined;
+      const prospectContact = await this.prisma.prospectContact.findFirst({
+        where: { email: fromEmail },
+        include: { prospect: true },
+      });
+
+      if (prospectContact) {
+        this.logger.log(`Found prospect contact ${prospectContact.id} for email ${fromEmail} (prospect: ${prospectContact.prospectId})`);
+
+        // Find the most recent EmailCampaignRecipient that hasn't been marked as replied
+        const recipient = await this.prisma.emailCampaignRecipient.findFirst({
+          where: {
+            prospectContactId: prospectContact.id,
+            repliedAt: null,
+            sentAt: { not: null }, // Only consider campaigns that were actually sent
+          },
+          orderBy: { sentAt: 'desc' },
+        });
+
+        if (recipient) {
+          this.logger.log(
+            `Tracking reply for campaign recipient ${recipient.id} (campaign: ${recipient.campaignId})`
+          );
+
+          // Update the recipient with reply timestamp
+          await this.prisma.emailCampaignRecipient.update({
+            where: { id: recipient.id },
+            data: { repliedAt: new Date() },
+          });
+
+          campaignRecipientId = recipient.id;
+        }
+      }
+
       // Find or create user by email
       let user = await this.prisma.user.findUnique({
         where: { email: fromEmail },
@@ -324,10 +359,18 @@ MyChristianCounselor Support Team`,
       // Parse opportunity data from email
       const opportunityData = this.parseEmailToOpportunity(subject, body, fromEmail, fromName);
 
+      // Add campaign recipient link if found
+      if (campaignRecipientId) {
+        opportunityData.campaignRecipientId = campaignRecipientId;
+      }
+
       // Create sales opportunity
       const opportunity = await this.salesService.createOpportunity(user.id, opportunityData);
 
-      this.logger.log(`Created opportunity ${opportunity.id} from sales email`);
+      this.logger.log(
+        `Created opportunity ${opportunity.id} from sales email` +
+        (campaignRecipientId ? ` (linked to campaign recipient ${campaignRecipientId})` : '')
+      );
 
       // Send confirmation email
       await this.sendSalesConfirmationEmail(
@@ -341,6 +384,7 @@ MyChristianCounselor Support Team`,
         success: true,
         opportunityId: opportunity.id,
         userId: user.id,
+        campaignRecipientId,
       };
     } catch (error) {
       this.logger.error('Failed to process sales email', {

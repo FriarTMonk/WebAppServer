@@ -148,6 +148,11 @@ export function UserMenu() {
               Sales Queue
             </MenuButton>
           )}
+          {(isSalesRep || permissions.isPlatformAdmin) && (
+            <MenuButton onClick={() => { setIsOpen(false); router.push('/marketing'); }}>
+              Marketing
+            </MenuButton>
+          )}
           {permissions.isOrgAdmin && !permissions.isPlatformAdmin && (
             <MenuButton onClick={() => { setIsOpen(false); router.push('/org-admin'); }}>
               Organization Admin

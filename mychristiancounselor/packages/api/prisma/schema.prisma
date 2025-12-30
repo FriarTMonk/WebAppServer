@@ -71,6 +71,8 @@ model User {
   ticketAttachmentsUploaded TicketAttachment[]       @relation("TicketAttachmentsUploaded")
   ticketLinksCreated        TicketLink[]             @relation("TicketLinksCreated")
   ticketMessagesAuthored    TicketMessage[]          @relation("TicketMessagesAuthored")
+  prospectsCreated          Prospect[]               @relation("ProspectsCreated")
+  campaignsCreated          EmailCampaign[]          @relation("CampaignsCreated")
 
   @@index([email])
   @@index([verificationToken])
@@ -127,6 +129,7 @@ model Organization {
   salesOpportunities                SalesOpportunity[]
   supportTickets                    SupportTicket[]
   externalOrgsRecommended           ExternalOrganization[]   @relation("ExternalOrgsRecommended")
+  prospectsConverted                Prospect[]               @relation("ProspectConversions")
 
   @@index([licenseStatus])
   @@index([licenseExpiresAt])
@@ -445,19 +448,20 @@ model Notification {
 }
 
 model EmailLog {
-  id             String    @id @default(uuid())
-  userId         String?
-  recipientEmail String
-  emailType      String
-  postmarkId     String?   @unique
-  status         String
-  bounceReason   String?
-  metadata       Json      @default("{}")
-  sentAt         DateTime  @default(now())
-  deliveredAt    DateTime?
-  openedAt       DateTime?
-  clickedAt      DateTime?
-  bouncedAt      DateTime?
+  id                String                  @id @default(uuid())
+  userId            String?
+  recipientEmail    String
+  emailType         String
+  postmarkId        String?                 @unique
+  status            String
+  bounceReason      String?
+  metadata          Json                    @default("{}")
+  sentAt            DateTime                @default(now())
+  deliveredAt       DateTime?
+  openedAt          DateTime?
+  clickedAt         DateTime?
+  bouncedAt         DateTime?
+  campaignRecipient EmailCampaignRecipient?
 
   @@index([userId])
   @@index([recipientEmail])
@@ -479,6 +483,110 @@ model EmailRateLimit {
   @@unique([identifier, identifierType, operation])
   @@index([identifier, operation])
   @@index([expiresAt])
+}
+
+model Prospect {
+  id                        String                   @id @default(uuid())
+  organizationName          String
+  website                   String?
+  industry                  String?
+  estimatedSize             String?
+  notes                     String?                  @db.Text
+  lastCampaignSentAt        DateTime?
+  convertedToOrganizationId String?
+  convertedToOrganization   Organization?            @relation("ProspectConversions", fields: [convertedToOrganizationId], references: [id])
+  convertedAt               DateTime?
+  createdById               String
+  createdBy                 User                     @relation("ProspectsCreated", fields: [createdById], references: [id])
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+  archivedAt                DateTime?
+  contacts                  ProspectContact[]
+  campaignRecipients        EmailCampaignRecipient[]
+
+  @@index([createdById])
+  @@index([lastCampaignSentAt])
+  @@index([archivedAt])
+  @@index([convertedToOrganizationId])
+}
+
+model ProspectContact {
+  id                 String                   @id @default(uuid())
+  prospectId         String
+  prospect           Prospect                 @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  name               String
+  email              String
+  phone              String?
+  title              String?
+  isPrimary          Boolean                  @default(false)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  campaignRecipients EmailCampaignRecipient[]
+
+  @@unique([prospectId, email])
+  @@index([prospectId])
+  @@index([email])
+}
+
+model EmailCampaign {
+  id           String                   @id @default(uuid())
+  name         String
+  subject      String
+  htmlBody     String                   @db.Text
+  textBody     String                   @db.Text
+  status       EmailCampaignStatus      @default(draft)
+  scheduledFor DateTime?
+  sentAt       DateTime?
+  createdById  String
+  createdBy    User                     @relation("CampaignsCreated", fields: [createdById], references: [id])
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  recipients   EmailCampaignRecipient[]
+
+  @@index([createdById])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([sentAt])
+}
+
+enum EmailCampaignStatus {
+  draft
+  scheduled
+  sending
+  sent
+  failed
+  cancelled
+}
+
+model EmailCampaignRecipient {
+  id                 String             @id @default(uuid())
+  campaignId         String
+  campaign           EmailCampaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  prospectId         String
+  prospect           Prospect           @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  prospectContactId  String
+  prospectContact    ProspectContact    @relation(fields: [prospectContactId], references: [id], onDelete: Cascade)
+  emailLogId         String?            @unique
+  emailLog           EmailLog?          @relation(fields: [emailLogId], references: [id])
+  status             String             @default("pending")
+  sentAt             DateTime?
+  deliveredAt        DateTime?
+  openedAt           DateTime?
+  clickedAt          DateTime?
+  bouncedAt          DateTime?
+  bounceReason       String?
+  repliedAt          DateTime?
+  convertedAt        DateTime?
+  conversionType     String?
+  createdAt          DateTime           @default(now())
+  salesOpportunities SalesOpportunity[]
+
+  @@unique([campaignId, prospectContactId])
+  @@index([campaignId])
+  @@index([prospectId])
+  @@index([prospectContactId])
+  @@index([status])
+  @@index([emailLogId])
 }
 
 model OrganizationContract {
@@ -781,7 +889,7 @@ model PurchaseLink {
 }
 
 model SalesOpportunity {
-  id                   String          @id @default(uuid())
+  id                   String                  @id @default(uuid())
   title                String
   description          String
   createdById          String
@@ -793,9 +901,9 @@ model SalesOpportunity {
   organizationId       String?
   stage                SalesStage
   leadSource           LeadSource
-  dealValue            Decimal         @db.Decimal(10, 2)
+  dealValue            Decimal                 @db.Decimal(10, 2)
   probability          Int
-  priorityScore        Float           @default(0)
+  priorityScore        Float                   @default(0)
   estimatedCloseDate   DateTime?
   firstContactAt       DateTime?
   proposalSentAt       DateTime?
@@ -807,13 +915,15 @@ model SalesOpportunity {
   followUpNotes        String?
   lossReason           LossReason?
   lossNotes            String?
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
+  campaignRecipientId  String?
+  campaignRecipient    EmailCampaignRecipient? @relation(fields: [campaignRecipientId], references: [id])
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
   activities           SalesActivity[]
   notes                SalesNote[]
-  assignedTo           User?           @relation("OpportunitiesAssigned", fields: [assignedToId], references: [id])
-  createdBy            User            @relation("OpportunitiesCreated", fields: [createdById], references: [id])
-  organization         Organization?   @relation(fields: [organizationId], references: [id])
+  assignedTo           User?                   @relation("OpportunitiesAssigned", fields: [assignedToId], references: [id])
+  createdBy            User                    @relation("OpportunitiesCreated", fields: [createdById], references: [id])
+  organization         Organization?           @relation(fields: [organizationId], references: [id])
 
   @@index([stage])
   @@index([leadSource])
@@ -823,6 +933,7 @@ model SalesOpportunity {
   @@index([priorityScore])
   @@index([estimatedCloseDate])
   @@index([createdAt])
+  @@index([campaignRecipientId])
 }
 
 model SalesActivity {

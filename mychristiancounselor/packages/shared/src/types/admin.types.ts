@@ -57,6 +57,12 @@ export interface PlatformMetrics {
     avgSalesCycle: number;
     forecastedRevenue: number;
   };
+  marketingMetrics?: {
+    totalProspects: number;
+    totalCampaigns: number;
+    activeCampaigns: number;
+    avgOpenRate: number;
+  };
   timestamp: Date;
 }
 

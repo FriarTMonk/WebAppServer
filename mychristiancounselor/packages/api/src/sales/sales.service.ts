@@ -76,6 +76,7 @@ export class SalesService {
         priorityScore,
         createdById: userId,
         firstContactAt: new Date(),
+        campaignRecipientId: dto.campaignRecipientId,
       },
       include: {
         createdBy: {

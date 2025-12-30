@@ -72,8 +72,11 @@ export class EmailService {
    * Send email via Postmark
    */
   private async sendRealEmail(options: SendEmailOptions): Promise<SendEmailResult> {
+    const fromEmail = options.fromEmail || this.fromEmail;
+    const fromName = options.fromName || this.fromName;
+
     const result = await this.postmarkClient!.sendEmail({
-      From: `${this.fromName} <${this.fromEmail}>`,
+      From: `${fromName} <${fromEmail}>`,
       To: options.to,
       Subject: options.subject,
       HtmlBody: options.html,
@@ -83,7 +86,7 @@ export class EmailService {
     });
 
     // Log sent email
-    await this.emailTracking.logEmailSent({
+    const emailLogId = await this.emailTracking.logEmailSent({
       userId: options.userId,
       recipientEmail: options.to,
       emailType: options.emailType,
@@ -96,6 +99,7 @@ export class EmailService {
     return {
       success: true,
       messageId: result.MessageID,
+      emailLogId,
     };
   }
 
@@ -106,7 +110,7 @@ export class EmailService {
     const mockMessageId = `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     // Log mock email
-    await this.emailTracking.logEmailSent({
+    const emailLogId = await this.emailTracking.logEmailSent({
       userId: options.userId,
       recipientEmail: options.to,
       emailType: options.emailType,
@@ -126,6 +130,7 @@ export class EmailService {
     return {
       success: true,
       messageId: mockMessageId,
+      emailLogId,
     };
   }
 
@@ -339,6 +344,40 @@ export class EmailService {
       metadata: {
         billingSubType: data.emailSubType,
         amount: data.amount,
+      },
+    });
+  }
+
+  /**
+   * Send marketing campaign email
+   */
+  async sendMarketingCampaignEmail(
+    email: string,
+    data: {
+      recipientName?: string;
+      subject: string;
+      htmlBody: string;
+      textBody: string;
+      campaignId: string;
+      prospectId: string;
+    },
+  ): Promise<SendEmailResult> {
+    const template = this.emailTemplates.renderMarketingCampaignEmail(data);
+
+    const salesEmail = this.configService.get('POSTMARK_SALES_EMAIL', 'sales@mychristiancounselor.online');
+
+    return this.sendEmail({
+      to: email,
+      fromEmail: salesEmail,
+      fromName: 'MyChristianCounselor Sales',
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+      emailType: 'marketing_campaign',
+      tag: 'marketing-campaign',
+      metadata: {
+        campaignId: data.campaignId,
+        prospectId: data.prospectId,
       },
     });
   }

@@ -23,6 +23,8 @@ export interface SendEmailOptions {
   metadata?: Record<string, any>; // Additional data to store in EmailLog
   userId?: string; // User ID for tracking
   emailType: string; // Type of email for tracking
+  fromEmail?: string; // Optional custom sender email
+  fromName?: string; // Optional custom sender name
 }
 
 /**
@@ -31,6 +33,7 @@ export interface SendEmailOptions {
 export interface SendEmailResult {
   success: boolean;
   messageId?: string; // Postmark message ID
+  emailLogId?: string; // Database EmailLog ID
   error?: string;
 }
 

@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsOptional, IsEnum, IsNumber, Min, Max, IsDateString, Length } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsEnum, IsNumber, Min, Max, IsDateString, Length, IsUUID } from 'class-validator';
 import { SalesStage, LeadSource } from '@prisma/client';
 
 export class CreateOpportunityDto {
@@ -42,4 +42,8 @@ export class CreateOpportunityDto {
   @IsOptional()
   @IsDateString()
   estimatedCloseDate?: string;
+
+  @IsOptional()
+  @IsUUID()
+  campaignRecipientId?: string;
 }

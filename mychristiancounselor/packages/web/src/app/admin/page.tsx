@@ -342,6 +342,58 @@ export default function AdminOverviewPage() {
           </div>
         )}
 
+        {/* Marketing Campaigns Section */}
+        <div className="mt-6 bg-white p-6 rounded-lg shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Marketing Campaigns</h2>
+            <Link
+              href="/marketing"
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              View Marketing Dashboard →
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Prospects Card */}
+            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+              <p className="text-sm text-gray-600 mb-1">Prospects</p>
+              <p className="text-2xl font-bold text-indigo-800">
+                {metrics?.marketingMetrics?.totalProspects || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Active organizations
+              </p>
+            </div>
+
+            {/* Campaigns Card */}
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-gray-600 mb-1">Campaigns</p>
+              <p className="text-2xl font-bold text-blue-800">
+                {metrics?.marketingMetrics?.totalCampaigns || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {metrics?.marketingMetrics?.activeCampaigns || 0} active
+              </p>
+            </div>
+
+            {/* Campaign Performance Card */}
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-gray-600 mb-1">Open Rate</p>
+              <p className="text-2xl font-bold text-green-800">
+                {(metrics?.marketingMetrics?.avgOpenRate || 0).toFixed(1)}%
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Last 30 days
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-gray-200 text-sm text-gray-600">
+            <p>Manage prospect outreach and track campaign performance. Create targeted email campaigns and monitor engagement metrics.</p>
+          </div>
+        </div>
+
         {/* Support Metrics Section */}
         {metrics && metrics.slaHealth && (
           <div className="mt-6 bg-white p-6 rounded-lg shadow" data-tour="sla-health">

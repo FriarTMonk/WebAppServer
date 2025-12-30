@@ -22,6 +22,7 @@ import { MetricsModule } from '../metrics/metrics.module';
 import { MetricsMiddleware } from '../metrics/metrics.middleware';
 import { WebhooksModule } from '../webhooks/webhooks.module';
 import { SalesModule } from '../sales/sales.module';
+import { MarketingModule } from '../marketing/marketing.module';
 import { ContentModule } from '../content/content.module';
 import { BookModule } from '../book/book.module';
 import { ResourcesModule } from '../resources/resources.module';
@@ -76,6 +77,7 @@ import { getBullModuleOptions } from '../config/queue.config';
     HolidayModule,
     WebhooksModule,
     SalesModule,
+    MarketingModule,
     ContentModule,
     BookModule,
     ResourcesModule,
