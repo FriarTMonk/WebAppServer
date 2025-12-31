@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
   Request,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { MemberTaskService } from './member-task.service';
@@ -64,7 +65,12 @@ export class TaskController {
   async getMemberTasks(
     @Param('memberId') memberId: string,
     @Query('status') status?: MemberTaskStatus,
+    @Request() req,
   ) {
+    // Verify user is a counselor
+    if (!req.user.isCounselor) {
+      throw new ForbiddenException('Only counselors can view member tasks');
+    }
     return this.memberTaskService.getMemberTasks(memberId, status);
   }
 
@@ -89,6 +95,10 @@ export class TaskController {
    */
   @Post()
   async createTask(@Body() dto: any, @Request() req) {
+    // Verify user is a counselor
+    if (!req.user.isCounselor) {
+      throw new ForbiddenException('Only counselors can create tasks');
+    }
     return this.memberTaskService.createTask({
       ...dto,
       counselorId: req.user.id,
