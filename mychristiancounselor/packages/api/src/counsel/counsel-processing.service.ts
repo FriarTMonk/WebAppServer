@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CounselingAiService } from '../ai/counseling-ai.service';
 import { SafetyService } from '../safety/safety.service';
@@ -8,6 +9,7 @@ import { SessionService } from './session.service';
 import { SessionLimitService } from './session-limit.service';
 import { CounselResponse, BibleTranslation } from '@mychristiancounselor/shared';
 import { randomUUID } from 'crypto';
+import { EVENT_TYPES, CrisisDetectedEvent } from '../events/event-types';
 
 /**
  * Handles the core counseling workflow orchestration
@@ -33,6 +35,7 @@ export class CounselProcessingService {
     private scriptureEnrichment: ScriptureEnrichmentService,
     private sessionService: SessionService,
     private sessionLimitService: SessionLimitService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -90,6 +93,21 @@ export class CounselProcessingService {
         `Crisis detected for user ${userId || 'anonymous'} ` +
         `[method: ${crisisResult.detectionMethod}, confidence: ${crisisResult.confidence}]`
       );
+
+      // Publish crisis detected event (only for authenticated users)
+      if (userId) {
+        const event: CrisisDetectedEvent = {
+          memberId: userId,
+          crisisType: 'suicidal_ideation', // Default, can be enhanced later
+          confidence: crisisResult.confidence as 'high' | 'medium' | 'low',
+          detectionMethod: crisisResult.detectionMethod as 'pattern' | 'ai' | 'both',
+          triggeringMessage: message,
+          messageId: undefined, // Will be set after message is stored
+          timestamp: new Date(),
+        };
+        this.eventEmitter.emit(EVENT_TYPES.CRISIS_DETECTED, event);
+        this.logger.debug(`Emitted crisis.detected event for member ${userId}`);
+      }
     }
 
     // 2. Check for grief using layered detection (pattern + AI contextual)
