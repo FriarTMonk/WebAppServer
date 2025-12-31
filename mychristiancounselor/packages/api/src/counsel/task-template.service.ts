@@ -1,13 +1,33 @@
 import { Injectable } from '@nestjs/common';
 import { MemberTaskType } from '@prisma/client';
 
+export interface ConversationPromptMetadata {
+  keywords: string[];
+  suggestedScriptures: string[];
+}
+
+export interface OfflineTaskMetadata {
+  category: string;
+  scripture?: string;
+}
+
+export interface GuidedConversationMetadata {
+  conversationStarter: string;
+  followUpPrompts: string[];
+}
+
+export type TaskTemplateMetadata =
+  | ConversationPromptMetadata
+  | OfflineTaskMetadata
+  | GuidedConversationMetadata;
+
 export interface TaskTemplate {
   id: string;
   type: MemberTaskType;
   title: string;
   description: string;
   suggestedDurationDays: number;
-  metadata?: any;
+  metadata?: TaskTemplateMetadata;
 }
 
 @Injectable()

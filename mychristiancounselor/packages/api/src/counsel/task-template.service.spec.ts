@@ -68,4 +68,44 @@ describe('TaskTemplateService', () => {
       expect(result).toBeUndefined();
     });
   });
+
+  describe('getTemplatesByType', () => {
+    it('should return only conversation_prompt templates', () => {
+      const result = service.getTemplatesByType('conversation_prompt');
+
+      expect(result.length).toBeGreaterThan(0);
+      result.forEach((template) => {
+        expect(template.type).toBe('conversation_prompt');
+      });
+    });
+
+    it('should return only offline_task templates', () => {
+      const result = service.getTemplatesByType('offline_task');
+
+      expect(result.length).toBeGreaterThan(0);
+      result.forEach((template) => {
+        expect(template.type).toBe('offline_task');
+      });
+    });
+
+    it('should return only guided_conversation templates', () => {
+      const result = service.getTemplatesByType('guided_conversation');
+
+      expect(result.length).toBeGreaterThan(0);
+      result.forEach((template) => {
+        expect(template.type).toBe('guided_conversation');
+      });
+    });
+
+    it('should return correct counts for each type', () => {
+      const conversationPrompts =
+        service.getTemplatesByType('conversation_prompt');
+      const offlineTasks = service.getTemplatesByType('offline_task');
+      const guidedConversations =
+        service.getTemplatesByType('guided_conversation');
+      const allTemplates = service.getPlatformTemplates();
+
+      expect(conversationPrompts.length + offlineTasks.length + guidedConversations.length).toBe(allTemplates.length);
+    });
+  });
 });
