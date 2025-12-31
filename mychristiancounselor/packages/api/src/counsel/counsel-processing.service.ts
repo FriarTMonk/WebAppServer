@@ -9,7 +9,7 @@ import { SessionService } from './session.service';
 import { SessionLimitService } from './session-limit.service';
 import { CounselResponse, BibleTranslation } from '@mychristiancounselor/shared';
 import { randomUUID } from 'crypto';
-import { EVENT_TYPES, CrisisDetectedEvent } from '../events/event-types';
+import { EVENT_TYPES, CrisisDetectedEvent, SessionCompletedEvent } from '../events/event-types';
 
 /**
  * Handles the core counseling workflow orchestration
@@ -225,6 +225,24 @@ export class CounselProcessingService {
         assistantMessage.id,
         userId
       );
+    }
+
+    // 11b. Emit session.completed event for automatic summary generation (only for authenticated users)
+    if (userId) {
+      try {
+        const event: SessionCompletedEvent = {
+          sessionId: session.id,
+          memberId: userId,
+          messageCount: session.messages.length,
+          timestamp: new Date(),
+        };
+
+        this.eventEmitter.emit(EVENT_TYPES.SESSION_COMPLETED, event);
+        this.logger.log(`Session completed event emitted for session ${session.id} (${session.messages.length} messages)`);
+      } catch (error) {
+        this.logger.error(`Failed to emit session.completed event for session ${session.id}`, error);
+        // Event emission failure shouldn't block counsel response
+      }
     }
 
     // 12. Calculate current question count AFTER this response

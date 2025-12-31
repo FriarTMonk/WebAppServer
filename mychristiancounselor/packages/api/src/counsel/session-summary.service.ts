@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CounselingAiService } from '../ai/counseling-ai.service';
+import { SessionCompletedEvent } from '../events/event-types';
 
 /**
  * SessionSummaryService - Generate and manage AI summaries for counseling sessions
@@ -21,6 +23,26 @@ export class SessionSummaryService {
     private prisma: PrismaService,
     private aiService: CounselingAiService,
   ) {}
+
+  /**
+   * Event listener: Automatically generate summary when session completes
+   *
+   * Triggered by session.completed event from CounselProcessingService
+   * Failures are logged but non-blocking to prevent disrupting user experience
+   *
+   * @param event - SessionCompletedEvent containing session and member info
+   */
+  @OnEvent('session.completed')
+  async handleSessionCompleted(event: SessionCompletedEvent) {
+    this.logger.log(`Generating summary for completed session ${event.sessionId}`);
+
+    try {
+      await this.generateSummary(event.sessionId, event.memberId);
+    } catch (error) {
+      this.logger.error(`Failed to generate summary for session ${event.sessionId}:`, error);
+      // Don't throw - failures in summary generation shouldn't be critical
+    }
+  }
 
   /**
    * Generate AI summary for a completed conversation

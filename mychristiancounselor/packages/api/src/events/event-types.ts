@@ -42,6 +42,14 @@ export interface TaskCompletedEvent {
   timestamp: Date;
 }
 
+// Session completed event
+export interface SessionCompletedEvent {
+  sessionId: string;
+  memberId: string;
+  messageCount: number;
+  timestamp: Date;
+}
+
 // Event type constants
 export const EVENT_TYPES = {
   CRISIS_DETECTED: 'crisis.detected',
@@ -51,4 +59,5 @@ export const EVENT_TYPES = {
   ASSESSMENT_SCORE_CHANGED: 'assessment.score.changed',
   TASK_COMPLETED: 'task.completed',
   TASK_OVERDUE: 'task.overdue',
+  SESSION_COMPLETED: 'session.completed',
 } as const;
