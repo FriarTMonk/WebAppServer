@@ -26,7 +26,10 @@ export function StatusColumnBadges({
       {totalTasks > 0 && (
         <button
           type="button"
-          onClick={onTasksClick}
+          onClick={(e) => {
+            e.stopPropagation();
+            onTasksClick();
+          }}
           className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
             overdueTasks > 0
               ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
@@ -40,7 +43,10 @@ export function StatusColumnBadges({
       {pendingAssessments > 0 && (
         <button
           type="button"
-          onClick={onAssessmentsClick}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAssessmentsClick();
+          }}
           className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors"
           title={`${pendingAssessments} pending assessment${pendingAssessments !== 1 ? 's' : ''}`}
         >

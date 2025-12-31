@@ -49,117 +49,167 @@ export class AssignmentService {
       },
     });
 
-    // Get wellbeing status for each member (will return mock data for now)
-    const summaries: CounselorMemberSummary[] = await Promise.all(
-      assignments.map(async (assignment) => {
-        // Get last login (most recent session)
-        const lastSession = await this.prisma.session.findFirst({
-          where: {
-            userId: assignment.memberId,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-          select: {
-            createdAt: true,
-          },
-        });
+    // Collect all member IDs for batch queries
+    const memberIds = assignments.map(a => a.memberId);
+    const now = new Date();
 
-        // Get last active (most recent user message)
-        const lastMessage = await this.prisma.message.findFirst({
-          where: {
-            role: 'user',
-            session: {
-              userId: assignment.memberId,
-            },
-          },
-          orderBy: {
-            timestamp: 'desc',
-          },
-          select: {
-            timestamp: true,
-          },
-        });
+    // Execute batch queries in parallel
+    const [
+      sessionsData,
+      messagesData,
+      observationsData,
+      pendingTasksData,
+      overdueTasksData,
+      pendingAssessmentsData,
+      wellbeingStatusesData,
+    ] = await Promise.all([
+      // Get last login for all members
+      this.prisma.session.groupBy({
+        by: ['userId'],
+        where: {
+          userId: { in: memberIds },
+        },
+        _max: {
+          createdAt: true,
+        },
+      }),
+      // Get last active message for all members
+      this.prisma.$queryRaw<Array<{ userId: string; maxTimestamp: Date }>>`
+        SELECT s."userId", MAX(m.timestamp) as "maxTimestamp"
+        FROM "Message" m
+        INNER JOIN "Session" s ON m."sessionId" = s.id
+        WHERE m.role = 'user' AND s."userId" IN (${this.prisma.join(memberIds)})
+        GROUP BY s."userId"
+      `,
+      // Count observations for all members
+      this.prisma.counselorObservation.groupBy({
+        by: ['memberId'],
+        where: {
+          counselorId,
+          memberId: { in: memberIds },
+        },
+        _count: {
+          id: true,
+        },
+      }),
+      // Count pending tasks (not overdue) for all members
+      this.prisma.memberTask.groupBy({
+        by: ['memberId'],
+        where: {
+          memberId: { in: memberIds },
+          status: 'pending',
+          OR: [
+            { dueDate: null },
+            { dueDate: { gte: now } },
+          ],
+        },
+        _count: {
+          id: true,
+        },
+      }),
+      // Count overdue tasks for all members
+      this.prisma.memberTask.groupBy({
+        by: ['memberId'],
+        where: {
+          memberId: { in: memberIds },
+          status: 'pending',
+          dueDate: { lt: now },
+        },
+        _count: {
+          id: true,
+        },
+      }),
+      // Count pending assessments for all members
+      this.prisma.assignedAssessment.groupBy({
+        by: ['memberId'],
+        where: {
+          memberId: { in: memberIds },
+          status: 'pending',
+        },
+        _count: {
+          id: true,
+        },
+      }),
+      // Get wellbeing statuses for all members
+      this.prisma.memberWellbeingStatus.findMany({
+        where: {
+          memberId: { in: memberIds },
+        },
+      }),
+      // Count total conversations for all members
+      this.prisma.session.groupBy({
+        by: ['userId'],
+        where: {
+          userId: { in: memberIds },
+        },
+        _count: {
+          id: true,
+        },
+      }),
+    ]);
 
-        // Count total conversations
-        const totalConversations = await this.prisma.session.count({
-          where: {
-            userId: assignment.memberId,
-          },
-        });
+    // Build lookup maps for fast access
+    const sessionMap = new Map(sessionsData.map(s => [s.userId, s._max.createdAt]));
+    const messageMap = new Map(messagesData.map(m => [m.userId, m.maxTimestamp]));
+    const observationMap = new Map(observationsData.map(o => [o.memberId, o._count.id]));
+    const pendingTasksMap = new Map(pendingTasksData.map(t => [t.memberId, t._count.id]));
+    const overdueTasksMap = new Map(overdueTasksData.map(t => [t.memberId, t._count.id]));
+    const pendingAssessmentsMap = new Map(pendingAssessmentsData.map(a => [a.memberId, a._count.id]));
+    const wellbeingStatusMap = new Map(wellbeingStatusesData.map(w => [w.memberId, w]));
+    const conversationCountMap = new Map(await this.prisma.session.groupBy({
+      by: ['userId'],
+      where: { userId: { in: memberIds } },
+      _count: { id: true },
+    }).then(data => data.map(d => [d.userId, d._count.id])));
 
-        // Count observations
-        const observationCount = await this.prisma.counselorObservation.count({
-          where: {
-            counselorId,
-            memberId: assignment.memberId,
-          },
-        });
+    // Create members that don't have wellbeing status
+    const missingWellbeingMemberIds = memberIds.filter(id => !wellbeingStatusMap.has(id));
+    if (missingWellbeingMemberIds.length > 0) {
+      const createdStatuses = await this.prisma.memberWellbeingStatus.createMany({
+        data: missingWellbeingMemberIds.map(memberId => ({
+          memberId,
+          status: 'green',
+          aiSuggestedStatus: 'green',
+          summary: 'Member profile created. AI analysis pending.',
+          lastAnalyzedAt: new Date(),
+        })),
+      });
 
-        // Count pending tasks
-        const pendingTasks = await this.prisma.memberTask.count({
-          where: {
-            memberId: assignment.memberId,
-            status: 'pending',
-            OR: [
-              { dueDate: null },
-              { dueDate: { gte: new Date() } },
-            ],
-          },
-        });
+      // Fetch newly created statuses and add to map
+      const newStatuses = await this.prisma.memberWellbeingStatus.findMany({
+        where: {
+          memberId: { in: missingWellbeingMemberIds },
+        },
+      });
+      newStatuses.forEach(s => wellbeingStatusMap.set(s.memberId, s));
+    }
 
-        // Count overdue tasks
-        const overdueTasks = await this.prisma.memberTask.count({
-          where: {
-            memberId: assignment.memberId,
-            status: 'pending',
-            dueDate: { lt: new Date() },
-          },
-        });
+    // Build summaries using lookup maps
+    const summaries: CounselorMemberSummary[] = assignments.map((assignment) => {
+      const memberId = assignment.memberId;
+      const lastLogin = sessionMap.get(memberId);
+      const lastActive = messageMap.get(memberId);
+      const totalConversations = conversationCountMap.get(memberId) || 0;
+      const observationCount = observationMap.get(memberId) || 0;
+      const pendingTasks = pendingTasksMap.get(memberId) || 0;
+      const overdueTasks = overdueTasksMap.get(memberId) || 0;
+      const pendingAssessments = pendingAssessmentsMap.get(memberId) || 0;
+      const wellbeingStatus = wellbeingStatusMap.get(memberId)!;
 
-        // Count pending assessments
-        const pendingAssessments = await this.prisma.assignedAssessment.count({
-          where: {
-            memberId: assignment.memberId,
-            status: 'pending',
-          },
-        });
-
-        // Get or create wellbeing status (mock for Phase 1)
-        let wellbeingStatus = await this.prisma.memberWellbeingStatus.findUnique({
-          where: {
-            memberId: assignment.memberId,
-          },
-        });
-
-        if (!wellbeingStatus) {
-          // Create default status for testing
-          wellbeingStatus = await this.prisma.memberWellbeingStatus.create({
-            data: {
-              memberId: assignment.memberId,
-              status: 'green',
-              aiSuggestedStatus: 'green',
-              summary: 'Member profile created. AI analysis pending.',
-              lastAnalyzedAt: new Date(),
-            },
-          });
-        }
-
-        return {
-          member: assignment.member,
-          wellbeingStatus: wellbeingStatus as any,
-          lastLogin: lastSession?.createdAt,
-          lastActive: lastMessage?.timestamp,
-          lastConversationDate: lastSession?.createdAt, // Keep for backward compatibility
-          totalConversations,
-          observationCount,
-          assignment: assignment as any,
-          pendingTasks,
-          overdueTasks,
-          pendingAssessments,
-        };
-      })
-    );
+      return {
+        member: assignment.member,
+        wellbeingStatus: wellbeingStatus as any,
+        lastLogin,
+        lastActive,
+        lastConversationDate: lastLogin, // Keep for backward compatibility
+        totalConversations,
+        observationCount,
+        assignment: assignment as any,
+        pendingTasks,
+        overdueTasks,
+        pendingAssessments,
+      };
+    });
 
     return summaries;
   }
