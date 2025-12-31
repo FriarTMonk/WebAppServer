@@ -19,6 +19,8 @@ import { AssessmentService } from './assessment.service';
 import { AssessmentScoringService } from './assessment-scoring.service';
 import { AssessmentSchedulingService } from './assessment-scheduling.service';
 import { CounselController } from './counsel.controller';
+import { AssessmentController } from './assessment.controller';
+import { WellbeingController } from './wellbeing.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AiModule } from '../ai/ai.module';
 import { ScriptureModule } from '../scripture/scripture.module';
@@ -35,7 +37,7 @@ import { EmailModule } from '../email/email.module';
     SubscriptionModule,
     EmailModule,
   ],
-  controllers: [CounselController],
+  controllers: [CounselController, AssessmentController, WellbeingController],
   providers: [
     CounselService,
     CounselExportService,
