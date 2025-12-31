@@ -6,9 +6,10 @@ import { parseErrorMessage } from '@/lib/error-utils';
 
 interface MemberTasksCardProps {
   onOpenModal: () => void;
+  refreshTrigger?: number;
 }
 
-export default function MemberTasksCard({ onOpenModal }: MemberTasksCardProps) {
+export default function MemberTasksCard({ onOpenModal, refreshTrigger }: MemberTasksCardProps) {
   const [tasks, setTasks] = useState<MemberTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +48,15 @@ export default function MemberTasksCard({ onOpenModal }: MemberTasksCardProps) {
     fetchTasks(abortController.signal);
     return () => abortController.abort();
   }, [fetchTasks]);
+
+  // Refetch when refreshTrigger changes
+  useEffect(() => {
+    if (refreshTrigger !== undefined && refreshTrigger > 0) {
+      const abortController = new AbortController();
+      fetchTasks(abortController.signal);
+      return () => abortController.abort();
+    }
+  }, [refreshTrigger, fetchTasks]);
 
   // Count pending and overdue tasks
   const pendingCount = tasks.filter((t) => t.status === 'pending').length;

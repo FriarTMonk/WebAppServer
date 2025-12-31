@@ -6,9 +6,10 @@ import { parseErrorMessage } from '@/lib/error-utils';
 
 interface MemberAssessmentsCardProps {
   onOpenModal: () => void;
+  refreshTrigger?: number;
 }
 
-export default function MemberAssessmentsCard({ onOpenModal }: MemberAssessmentsCardProps) {
+export default function MemberAssessmentsCard({ onOpenModal, refreshTrigger }: MemberAssessmentsCardProps) {
   const [assessments, setAssessments] = useState<AssessedAssessment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +48,15 @@ export default function MemberAssessmentsCard({ onOpenModal }: MemberAssessments
     fetchAssessments(abortController.signal);
     return () => abortController.abort();
   }, [fetchAssessments]);
+
+  // Refetch when refreshTrigger changes
+  useEffect(() => {
+    if (refreshTrigger !== undefined && refreshTrigger > 0) {
+      const abortController = new AbortController();
+      fetchAssessments(abortController.signal);
+      return () => abortController.abort();
+    }
+  }, [refreshTrigger, fetchAssessments]);
 
   // Count pending assessments
   const pendingCount = assessments.filter((a) => a.status === 'pending').length;

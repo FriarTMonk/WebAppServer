@@ -66,6 +66,8 @@ export function ConversationView() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showTasksModal, setShowTasksModal] = useState(false);
   const [showAssessmentsModal, setShowAssessmentsModal] = useState(false);
+  const [taskRefreshTrigger, setTaskRefreshTrigger] = useState(0);
+  const [assessmentRefreshTrigger, setAssessmentRefreshTrigger] = useState(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -489,8 +491,14 @@ export function ConversationView() {
       {isAuthenticated && (
         <div className="px-4 pt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <MemberTasksCard onOpenModal={() => setShowTasksModal(true)} />
-            <MemberAssessmentsCard onOpenModal={() => setShowAssessmentsModal(true)} />
+            <MemberTasksCard
+              onOpenModal={() => setShowTasksModal(true)}
+              refreshTrigger={taskRefreshTrigger}
+            />
+            <MemberAssessmentsCard
+              onOpenModal={() => setShowAssessmentsModal(true)}
+              refreshTrigger={assessmentRefreshTrigger}
+            />
           </div>
         </div>
       )}
@@ -694,6 +702,7 @@ export function ConversationView() {
       {showTasksModal && (
         <MyTasksModal
           onClose={() => setShowTasksModal(false)}
+          onTaskUpdate={() => setTaskRefreshTrigger((prev) => prev + 1)}
         />
       )}
 
@@ -701,6 +710,7 @@ export function ConversationView() {
       {showAssessmentsModal && (
         <MyAssessmentsModal
           onClose={() => setShowAssessmentsModal(false)}
+          onAssessmentUpdate={() => setAssessmentRefreshTrigger((prev) => prev + 1)}
         />
       )}
     </div>
