@@ -83,7 +83,7 @@ export class TaskController {
     const task = await this.memberTaskService.getTaskById(id);
     // Verify member owns this task
     if (task.memberId !== req.user.id) {
-      throw new Error('Unauthorized');
+      throw new ForbiddenException('You do not have permission to access this task');
     }
     return task;
   }
@@ -114,7 +114,7 @@ export class TaskController {
     // Verify member owns this task
     const task = await this.memberTaskService.getTaskById(id);
     if (task.memberId !== req.user.id) {
-      throw new Error('Unauthorized');
+      throw new ForbiddenException('You do not have permission to complete this task');
     }
     return this.memberTaskService.markComplete(id);
   }
