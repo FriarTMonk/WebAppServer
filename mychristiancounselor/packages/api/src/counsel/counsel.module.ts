@@ -17,6 +17,7 @@ import { PermissionService } from './permission.service';
 import { CrisisAlertService } from './crisis-alert.service';
 import { AssessmentService } from './assessment.service';
 import { AssessmentScoringService } from './assessment-scoring.service';
+import { AssessmentSchedulingService } from './assessment-scheduling.service';
 import { CounselController } from './counsel.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AiModule } from '../ai/ai.module';
@@ -54,6 +55,7 @@ import { EmailModule } from '../email/email.module';
     CrisisAlertService,
     AssessmentService,
     AssessmentScoringService,
+    AssessmentSchedulingService,
   ],
   exports: [
     CounselService,
@@ -72,6 +74,7 @@ import { EmailModule } from '../email/email.module';
     CrisisAlertService,
     AssessmentService,
     AssessmentScoringService,
+    AssessmentSchedulingService,
   ],
 })
 export class CounselModule {}
