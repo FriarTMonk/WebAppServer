@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { MemberTask, taskApi } from '@/lib/api';
 import { TaskCard } from './shared/TaskCard';
 import { showToast } from './Toast';
+import { parseErrorMessage } from '@/lib/error-utils';
 
 interface MyTasksModalProps {
   onClose: () => void;
@@ -20,6 +21,7 @@ export default function MyTasksModal({ onClose, onTaskUpdate }: MyTasksModalProp
   const router = useRouter();
 
   // Handle Escape key to close modal
+  // onClose is intentionally omitted from deps as it's stable and we want to set up listener once
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -29,32 +31,39 @@ export default function MyTasksModal({ onClose, onTaskUpdate }: MyTasksModalProp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
     try {
       const response = await taskApi.getMyTasks();
+
+      // Check if request was aborted
+      if (signal?.aborted) return;
+
       if (!response.ok) {
-        let errorMessage = 'Failed to load tasks';
-        try {
-          const data = await response.json();
-          errorMessage = data.message || errorMessage;
-        } catch {
-          // Use default message
-        }
+        const errorMessage = await parseErrorMessage(response, 'Failed to load tasks');
         throw new Error(errorMessage);
       }
       const data = await response.json();
+
+      // Check again before setting state
+      if (signal?.aborted) return;
+
       setTasks(data);
     } catch (err) {
+      if (signal?.aborted) return;
       setError(err instanceof Error ? err.message : 'Failed to load tasks');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchTasks();
+    const abortController = new AbortController();
+    fetchTasks(abortController.signal);
+    return () => abortController.abort();
   }, [fetchTasks]);
 
   const handleComplete = async (task: MemberTask) => {
@@ -66,13 +75,7 @@ export default function MyTasksModal({ onClose, onTaskUpdate }: MyTasksModalProp
     try {
       const response = await taskApi.complete(task.id);
       if (!response.ok) {
-        let errorMessage = 'Failed to mark task as complete';
-        try {
-          const data = await response.json();
-          errorMessage = data.message || errorMessage;
-        } catch {
-          // Use default message
-        }
+        const errorMessage = await parseErrorMessage(response, 'Failed to mark task as complete');
         throw new Error(errorMessage);
       }
       showToast('Task marked as complete', 'success');
@@ -166,6 +169,7 @@ export default function MyTasksModal({ onClose, onTaskUpdate }: MyTasksModalProp
                         <TaskCard
                           task={task}
                           showActions={true}
+                          isLoading={actionInProgress === task.id}
                           onComplete={handleComplete}
                           onStartConversation={handleStartConversation}
                         />
@@ -187,6 +191,7 @@ export default function MyTasksModal({ onClose, onTaskUpdate }: MyTasksModalProp
                         key={task.id}
                         task={task}
                         showActions={true}
+                        isLoading={actionInProgress === task.id}
                         onComplete={handleComplete}
                         onStartConversation={handleStartConversation}
                       />

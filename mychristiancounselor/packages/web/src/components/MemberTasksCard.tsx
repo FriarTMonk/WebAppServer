@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MemberTask, taskApi } from '@/lib/api';
+import { parseErrorMessage } from '@/lib/error-utils';
 
 interface MemberTasksCardProps {
   onOpenModal: () => void;
@@ -12,33 +13,40 @@ export default function MemberTasksCard({ onOpenModal }: MemberTasksCardProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchTasks();
-  }, []);
-
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
       setError(null);
       const response = await taskApi.getMyTasks();
+
+      // Check if request was aborted
+      if (signal?.aborted) return;
+
       if (!response.ok) {
-        let errorMessage = 'Failed to load tasks';
-        try {
-          const data = await response.json();
-          errorMessage = data.message || errorMessage;
-        } catch {
-          // Use default message
-        }
+        const errorMessage = await parseErrorMessage(response, 'Failed to load tasks');
         throw new Error(errorMessage);
       }
       const data = await response.json();
+
+      // Check again before setting state
+      if (signal?.aborted) return;
+
       setTasks(data);
     } catch (err) {
+      if (signal?.aborted) return;
       setError(err instanceof Error ? err.message : 'Failed to load tasks');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const abortController = new AbortController();
+    fetchTasks(abortController.signal);
+    return () => abortController.abort();
+  }, [fetchTasks]);
 
   // Count pending and overdue tasks
   const pendingCount = tasks.filter((t) => t.status === 'pending').length;

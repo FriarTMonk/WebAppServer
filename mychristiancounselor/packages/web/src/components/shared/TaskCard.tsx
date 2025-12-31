@@ -5,6 +5,7 @@ import { MemberTask } from '@/lib/api';
 interface TaskCardProps {
   task: MemberTask;
   showActions?: boolean;
+  isLoading?: boolean;
   onEdit?: (task: MemberTask) => void;
   onDelete?: (task: MemberTask) => void;
   onRemind?: (task: MemberTask) => void;
@@ -15,6 +16,7 @@ interface TaskCardProps {
 export function TaskCard({
   task,
   showActions = false,
+  isLoading = false,
   onEdit,
   onDelete,
   onRemind,
@@ -111,9 +113,10 @@ export function TaskCard({
           {!isCompleted && task.type === 'offline_task' && onComplete && (
             <button
               onClick={() => onComplete(task)}
-              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+              disabled={isLoading}
+              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Mark Complete
+              {isLoading ? 'Completing...' : 'Mark Complete'}
             </button>
           )}
           {!isCompleted &&
@@ -121,7 +124,8 @@ export function TaskCard({
             onStartConversation && (
               <button
                 onClick={() => onStartConversation(task)}
-                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                disabled={isLoading}
+                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Start Conversation
               </button>
@@ -129,7 +133,8 @@ export function TaskCard({
           {!isCompleted && onEdit && (
             <button
               onClick={() => onEdit(task)}
-              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              disabled={isLoading}
+              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Edit
             </button>
@@ -137,7 +142,8 @@ export function TaskCard({
           {!isCompleted && onRemind && (
             <button
               onClick={() => onRemind(task)}
-              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+              disabled={isLoading}
+              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Send Reminder
             </button>
@@ -145,7 +151,8 @@ export function TaskCard({
           {onDelete && (
             <button
               onClick={() => onDelete(task)}
-              className="px-3 py-1 bg-red-100 text-red-700 text-sm rounded hover:bg-red-200"
+              disabled={isLoading}
+              className="px-3 py-1 bg-red-100 text-red-700 text-sm rounded hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Delete
             </button>
