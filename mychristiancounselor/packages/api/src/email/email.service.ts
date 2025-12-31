@@ -75,7 +75,7 @@ export class EmailService {
     const fromEmail = options.fromEmail || this.fromEmail;
     const fromName = options.fromName || this.fromName;
 
-    const result = await this.postmarkClient!.sendEmail({
+    const emailPayload: any = {
       From: `${fromName} <${fromEmail}>`,
       To: options.to,
       Subject: options.subject,
@@ -83,7 +83,19 @@ export class EmailService {
       TextBody: options.text,
       Tag: options.tag || options.emailType,
       MessageStream: 'outbound',
-    });
+    };
+
+    // Add priority header if specified
+    if (options.priority) {
+      emailPayload.Headers = [
+        {
+          Name: 'X-Priority',
+          Value: options.priority.toString(),
+        },
+      ];
+    }
+
+    const result = await this.postmarkClient!.sendEmail(emailPayload);
 
     // Log sent email
     const emailLogId = await this.emailTracking.logEmailSent({
