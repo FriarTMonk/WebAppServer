@@ -25,12 +25,23 @@ export default function CounselorDashboard() {
     organizationId: string;
   } | null>(null);
   const [selectedSummary, setSelectedSummary] = useState<CounselorMemberSummary | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
 
-  // ESC key handler for summary dialog
+  // ESC key handler for summary dialog and close dropdowns on outside click
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setSelectedSummary(null);
+        setOpenDropdown(null);
+      }
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-dropdown-menu]') && !target.closest('[data-dropdown-button]')) {
+        setOpenDropdown(null);
+        setDropdownPosition(null);
       }
     };
 
@@ -39,8 +50,17 @@ export default function CounselorDashboard() {
       return () => document.removeEventListener('keydown', handleEscape);
     }
 
+    if (openDropdown) {
+      document.addEventListener('keydown', handleEscape);
+      document.addEventListener('click', handleClickOutside);
+      return () => {
+        document.removeEventListener('keydown', handleEscape);
+        document.removeEventListener('click', handleClickOutside);
+      };
+    }
+
     return undefined;
-  }, [selectedSummary]);
+  }, [selectedSummary, openDropdown]);
 
   const getStoplightEmoji = (status: WellbeingStatus) => {
     switch (status) {
@@ -231,37 +251,31 @@ export default function CounselorDashboard() {
                         last question
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <button
-                        onClick={() => handleManualRefresh(memberSummary.member.id)}
-                        disabled={refreshing === memberSummary.member.id}
-                        className="text-blue-600 hover:text-blue-900 disabled:text-gray-400"
+                        data-dropdown-button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const button = e.currentTarget;
+                          const rect = button.getBoundingClientRect();
+
+                          if (openDropdown === memberSummary.member.id) {
+                            setOpenDropdown(null);
+                            setDropdownPosition(null);
+                          } else {
+                            setOpenDropdown(memberSummary.member.id);
+                            setDropdownPosition({
+                              top: rect.bottom + 4,
+                              left: rect.right - 192, // 192px = w-48 (menu width)
+                            });
+                          }
+                        }}
+                        className="px-3 py-1 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded flex items-center gap-1"
                       >
-                        {refreshing === memberSummary.member.id ? '↻ Refreshing...' : '↻ Refresh'}
-                      </button>
-                      <button
-                        onClick={() => handleOpenOverride(memberSummary)}
-                        className="text-indigo-600 hover:text-indigo-900"
-                      >
-                        Override
-                      </button>
-                      <button
-                        onClick={() => window.location.href = `/counsel/member/${memberSummary.member.id}/journal`}
-                        className="text-purple-600 hover:text-purple-900"
-                      >
-                        Journal
-                      </button>
-                      <button
-                        onClick={() =>
-                          setProfileModal({
-                            memberId: memberSummary.member.id,
-                            memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
-                            organizationId: memberSummary.assignment.organizationId,
-                          })
-                        }
-                        className="text-green-600 hover:text-green-900"
-                      >
-                        Profile
+                        Actions
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
                       </button>
                     </td>
                   </tr>
@@ -294,6 +308,75 @@ export default function CounselorDashboard() {
           organizationId={profileModal.organizationId}
           onClose={() => setProfileModal(null)}
         />
+      )}
+
+      {/* Actions dropdown modal - anchored to button */}
+      {openDropdown && dropdownPosition && (
+        <div
+          data-dropdown-menu
+          className="fixed w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200"
+          style={{
+            top: `${dropdownPosition.top}px`,
+            left: `${dropdownPosition.left}px`,
+          }}
+        >
+          <div className="py-1">
+            <button
+              onClick={() => {
+                const memberId = openDropdown;
+                handleManualRefresh(memberId);
+                setOpenDropdown(null);
+                setDropdownPosition(null);
+              }}
+              disabled={refreshing === openDropdown}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-white"
+            >
+              {refreshing === openDropdown ? '↻ Refreshing...' : '↻ Refresh Analysis'}
+            </button>
+            <button
+              onClick={() => {
+                const memberSummary = members.find(m => m.member.id === openDropdown);
+                if (memberSummary) {
+                  handleOpenOverride(memberSummary);
+                }
+                setOpenDropdown(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Override Status
+            </button>
+            <button
+              onClick={() => {
+                window.location.href = `/counsel/member/${openDropdown}/journal`;
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              View Journal
+            </button>
+            <button
+              onClick={() => {
+                const memberSummary = members.find(m => m.member.id === openDropdown);
+                if (memberSummary) {
+                  setProfileModal({
+                    memberId: memberSummary.member.id,
+                    memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
+                    organizationId: memberSummary.assignment.organizationId,
+                  });
+                }
+                setOpenDropdown(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Observations
+            </button>
+            <div className="border-t border-gray-200 my-1"></div>
+            <div className="px-4 py-2 text-xs text-gray-400 italic">
+              Coming soon: Assignments, Trends
+            </div>
+          </div>
+        </div>
       )}
 
       {selectedSummary && (
