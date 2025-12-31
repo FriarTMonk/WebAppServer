@@ -15,6 +15,7 @@ import { SessionLimitService } from './session-limit.service';
 import { NoteService } from './note.service';
 import { PermissionService } from './permission.service';
 import { CrisisAlertService } from './crisis-alert.service';
+import { AssessmentService } from './assessment.service';
 import { CounselController } from './counsel.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AiModule } from '../ai/ai.module';
@@ -50,6 +51,7 @@ import { EmailModule } from '../email/email.module';
     NoteService,
     PermissionService,
     CrisisAlertService,
+    AssessmentService,
   ],
   exports: [
     CounselService,
@@ -66,6 +68,7 @@ import { EmailModule } from '../email/email.module';
     NoteService,
     PermissionService,
     CrisisAlertService,
+    AssessmentService,
   ],
 })
 export class CounselModule {}
