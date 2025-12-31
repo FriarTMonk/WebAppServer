@@ -11,8 +11,11 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { IsCounselorGuard } from './guards/is-counselor.guard';
 import { MemberTaskService } from './member-task.service';
 import { TaskTemplateService } from './task-template.service';
+import { AssignmentService } from './assignment.service';
+import { CreateTaskDto } from './dto/create-task.dto';
 import { MemberTaskStatus, MemberTaskType } from '@prisma/client';
 
 @Controller('counsel/tasks')
@@ -21,6 +24,7 @@ export class TaskController {
   constructor(
     private memberTaskService: MemberTaskService,
     private taskTemplateService: TaskTemplateService,
+    private assignmentService: AssignmentService,
   ) {}
 
   /**
@@ -59,18 +63,29 @@ export class TaskController {
   /**
    * GET /counsel/tasks/member/:memberId
    * Get tasks for specific member (counselor only)
-   * Note: Requires counselor permission check
+   * Note: Requires counselor permission check and assignment verification
    */
   @Get('member/:memberId')
+  @UseGuards(IsCounselorGuard)
   async getMemberTasks(
     @Param('memberId') memberId: string,
     @Query('status') status?: MemberTaskStatus,
+    @Query('organizationId') organizationId?: string,
     @Request() req,
   ) {
-    // Verify user is a counselor
-    if (!req.user.isCounselor) {
-      throw new ForbiddenException('Only counselors can view member tasks');
+    // Verify counselor has assignment to this member
+    if (organizationId) {
+      const hasAssignment = await this.assignmentService.verifyCounselorAssignment(
+        req.user.id,
+        memberId,
+        organizationId,
+      );
+
+      if (!hasAssignment) {
+        throw new ForbiddenException('You are not assigned to this member');
+      }
     }
+
     return this.memberTaskService.getMemberTasks(memberId, status);
   }
 
@@ -91,14 +106,28 @@ export class TaskController {
   /**
    * POST /counsel/tasks
    * Create new task (counselor only)
-   * Note: Requires isCounselor check
+   * Note: Requires counselor guard and assignment verification
    */
   @Post()
-  async createTask(@Body() dto: any, @Request() req) {
-    // Verify user is a counselor
-    if (!req.user.isCounselor) {
-      throw new ForbiddenException('Only counselors can create tasks');
+  @UseGuards(IsCounselorGuard)
+  async createTask(
+    @Body() dto: CreateTaskDto,
+    @Query('organizationId') organizationId?: string,
+    @Request() req,
+  ) {
+    // Verify counselor has assignment to this member
+    if (organizationId) {
+      const hasAssignment = await this.assignmentService.verifyCounselorAssignment(
+        req.user.id,
+        dto.memberId,
+        organizationId,
+      );
+
+      if (!hasAssignment) {
+        throw new ForbiddenException('You are not assigned to this member');
+      }
     }
+
     return this.memberTaskService.createTask({
       ...dto,
       counselorId: req.user.id,
