@@ -96,17 +96,29 @@ export class CounselProcessingService {
 
       // Publish crisis detected event (only for authenticated users)
       if (userId) {
-        const event: CrisisDetectedEvent = {
-          memberId: userId,
-          crisisType: 'suicidal_ideation', // Default, can be enhanced later
-          confidence: crisisResult.confidence as 'high' | 'medium' | 'low',
-          detectionMethod: crisisResult.detectionMethod as 'pattern' | 'ai' | 'both',
-          triggeringMessage: message,
-          messageId: undefined, // Will be set after message is stored
-          timestamp: new Date(),
-        };
-        this.eventEmitter.emit(EVENT_TYPES.CRISIS_DETECTED, event);
-        this.logger.debug(`Emitted crisis.detected event for member ${userId}`);
+        try {
+          // Validate and normalize detection method (SafetyService can return 'none')
+          const validDetectionMethod =
+            crisisResult.detectionMethod === 'none'
+              ? 'pattern'
+              : (crisisResult.detectionMethod as 'pattern' | 'ai' | 'both');
+
+          const event: CrisisDetectedEvent = {
+            memberId: userId,
+            crisisType: 'suicidal_ideation', // TODO: Enhance SafetyService to return specific crisis type
+            confidence: crisisResult.confidence as 'high' | 'medium' | 'low',
+            detectionMethod: validDetectionMethod,
+            triggeringMessage: message,
+            messageId: undefined, // Event emitted before message storage for timely alerting
+            timestamp: new Date(),
+          };
+
+          this.eventEmitter.emit(EVENT_TYPES.CRISIS_DETECTED, event);
+          this.logger.log(`Crisis event emitted for member ${userId} (${event.crisisType}, ${event.confidence} confidence)`);
+        } catch (error) {
+          this.logger.error(`Failed to emit crisis event for member ${userId}`, error);
+          // Event emission failure shouldn't block counsel response
+        }
       }
     }
 
