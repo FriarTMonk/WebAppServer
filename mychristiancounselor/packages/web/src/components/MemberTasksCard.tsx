@@ -1,0 +1,144 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { MemberTask, taskApi } from '@/lib/api';
+
+interface MemberTasksCardProps {
+  onOpenModal: () => void;
+}
+
+export default function MemberTasksCard({ onOpenModal }: MemberTasksCardProps) {
+  const [tasks, setTasks] = useState<MemberTask[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const fetchTasks = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await taskApi.getMyTasks();
+      if (!response.ok) {
+        let errorMessage = 'Failed to load tasks';
+        try {
+          const data = await response.json();
+          errorMessage = data.message || errorMessage;
+        } catch {
+          // Use default message
+        }
+        throw new Error(errorMessage);
+      }
+      const data = await response.json();
+      setTasks(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load tasks');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Count pending and overdue tasks
+  const pendingCount = tasks.filter((t) => t.status === 'pending').length;
+  const overdueCount = tasks.filter((t) => t.status === 'overdue').length;
+
+  // Determine what to display
+  const hasOverdue = overdueCount > 0;
+  const hasPending = pendingCount > 0;
+  const totalIncomplete = pendingCount + overdueCount;
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 animate-pulse">
+        <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex items-center gap-2 text-red-600">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span className="text-sm">Unable to load tasks</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (totalIncomplete === 0) {
+    return (
+      <button
+        onClick={onOpenModal}
+        className="w-full bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer text-left"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-900">All Tasks Complete</p>
+            <p className="text-xs text-gray-500">Great job!</p>
+          </div>
+        </div>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={onOpenModal}
+      className="w-full bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer text-left"
+    >
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+          hasOverdue ? 'bg-orange-100' : 'bg-blue-100'
+        }`}>
+          <svg className={`w-5 h-5 ${hasOverdue ? 'text-orange-600' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+        </div>
+        <div className="flex-1">
+          {hasOverdue ? (
+            <>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-gray-900">
+                  {overdueCount} {overdueCount === 1 ? 'Overdue Task' : 'Overdue Tasks'}
+                </p>
+                <span className="px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
+                  Urgent
+                </span>
+              </div>
+              {hasPending && (
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {pendingCount} more {pendingCount === 1 ? 'task' : 'tasks'} pending
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-gray-900">
+                  {pendingCount} {pendingCount === 1 ? 'Pending Task' : 'Pending Tasks'}
+                </p>
+                <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                  Active
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+    </button>
+  );
+}
