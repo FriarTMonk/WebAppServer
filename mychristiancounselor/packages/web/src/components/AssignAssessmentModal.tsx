@@ -64,10 +64,6 @@ export default function AssignAssessmentModal({
           const data = await response.json();
           throw new Error(data.message || 'Failed to assign assessment');
         } catch (parseError) {
-          // If JSON parsing fails, use default error message
-          if (parseError instanceof Error && parseError.message !== 'Failed to assign assessment') {
-            throw parseError;
-          }
           throw new Error('Failed to assign assessment');
         }
       }
@@ -177,14 +173,13 @@ export default function AssignAssessmentModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
+            className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={submitting}
           >
             Cancel
           </button>
           <button
-            type="button"
-            onClick={handleSubmit}
+            type="submit"
             disabled={submitting}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
