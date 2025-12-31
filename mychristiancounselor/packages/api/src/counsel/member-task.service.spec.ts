@@ -128,6 +128,39 @@ describe('MemberTaskService', () => {
     });
   });
 
+  describe('getTaskById', () => {
+    it('should return task by ID', async () => {
+      const task = {
+        id: 'task-123',
+        memberId: 'member-456',
+        counselorId: 'counselor-789',
+        type: 'offline_task',
+        title: 'Read Psalm 23',
+        description: 'Daily reading',
+        dueDate: new Date(),
+        status: 'pending',
+        completedAt: null,
+        metadata: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockPrismaService.memberTask.findUnique.mockResolvedValue(task);
+
+      const result = await service.getTaskById('task-123');
+
+      expect(result).toEqual(task);
+    });
+
+    it('should throw NotFoundException if task does not exist', async () => {
+      mockPrismaService.memberTask.findUnique.mockResolvedValue(null);
+
+      await expect(service.getTaskById('nonexistent')).rejects.toThrow(
+        'Task not found',
+      );
+    });
+  });
+
   describe('markComplete', () => {
     it('should mark task as completed and emit event', async () => {
       const taskId = 'task-789';

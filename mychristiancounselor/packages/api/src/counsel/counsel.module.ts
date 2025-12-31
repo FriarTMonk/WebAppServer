@@ -18,6 +18,11 @@ import { CrisisAlertService } from './crisis-alert.service';
 import { AssessmentService } from './assessment.service';
 import { AssessmentScoringService } from './assessment-scoring.service';
 import { AssessmentSchedulingService } from './assessment-scheduling.service';
+import { TaskController } from './task.controller';
+import { MemberTaskService } from './member-task.service';
+import { TaskTemplateService } from './task-template.service';
+import { TaskCompletionDetectionService } from './task-completion-detection.service';
+import { TaskOverdueService } from './task-overdue.service';
 import { CounselController } from './counsel.controller';
 import { AssessmentController } from './assessment.controller';
 import { WellbeingController } from './wellbeing.controller';
@@ -37,7 +42,12 @@ import { EmailModule } from '../email/email.module';
     SubscriptionModule,
     EmailModule,
   ],
-  controllers: [CounselController, AssessmentController, WellbeingController],
+  controllers: [
+    CounselController,
+    AssessmentController,
+    WellbeingController,
+    TaskController,
+  ],
   providers: [
     CounselService,
     CounselExportService,
@@ -58,6 +68,10 @@ import { EmailModule } from '../email/email.module';
     AssessmentService,
     AssessmentScoringService,
     AssessmentSchedulingService,
+    MemberTaskService,
+    TaskTemplateService,
+    TaskCompletionDetectionService,
+    TaskOverdueService,
   ],
   exports: [
     CounselService,
@@ -77,6 +91,9 @@ import { EmailModule } from '../email/email.module';
     AssessmentService,
     AssessmentScoringService,
     AssessmentSchedulingService,
+    MemberTaskService,
+    TaskTemplateService,
+    TaskCompletionDetectionService,
   ],
 })
 export class CounselModule {}

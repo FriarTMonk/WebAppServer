@@ -80,6 +80,21 @@ export class MemberTaskService {
   }
 
   /**
+   * Get a specific task by ID
+   */
+  async getTaskById(taskId: string) {
+    const task = await this.prisma.memberTask.findUnique({
+      where: { id: taskId },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return task;
+  }
+
+  /**
    * Mark a task as completed and emit event
    */
   async markComplete(taskId: string) {
