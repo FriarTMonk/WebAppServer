@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TaskType } from '@/lib/api';
+import { TaskType, TaskTemplate, taskApi } from '@/lib/api';
 
 interface AssignTaskModalProps {
   memberName: string;
@@ -46,6 +46,18 @@ export default function AssignTaskModal({
   const [step, setStep] = useState<Step>('select_type');
   const [selectedType, setSelectedType] = useState<TaskType | null>(null);
 
+  // Step 2 state
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [counselorNotes, setCounselorNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+
   // Handle Escape key to close modal
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -55,13 +67,88 @@ export default function AssignTaskModal({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
+  // Fetch templates when type is selected and step is configure
+  useEffect(() => {
+    if (selectedType && step === 'configure') {
+      const fetchTemplates = async () => {
+        setLoadingTemplates(true);
+        try {
+          const response = await taskApi.getTemplates();
+          if (response.ok) {
+            const data = await response.json();
+            const filtered = data.filter((t: TaskTemplate) => t.type === selectedType);
+            setTemplates(filtered);
+          }
+        } catch (err) {
+          console.error('Error loading templates:', err);
+        } finally {
+          setLoadingTemplates(false);
+        }
+      };
+      fetchTemplates();
+    }
+  }, [selectedType, step]);
+
+  // Auto-fill title and description when template is selected
+  useEffect(() => {
+    if (selectedTemplate) {
+      if (selectedTemplate === 'custom') {
+        setTitle('');
+        setDescription('');
+      } else {
+        const template = templates.find((t) => t.id === selectedTemplate);
+        if (template) {
+          setTitle(template.title);
+          setDescription(template.description);
+        }
+      }
+    }
+  }, [selectedTemplate, templates]);
+
   const handleTypeSelect = (type: TaskType) => {
     setSelectedType(type);
     setStep('configure');
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!title.trim() || !description.trim()) {
+      setError('Title and description are required');
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await taskApi.create({
+        memberId,
+        type: selectedType!,
+        title: title.trim(),
+        description: description.trim(),
+        dueDate: dueDate || undefined,
+        priority,
+        counselorNotes: counselorNotes.trim() || undefined,
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to assign task');
+      }
+
+      onSuccess();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to assign task');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (step === 'configure') {
-    // Step 2 will be implemented in next task
+    const selectedTaskTypeName = taskTypes.find((t) => t.type === selectedType)?.name || 'Task';
+
     return (
       <div
         className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -75,31 +162,179 @@ export default function AssignTaskModal({
           aria-labelledby="modal-title-step2"
         >
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 id="modal-title-step2" className="text-xl font-semibold">Assign Task - Step 2</h2>
+            <h2 id="modal-title-step2" className="text-xl font-semibold">
+              Assign Task - Configure {selectedTaskTypeName}
+            </h2>
             <p className="text-sm text-gray-600 mt-1">
               Configure task for {memberName}
             </p>
           </div>
-          <div className="px-6 py-4">
-            <p>Step 2 configuration (to be implemented)</p>
-            <p>Selected type: {selectedType}</p>
-          </div>
-          <div className="px-6 py-4 border-t border-gray-200 flex gap-2 justify-end">
-            <button
-              type="button"
-              onClick={() => setStep('select_type')}
-              className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-          </div>
+
+          <form onSubmit={handleSubmit}>
+            <div className="px-6 py-6 space-y-6">
+              {/* Template Selector */}
+              <div>
+                <label htmlFor="template" className="block text-sm font-medium text-gray-700 mb-2">
+                  Task Template
+                </label>
+                {loadingTemplates ? (
+                  <div className="text-sm text-gray-500">Loading templates...</div>
+                ) : (
+                  <select
+                    id="template"
+                    value={selectedTemplate}
+                    onChange={(e) => setSelectedTemplate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select a template or create custom</option>
+                    <option value="custom">Create custom task</option>
+                    {templates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.title} - {template.category}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Title */}
+              <div>
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter task title"
+                  required
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+                  Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter task description"
+                  required
+                />
+              </div>
+
+              {/* Due Date */}
+              <div>
+                <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-2">
+                  Due Date (Optional)
+                </label>
+                <input
+                  type="date"
+                  id="dueDate"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Priority */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Priority
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="priority"
+                      value="low"
+                      checked={priority === 'low'}
+                      onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high')}
+                      className="mr-2"
+                    />
+                    Low
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="priority"
+                      value="medium"
+                      checked={priority === 'medium'}
+                      onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high')}
+                      className="mr-2"
+                    />
+                    Medium
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="priority"
+                      value="high"
+                      checked={priority === 'high'}
+                      onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high')}
+                      className="mr-2"
+                    />
+                    High
+                  </label>
+                </div>
+              </div>
+
+              {/* Counselor Notes */}
+              <div>
+                <label htmlFor="counselorNotes" className="block text-sm font-medium text-gray-700 mb-2">
+                  Private Counselor Notes (Optional)
+                </label>
+                <textarea
+                  id="counselorNotes"
+                  value={counselorNotes}
+                  onChange={(e) => setCounselorNotes(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Internal notes for your reference (not visible to member)"
+                />
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                  {error}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setStep('select_type')}
+                disabled={submitting}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={submitting}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting || !title.trim() || !description.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? 'Assigning...' : 'Assign Task'}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     );
