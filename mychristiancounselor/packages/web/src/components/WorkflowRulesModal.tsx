@@ -31,6 +31,7 @@ export default function WorkflowRulesModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showMoreActivity, setShowMoreActivity] = useState(false);
+  const [togglingRule, setTogglingRule] = useState<string | null>(null);
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -109,6 +110,29 @@ export default function WorkflowRulesModal({
     fetchData();
   }, [fetchData]);
 
+  const handleToggleRule = async (rule: WorkflowRule) => {
+    setTogglingRule(rule.id);
+    try {
+      const response = await workflowRulesApi.update(rule.id, { enabled: !rule.enabled });
+      if (!response.ok) {
+        let errorMessage = 'Failed to update rule';
+        try {
+          const data = await response.json();
+          errorMessage = data.message || errorMessage;
+        } catch {
+          // Use default message
+        }
+        throw new Error(errorMessage);
+      }
+      await fetchData(); // Refresh data
+      onSuccess(); // Notify parent
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update rule');
+    } finally {
+      setTogglingRule(null);
+    }
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Never';
     const date = new Date(dateString);
@@ -150,15 +174,32 @@ export default function WorkflowRulesModal({
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="font-medium text-gray-900">{rule.name}</h4>
-                    <span
-                      className={`px-2 py-0.5 text-xs rounded-full ${
-                        rule.enabled
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {rule.enabled ? 'ON' : 'OFF'}
-                    </span>
+                    {isEditable ? (
+                      <label className="flex items-center cursor-pointer">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={rule.enabled}
+                            onChange={() => handleToggleRule(rule)}
+                            disabled={togglingRule === rule.id}
+                            className="sr-only"
+                          />
+                          <div className={`block w-10 h-6 rounded-full ${rule.enabled ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                          <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition ${rule.enabled ? 'transform translate-x-4' : ''}`}></div>
+                        </div>
+                        <span className="ml-2 text-sm text-gray-600">{rule.enabled ? 'ON' : 'OFF'}</span>
+                      </label>
+                    ) : (
+                      <span
+                        className={`px-2 py-0.5 text-xs rounded-full ${
+                          rule.enabled
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        {rule.enabled ? 'ON' : 'OFF'}
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-gray-600 mb-2">{rule.description}</p>
                   <div className="text-xs text-gray-500">
