@@ -5,6 +5,12 @@ import { useCounselorMembers } from '@/hooks/useCounselorMembers';
 import { WellbeingStatus, CounselorMemberSummary } from '@mychristiancounselor/shared';
 import OverrideStatusModal from './OverrideStatusModal';
 import MemberProfileModal from './MemberProfileModal';
+import HistoricalTrendsModal from './HistoricalTrendsModal';
+import AssignTaskModal from './AssignTaskModal';
+import ViewTasksModal from './ViewTasksModal';
+import AssignAssessmentModal from './AssignAssessmentModal';
+import ViewAssessmentsModal from './ViewAssessmentsModal';
+import WorkflowRulesModal from './WorkflowRulesModal';
 import { apiPost } from '@/lib/api';
 import { TourButton } from './TourButton';
 
@@ -23,6 +29,30 @@ export default function CounselorDashboard() {
     memberId: string;
     memberName: string;
     organizationId: string;
+  } | null>(null);
+  const [historicalTrendsModal, setHistoricalTrendsModal] = useState<{
+    memberName: string;
+    memberId: string;
+  } | null>(null);
+  const [assignTaskModal, setAssignTaskModal] = useState<{
+    memberName: string;
+    memberId: string;
+  } | null>(null);
+  const [viewTasksModal, setViewTasksModal] = useState<{
+    memberName: string;
+    memberId: string;
+  } | null>(null);
+  const [assignAssessmentModal, setAssignAssessmentModal] = useState<{
+    memberName: string;
+    memberId: string;
+  } | null>(null);
+  const [viewAssessmentsModal, setViewAssessmentsModal] = useState<{
+    memberName: string;
+    memberId: string;
+  } | null>(null);
+  const [workflowRulesModal, setWorkflowRulesModal] = useState<{
+    memberName: string;
+    memberId: string;
   } | null>(null);
   const [selectedSummary, setSelectedSummary] = useState<CounselorMemberSummary | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -310,6 +340,70 @@ export default function CounselorDashboard() {
         />
       )}
 
+      {historicalTrendsModal && (
+        <HistoricalTrendsModal
+          memberName={historicalTrendsModal.memberName}
+          memberId={historicalTrendsModal.memberId}
+          onClose={() => setHistoricalTrendsModal(null)}
+        />
+      )}
+
+      {assignTaskModal && (
+        <AssignTaskModal
+          memberName={assignTaskModal.memberName}
+          memberId={assignTaskModal.memberId}
+          onClose={() => setAssignTaskModal(null)}
+          onSuccess={() => {
+            refetch();
+            setAssignTaskModal(null);
+          }}
+        />
+      )}
+
+      {viewTasksModal && (
+        <ViewTasksModal
+          memberName={viewTasksModal.memberName}
+          memberId={viewTasksModal.memberId}
+          onClose={() => setViewTasksModal(null)}
+          onSuccess={() => {
+            refetch();
+            setViewTasksModal(null);
+          }}
+        />
+      )}
+
+      {assignAssessmentModal && (
+        <AssignAssessmentModal
+          memberName={assignAssessmentModal.memberName}
+          memberId={assignAssessmentModal.memberId}
+          onClose={() => setAssignAssessmentModal(null)}
+          onSuccess={() => {
+            refetch();
+            setAssignAssessmentModal(null);
+          }}
+        />
+      )}
+
+      {viewAssessmentsModal && (
+        <ViewAssessmentsModal
+          memberName={viewAssessmentsModal.memberName}
+          memberId={viewAssessmentsModal.memberId}
+          onClose={() => setViewAssessmentsModal(null)}
+        />
+      )}
+
+      {workflowRulesModal && (
+        <WorkflowRulesModal
+          memberName={workflowRulesModal.memberName}
+          memberId={workflowRulesModal.memberId}
+          onClose={() => setWorkflowRulesModal(null)}
+          onSuccess={() => {
+            refetch();
+            setWorkflowRulesModal(null);
+          }}
+        />
+      )}
+
       {/* Actions dropdown modal - anchored to button */}
       {openDropdown && dropdownPosition && (
         <div
@@ -323,15 +417,20 @@ export default function CounselorDashboard() {
           <div className="py-1">
             <button
               onClick={() => {
-                const memberId = openDropdown;
-                handleManualRefresh(memberId);
+                const memberSummary = members.find(m => m.member.id === openDropdown);
+                if (memberSummary) {
+                  setProfileModal({
+                    memberId: memberSummary.member.id,
+                    memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
+                    organizationId: memberSummary.assignment.organizationId,
+                  });
+                }
                 setOpenDropdown(null);
                 setDropdownPosition(null);
               }}
-              disabled={refreshing === openDropdown}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-white"
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
-              {refreshing === openDropdown ? '↻ Refreshing...' : '↻ Refresh Analysis'}
+              View Profile
             </button>
             <button
               onClick={() => {
@@ -348,20 +447,24 @@ export default function CounselorDashboard() {
             </button>
             <button
               onClick={() => {
-                window.location.href = `/counsel/member/${openDropdown}/journal`;
+                const memberId = openDropdown;
+                handleManualRefresh(memberId);
+                setOpenDropdown(null);
+                setDropdownPosition(null);
               }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              disabled={refreshing === openDropdown}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-white"
             >
-              View Journal
+              {refreshing === openDropdown ? '↻ Refreshing...' : '↻ Refresh Analysis'}
             </button>
+            <div className="border-t border-gray-200 my-1"></div>
             <button
               onClick={() => {
                 const memberSummary = members.find(m => m.member.id === openDropdown);
                 if (memberSummary) {
-                  setProfileModal({
-                    memberId: memberSummary.member.id,
+                  setHistoricalTrendsModal({
                     memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
-                    organizationId: memberSummary.assignment.organizationId,
+                    memberId: memberSummary.member.id,
                   });
                 }
                 setOpenDropdown(null);
@@ -369,12 +472,88 @@ export default function CounselorDashboard() {
               }}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
-              Observations
+              Historical Trends
             </button>
-            <div className="border-t border-gray-200 my-1"></div>
-            <div className="px-4 py-2 text-xs text-gray-400 italic">
-              Coming soon: Assignments, Trends
-            </div>
+            <button
+              onClick={() => {
+                const memberSummary = members.find(m => m.member.id === openDropdown);
+                if (memberSummary) {
+                  setAssignTaskModal({
+                    memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
+                    memberId: memberSummary.member.id,
+                  });
+                }
+                setOpenDropdown(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Assign Task
+            </button>
+            <button
+              onClick={() => {
+                const memberSummary = members.find(m => m.member.id === openDropdown);
+                if (memberSummary) {
+                  setViewTasksModal({
+                    memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
+                    memberId: memberSummary.member.id,
+                  });
+                }
+                setOpenDropdown(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              View Tasks
+            </button>
+            <button
+              onClick={() => {
+                const memberSummary = members.find(m => m.member.id === openDropdown);
+                if (memberSummary) {
+                  setAssignAssessmentModal({
+                    memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
+                    memberId: memberSummary.member.id,
+                  });
+                }
+                setOpenDropdown(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Assign Assessment
+            </button>
+            <button
+              onClick={() => {
+                const memberSummary = members.find(m => m.member.id === openDropdown);
+                if (memberSummary) {
+                  setViewAssessmentsModal({
+                    memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
+                    memberId: memberSummary.member.id,
+                  });
+                }
+                setOpenDropdown(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              View Assessments
+            </button>
+            <button
+              onClick={() => {
+                const memberSummary = members.find(m => m.member.id === openDropdown);
+                if (memberSummary) {
+                  setWorkflowRulesModal({
+                    memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
+                    memberId: memberSummary.member.id,
+                  });
+                }
+                setOpenDropdown(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Workflow Rules
+            </button>
           </div>
         </div>
       )}
