@@ -60,12 +60,14 @@ export default function AssignAssessmentModal({
       });
 
       if (!response.ok) {
+        let errorMessage = 'Failed to assign assessment';
         try {
           const data = await response.json();
-          throw new Error(data.message || 'Failed to assign assessment');
-        } catch (parseError) {
-          throw new Error('Failed to assign assessment');
+          errorMessage = data.message || errorMessage;
+        } catch {
+          // Use default message
         }
+        throw new Error(errorMessage);
       }
 
       onSuccess();
@@ -98,94 +100,96 @@ export default function AssignAssessmentModal({
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-4">
-          {/* Assessment Type */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Select Assessment Type <span className="text-red-500">*</span>
-            </label>
-            <div className="space-y-3">
-              {assessmentTypes.map((assessment) => (
-                <label
-                  key={assessment.type}
-                  className={`flex items-start p-3 border-2 rounded cursor-pointer transition-colors ${
-                    selectedType === assessment.type
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="assessment-type"
-                    value={assessment.type}
-                    checked={selectedType === assessment.type}
-                    onChange={(e) => setSelectedType(e.target.value as AssessmentType)}
-                    className="mt-1 mr-3"
-                  />
-                  <div>
-                    <div className="font-medium text-gray-900">{assessment.name}</div>
-                    <div className="text-sm text-gray-600">{assessment.description}</div>
-                  </div>
-                </label>
-              ))}
+        <form onSubmit={handleSubmit}>
+          <div className="px-6 py-4">
+            {/* Assessment Type */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Select Assessment Type <span className="text-red-500">*</span>
+              </label>
+              <div className="space-y-3">
+                {assessmentTypes.map((assessment) => (
+                  <label
+                    key={assessment.type}
+                    className={`flex items-start p-3 border-2 rounded cursor-pointer transition-colors ${
+                      selectedType === assessment.type
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="assessment-type"
+                      value={assessment.type}
+                      checked={selectedType === assessment.type}
+                      onChange={(e) => setSelectedType(e.target.value as AssessmentType)}
+                      className="mt-1 mr-3"
+                    />
+                    <div>
+                      <div className="font-medium text-gray-900">{assessment.name}</div>
+                      <div className="text-sm text-gray-600">{assessment.description}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Due Date */}
-          <div className="mb-4">
-            <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-2">
-              Due Date (Optional)
-            </label>
-            <input
-              type="date"
-              id="dueDate"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              min={new Date().toISOString().split('T')[0]}
-            />
-          </div>
-
-          {/* Note to Member */}
-          <div className="mb-4">
-            <label htmlFor="noteToMember" className="block text-sm font-medium text-gray-700 mb-2">
-              Note to Member (Optional)
-            </label>
-            <textarea
-              id="noteToMember"
-              value={noteToMember}
-              onChange={(e) => setNoteToMember(e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="e.g., Please complete before our next session"
-            />
-          </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-              {error}
+            {/* Due Date */}
+            <div className="mb-4">
+              <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-2">
+                Due Date (Optional)
+              </label>
+              <input
+                type="date"
+                id="dueDate"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                min={new Date().toISOString().split('T')[0]}
+              />
             </div>
-          )}
+
+            {/* Note to Member */}
+            <div className="mb-4">
+              <label htmlFor="noteToMember" className="block text-sm font-medium text-gray-700 mb-2">
+                Note to Member (Optional)
+              </label>
+              <textarea
+                id="noteToMember"
+                value={noteToMember}
+                onChange={(e) => setNoteToMember(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., Please complete before our next session"
+              />
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                {error}
+              </div>
+            )}
+          </div>
+
+          <div className="px-6 py-4 border-t border-gray-200 flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {submitting ? 'Assigning...' : 'Assign Assessment'}
+            </button>
+          </div>
         </form>
-
-        <div className="px-6 py-4 border-t border-gray-200 flex gap-2 justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={submitting}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {submitting ? 'Assigning...' : 'Assign Assessment'}
-          </button>
-        </div>
       </div>
     </div>
   );
