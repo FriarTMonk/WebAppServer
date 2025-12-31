@@ -8,14 +8,12 @@ interface ViewAssessmentsModalProps {
   memberName: string;
   memberId: string;
   onClose: () => void;
-  onSuccess: () => void;
 }
 
 export default function ViewAssessmentsModal({
   memberName,
   memberId,
   onClose,
-  onSuccess,
 }: ViewAssessmentsModalProps) {
   const [assessments, setAssessments] = useState<AssessedAssessment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +21,7 @@ export default function ViewAssessmentsModal({
   const [expandedHistory, setExpandedHistory] = useState<Record<string, boolean>>({});
   const [historyData, setHistoryData] = useState<Record<string, AssessmentHistoryItem[]>>({});
   const [loadingHistory, setLoadingHistory] = useState<Record<string, boolean>>({});
+  const [historyError, setHistoryError] = useState<Record<string, string>>({});
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -39,10 +38,7 @@ export default function ViewAssessmentsModal({
     setError(null);
     try {
       const response = await assessmentApi.getMemberAssessments(memberId);
-      if (response.ok) {
-        const data = await response.json();
-        setAssessments(data);
-      } else {
+      if (!response.ok) {
         let errorMessage = 'Failed to load assessments';
         try {
           const data = await response.json();
@@ -52,6 +48,9 @@ export default function ViewAssessmentsModal({
         }
         throw new Error(errorMessage);
       }
+
+      const data = await response.json();
+      setAssessments(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load assessments');
     } finally {
@@ -74,12 +73,14 @@ export default function ViewAssessmentsModal({
       // Fetch history if not already loaded
       if (!historyData[assessmentId]) {
         setLoadingHistory((prev) => ({ ...prev, [assessmentId]: true }));
+        setHistoryError((prev) => {
+          const newState = { ...prev };
+          delete newState[assessmentId];
+          return newState;
+        });
         try {
           const response = await assessmentApi.getAssessmentHistory(memberId, type);
-          if (response.ok) {
-            const data = await response.json();
-            setHistoryData((prev) => ({ ...prev, [assessmentId]: data }));
-          } else {
+          if (!response.ok) {
             let errorMessage = 'Failed to load assessment history';
             try {
               const data = await response.json();
@@ -89,8 +90,14 @@ export default function ViewAssessmentsModal({
             }
             throw new Error(errorMessage);
           }
+
+          const data = await response.json();
+          setHistoryData((prev) => ({ ...prev, [assessmentId]: data }));
         } catch (err) {
-          console.error('Failed to load assessment history:', err);
+          setHistoryError((prev) => ({
+            ...prev,
+            [assessmentId]: err instanceof Error ? err.message : 'Failed to load history'
+          }));
         } finally {
           setLoadingHistory((prev) => ({ ...prev, [assessmentId]: false }));
         }
@@ -136,7 +143,7 @@ export default function ViewAssessmentsModal({
           ) : (
             <div className="space-y-4">
               {assessments.map((assessment) => (
-                <div key={assessment.id} className="border border-gray-300 rounded-lg p-4 bg-white">
+                <div key={assessment.id} className="mb-4">
                   <AssessmentCard assessment={assessment} showActions={false} />
 
                   {/* View History Button */}
@@ -157,6 +164,8 @@ export default function ViewAssessmentsModal({
                     <div id={`history-${assessment.id}`} className="mt-4 pl-4 border-l-2 border-gray-300">
                       {loadingHistory[assessment.id] ? (
                         <div className="text-sm text-gray-500">Loading history...</div>
+                      ) : historyError[assessment.id] ? (
+                        <div className="text-sm text-red-600">{historyError[assessment.id]}</div>
                       ) : historyData[assessment.id]?.length > 0 ? (
                         <div className="space-y-2">
                           {historyData[assessment.id].slice(0, 5).map((item, index, array) => (
