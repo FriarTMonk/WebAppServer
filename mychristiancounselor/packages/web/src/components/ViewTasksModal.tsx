@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { MemberTask, taskApi } from '@/lib/api';
 import { TaskCard } from './shared/TaskCard';
 
@@ -30,43 +30,58 @@ export default function ViewTasksModal({
     };
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  useEffect(() => {
-    fetchTasks();
-  }, [memberId]);
-
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const response = await taskApi.getMemberTasks(memberId);
-      if (response.ok) {
-        const data = await response.json();
-        setTasks(data);
-      } else {
-        throw new Error('Failed to load tasks');
+      if (!response.ok) {
+        let errorMessage = 'Failed to load tasks';
+        try {
+          const data = await response.json();
+          errorMessage = data.message || errorMessage;
+        } catch {
+          // Use default message
+        }
+        throw new Error(errorMessage);
       }
+      const data = await response.json();
+      setTasks(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tasks');
     } finally {
       setLoading(false);
     }
-  };
+  }, [memberId]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   const handleEdit = async (task: MemberTask) => {
-    // TODO: Open edit modal (simplified for now - just show alert)
+    // TODO: Open edit modal (simplified for now - just show prompt)
     const newTitle = prompt('Edit title:', task.title);
     if (newTitle && newTitle !== task.title) {
       setActionInProgress(task.id);
       try {
         const response = await taskApi.update(task.id, { title: newTitle });
-        if (response.ok) {
-          await fetchTasks();
-          onSuccess();
+        if (!response.ok) {
+          let errorMessage = 'Failed to update task';
+          try {
+            const data = await response.json();
+            errorMessage = data.message || errorMessage;
+          } catch {
+            // Use default message
+          }
+          throw new Error(errorMessage);
         }
+        await fetchTasks();
+        onSuccess();
       } catch (err) {
-        alert('Failed to update task');
+        setError(err instanceof Error ? err.message : 'Failed to update task');
       } finally {
         setActionInProgress(null);
       }
@@ -79,12 +94,20 @@ export default function ViewTasksModal({
     setActionInProgress(task.id);
     try {
       const response = await taskApi.delete(task.id);
-      if (response.ok) {
-        await fetchTasks();
-        onSuccess();
+      if (!response.ok) {
+        let errorMessage = 'Failed to delete task';
+        try {
+          const data = await response.json();
+          errorMessage = data.message || errorMessage;
+        } catch {
+          // Use default message
+        }
+        throw new Error(errorMessage);
       }
+      await fetchTasks();
+      onSuccess();
     } catch (err) {
-      alert('Failed to delete task');
+      setError(err instanceof Error ? err.message : 'Failed to delete task');
     } finally {
       setActionInProgress(null);
     }
@@ -94,19 +117,27 @@ export default function ViewTasksModal({
     setActionInProgress(task.id);
     try {
       const response = await taskApi.sendReminder(task.id);
-      if (response.ok) {
-        alert('Reminder sent successfully');
+      if (!response.ok) {
+        let errorMessage = 'Failed to send reminder';
+        try {
+          const data = await response.json();
+          errorMessage = data.message || errorMessage;
+        } catch {
+          // Use default message
+        }
+        throw new Error(errorMessage);
       }
+      alert('Reminder sent successfully');
     } catch (err) {
-      alert('Failed to send reminder');
+      alert(err instanceof Error ? err.message : 'Failed to send reminder');
     } finally {
       setActionInProgress(null);
     }
   };
 
-  const pendingTasks = tasks.filter((t) => t.status === 'pending');
-  const overdueTasks = tasks.filter((t) => t.status === 'overdue');
-  const completedTasks = tasks.filter((t) => t.status === 'completed');
+  const pendingTasks = useMemo(() => tasks.filter((t) => t.status === 'pending'), [tasks]);
+  const overdueTasks = useMemo(() => tasks.filter((t) => t.status === 'overdue'), [tasks]);
+  const completedTasks = useMemo(() => tasks.filter((t) => t.status === 'completed'), [tasks]);
 
   return (
     <div
