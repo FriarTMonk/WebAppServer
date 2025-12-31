@@ -20,6 +20,10 @@ import { ThinkingIndicator } from './ThinkingIndicator';
 import { SessionCounter } from './SessionCounter';
 import { SessionLimitModal } from './SessionLimitModal';
 import { TrialExpirationBanner } from './TrialExpirationBanner';
+import MemberTasksCard from './MemberTasksCard';
+import MemberAssessmentsCard from './MemberAssessmentsCard';
+import MyTasksModal from './MyTasksModal';
+import MyAssessmentsModal from './MyAssessmentsModal';
 import { Message, CrisisResource, GriefResource, BibleTranslation, DEFAULT_TRANSLATION, SessionLimitStatus } from '@mychristiancounselor/shared';
 import { apiGet, apiPost } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -60,6 +64,8 @@ export function ConversationView() {
     limitStatus: SessionLimitStatus | null;
   }>({ isOpen: false, limitStatus: null });
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showTasksModal, setShowTasksModal] = useState(false);
+  const [showAssessmentsModal, setShowAssessmentsModal] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -479,6 +485,16 @@ export function ConversationView() {
         </div>
       )}
 
+      {/* Member Dashboard Cards - Tasks and Assessments */}
+      {isAuthenticated && (
+        <div className="px-4 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <MemberTasksCard onOpenModal={() => setShowTasksModal(true)} />
+            <MemberAssessmentsCard onOpenModal={() => setShowAssessmentsModal(true)} />
+          </div>
+        </div>
+      )}
+
       {/* Messages and Notes Grid */}
       <div className="flex-1 overflow-hidden p-4">
         <div className={`h-full grid grid-cols-1 gap-4 ${sessionId && isAuthenticated && subscriptionStatus?.hasHistoryAccess ? 'lg:grid-cols-3' : ''}`}>
@@ -672,6 +688,20 @@ export function ConversationView() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Tasks Modal */}
+      {showTasksModal && (
+        <MyTasksModal
+          onClose={() => setShowTasksModal(false)}
+        />
+      )}
+
+      {/* Assessments Modal */}
+      {showAssessmentsModal && (
+        <MyAssessmentsModal
+          onClose={() => setShowAssessmentsModal(false)}
+        />
       )}
     </div>
   );
