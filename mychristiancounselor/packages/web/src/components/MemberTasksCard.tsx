@@ -56,6 +56,7 @@ export default function MemberTasksCard({ onOpenModal, refreshTrigger }: MemberT
       fetchTasks(abortController.signal);
       return () => abortController.abort();
     }
+    return undefined;
   }, [refreshTrigger, fetchTasks]);
 
   // Count pending and overdue tasks

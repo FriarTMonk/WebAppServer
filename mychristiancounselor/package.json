@@ -78,6 +78,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "ioredis": "^5.8.2",
+    "lucide-react": "^0.562.0",
     "nest-winston": "^1.10.2",
     "next": "^16.1.0",
     "openai": "^6.8.1",

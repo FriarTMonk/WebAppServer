@@ -21,7 +21,6 @@ export default function ViewTasksModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -65,7 +64,6 @@ export default function ViewTasksModal({
     // TODO: Open edit modal (simplified for now - just show prompt)
     const newTitle = prompt('Edit title:', task.title);
     if (newTitle && newTitle !== task.title) {
-      setActionInProgress(task.id);
       try {
         const response = await taskApi.update(task.id, { title: newTitle });
         if (!response.ok) {
@@ -82,8 +80,6 @@ export default function ViewTasksModal({
         onSuccess();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to update task');
-      } finally {
-        setActionInProgress(null);
       }
     }
   };
@@ -91,7 +87,6 @@ export default function ViewTasksModal({
   const handleDelete = async (task: MemberTask) => {
     if (!confirm(`Delete task "${task.title}"?`)) return;
 
-    setActionInProgress(task.id);
     try {
       const response = await taskApi.delete(task.id);
       if (!response.ok) {
@@ -108,13 +103,10 @@ export default function ViewTasksModal({
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete task');
-    } finally {
-      setActionInProgress(null);
     }
   };
 
   const handleRemind = async (task: MemberTask) => {
-    setActionInProgress(task.id);
     try {
       const response = await taskApi.sendReminder(task.id);
       if (!response.ok) {
@@ -130,8 +122,6 @@ export default function ViewTasksModal({
       alert('Reminder sent successfully');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to send reminder');
-    } finally {
-      setActionInProgress(null);
     }
   };
 

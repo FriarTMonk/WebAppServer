@@ -56,6 +56,7 @@ export default function MemberAssessmentsCard({ onOpenModal, refreshTrigger }: M
       fetchAssessments(abortController.signal);
       return () => abortController.abort();
     }
+    return undefined;
   }, [refreshTrigger, fetchAssessments]);
 
   // Count pending assessments
