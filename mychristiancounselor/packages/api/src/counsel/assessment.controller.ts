@@ -93,4 +93,29 @@ export class AssessmentController {
     const responses = await this.assessmentService.getResponses(assignedId);
     return { responses };
   }
+
+  /**
+   * Get all assessments for a member (counselor endpoint)
+   */
+  @Get('member/:memberId')
+  async getMemberAssessments(
+    @Param('memberId') memberId: string,
+    @Query('status') status?: string,
+  ) {
+    return this.assessmentService.getAssignedAssessments(
+      memberId,
+      status as any,
+    );
+  }
+
+  /**
+   * Get assessment history for a member by type (counselor endpoint)
+   */
+  @Get('member/:memberId/history')
+  async getAssessmentHistory(
+    @Param('memberId') memberId: string,
+    @Query('type') type: string,
+  ) {
+    return this.assessmentService.getAssessmentHistory(memberId, type);
+  }
 }

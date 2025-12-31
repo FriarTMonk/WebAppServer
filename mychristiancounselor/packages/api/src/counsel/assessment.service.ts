@@ -120,4 +120,36 @@ export class AssessmentService {
       where: { assignedAssessmentId },
     });
   }
+
+  /**
+   * Get assessment history for a member by type
+   * @param memberId - The member's ID
+   * @param type - The assessment type (e.g., 'phq9', 'gad7')
+   */
+  async getAssessmentHistory(memberId: string, type: string) {
+    this.logger.log(
+      `Fetching assessment history for member ${memberId}, type ${type}`,
+    );
+
+    const assignments = await this.prisma.assignedAssessment.findMany({
+      where: {
+        memberId,
+        assessmentId: type,
+        status: 'completed',
+      },
+      include: {
+        score: true,
+      },
+      orderBy: { completedAt: 'desc' },
+    });
+
+    // Format for frontend
+    return assignments.map(assignment => ({
+      id: assignment.id,
+      type,
+      completedAt: assignment.completedAt?.toISOString() || '',
+      score: assignment.score?.totalScore || 0,
+      severity: assignment.score?.severity || 'unknown',
+    }));
+  }
 }

@@ -414,13 +414,13 @@ export const assessmentApi = {
 
 // Workflow Rules API
 export const workflowRulesApi = {
-  list: () => apiGet('/counsel/workflow-rules'),
+  list: () => apiGet('/workflow/rules'),
 
   getMemberRules: (memberId: string) =>
-    apiGet(`/counsel/workflow-rules/member/${memberId}`),
+    apiGet(`/workflow/rules/member/${memberId}`),
 
   getActivity: (memberId: string) =>
-    apiGet(`/counsel/workflow-rules/member/${memberId}/activity`),
+    apiGet(`/workflow/rules/member/${memberId}/activity`),
 
   create: (data: {
     name: string;
@@ -430,13 +430,13 @@ export const workflowRulesApi = {
     actions: any;
     applyTo: 'member' | 'all' | 'organization';
     targetId?: string;
-  }) => apiPost('/counsel/workflow-rules', data),
+  }) => apiPost('/workflow/rules', data),
 
   update: (ruleId: string, data: { enabled?: boolean }) =>
-    apiPatch(`/counsel/workflow-rules/${ruleId}`, data),
+    apiPatch(`/workflow/rules/${ruleId}`, data),
 
   delete: (ruleId: string) =>
-    apiDelete(`/counsel/workflow-rules/${ruleId}`),
+    apiDelete(`/workflow/rules/${ruleId}`),
 };
 
 // Member History API

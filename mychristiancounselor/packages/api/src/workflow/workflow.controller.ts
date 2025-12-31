@@ -49,6 +49,18 @@ export class WorkflowController {
     return this.ruleService.getRules(options);
   }
 
+  @Get('member/:memberId')
+  async getMemberRules(@Param('memberId') memberId: string, @Request() req) {
+    // Get all rules applicable to this member
+    return this.ruleService.getMemberRules(memberId, req.user.id);
+  }
+
+  @Get('member/:memberId/activity')
+  async getMemberActivity(@Param('memberId') memberId: string, @Request() req) {
+    // Get workflow activity for this member
+    return this.ruleService.getMemberActivity(memberId, req.user.id);
+  }
+
   @Get(':id')
   async getRule(@Param('id') id: string) {
     return this.ruleService.getRule(id);

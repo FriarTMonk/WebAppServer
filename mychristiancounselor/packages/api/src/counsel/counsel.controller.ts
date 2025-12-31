@@ -417,4 +417,144 @@ export class CounselController {
     const counselorId = req.user.id;
     return this.observationService.deleteObservation(counselorId, observationId);
   }
+
+  /**
+   * Get wellbeing history for a member
+   * GET /counsel/members/:memberId/history
+   */
+  @UseGuards(JwtAuthGuard, IsCounselorGuard)
+  @Get('members/:memberId/history')
+  async getMemberWellbeingHistory(
+    @Param('memberId') memberId: string,
+    @Query('days') days?: string,
+  ) {
+    const daysNum = days ? parseInt(days, 10) : 90;
+    const since = new Date();
+    since.setDate(since.getDate() - daysNum);
+
+    const history = await this.prisma.memberWellbeingStatus.findMany({
+      where: {
+        memberId,
+        lastAnalyzedAt: { gte: since },
+      },
+      orderBy: { lastAnalyzedAt: 'desc' },
+      select: {
+        id: true,
+        status: true,
+        summary: true,
+        lastAnalyzedAt: true,
+        overriddenBy: true,
+        overriddenAt: true,
+      },
+    });
+
+    return history.map(h => ({
+      id: h.id,
+      status: h.status,
+      notes: h.summary,
+      recordedAt: h.lastAnalyzedAt,
+      overriddenBy: h.overriddenBy,
+    }));
+  }
+
+  /**
+   * Get assessment history for a member
+   * GET /counsel/members/:memberId/assessment-history
+   */
+  @UseGuards(JwtAuthGuard, IsCounselorGuard)
+  @Get('members/:memberId/assessment-history')
+  async getMemberAssessmentHistory(@Param('memberId') memberId: string) {
+    const assessments = await this.prisma.assignedAssessment.findMany({
+      where: {
+        memberId,
+        status: 'completed',
+      },
+      include: {
+        score: true,
+      },
+      orderBy: { completedAt: 'desc' },
+    });
+
+    return assessments.map(a => ({
+      id: a.id,
+      type: a.assessmentId,
+      completedAt: a.completedAt,
+      score: a.score?.totalScore || 0,
+      severity: a.score?.severity || 'unknown',
+    }));
+  }
+
+  /**
+   * Get event timeline for a member
+   * GET /counsel/members/:memberId/events
+   */
+  @UseGuards(JwtAuthGuard, IsCounselorGuard)
+  @Get('members/:memberId/events')
+  async getMemberEvents(@Param('memberId') memberId: string) {
+    // Get various events for the timeline
+    const [statusChanges, tasks, assessments, workflowExecutions] = await Promise.all([
+      // Status changes
+      this.prisma.memberWellbeingStatus.findMany({
+        where: { memberId },
+        orderBy: { lastAnalyzedAt: 'desc' },
+        take: 20,
+      }),
+      // Tasks
+      this.prisma.memberTask.findMany({
+        where: { memberId },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      }),
+      // Assessments
+      this.prisma.assignedAssessment.findMany({
+        where: { memberId },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      }),
+      // Workflow executions
+      this.prisma.workflowExecution.findMany({
+        where: { memberId },
+        include: { rule: true },
+        orderBy: { executedAt: 'desc' },
+        take: 20,
+      }),
+    ]);
+
+    // Combine all events and format
+    const events = [
+      ...statusChanges.map(s => ({
+        id: `status-${s.id}`,
+        type: s.overriddenBy ? 'override' : 'status_change',
+        timestamp: s.lastAnalyzedAt.toISOString(),
+        description: `Status changed to ${s.status}`,
+        details: s.summary || undefined,
+      })),
+      ...tasks.map(t => ({
+        id: `task-${t.id}`,
+        type: 'task',
+        timestamp: t.createdAt.toISOString(),
+        description: `Task assigned: ${t.title}`,
+        details: t.completedAt ? `Completed ${t.completedAt.toISOString()}` : undefined,
+      })),
+      ...assessments.map(a => ({
+        id: `assessment-${a.id}`,
+        type: 'assessment',
+        timestamp: a.createdAt.toISOString(),
+        description: `Assessment assigned: ${a.assessmentId}`,
+        details: a.completedAt ? `Completed ${a.completedAt.toISOString()}` : undefined,
+      })),
+      ...workflowExecutions.map(w => ({
+        id: `workflow-${w.id}`,
+        type: 'workflow_rule',
+        timestamp: w.executedAt.toISOString(),
+        description: `Workflow rule executed: ${w.rule.name}`,
+        details: w.triggerDetails || undefined,
+      })),
+    ];
+
+    // Sort by timestamp descending
+    events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    return events;
+  }
 }

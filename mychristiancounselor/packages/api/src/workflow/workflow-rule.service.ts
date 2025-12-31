@@ -88,4 +88,64 @@ export class WorkflowRuleService {
       where: { id: ruleId },
     });
   }
+
+  async getMemberRules(memberId: string, counselorId: string) {
+    this.logger.log(`Getting workflow rules for member: ${memberId}`);
+
+    // Get member's organization to find organization-level rules
+    const assignments = await this.prisma.counselorAssignment.findMany({
+      where: {
+        counselorId,
+        memberIds: { has: memberId },
+      },
+      select: { organizationId: true },
+    });
+
+    const organizationIds = assignments.map(a => a.organizationId);
+
+    // Get all applicable rules:
+    // 1. Platform-level rules (apply to everyone)
+    // 2. Organization-level rules for member's organizations
+    // 3. Counselor-level rules owned by this counselor
+    return this.prisma.workflowRule.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { level: 'platform' },
+          { level: 'organization', ownerId: { in: organizationIds } },
+          { level: 'counselor', ownerId: counselorId },
+        ],
+      },
+      orderBy: { priority: 'desc' },
+    });
+  }
+
+  async getMemberActivity(memberId: string, counselorId: string) {
+    this.logger.log(`Getting workflow activity for member: ${memberId}`);
+
+    // Get workflow executions for this member
+    const executions = await this.prisma.workflowExecution.findMany({
+      where: { memberId },
+      include: {
+        rule: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: { executedAt: 'desc' },
+      take: 50, // Limit to last 50 executions
+    });
+
+    // Format for frontend
+    return executions.map(exec => ({
+      id: exec.id,
+      ruleName: exec.rule.name,
+      triggeredAt: exec.executedAt,
+      triggerReason: exec.triggerDetails || 'Rule conditions met',
+      actionsTaken: Array.isArray(exec.result)
+        ? exec.result.map((r: any) => r.action).join(', ')
+        : 'Actions executed',
+    }));
+  }
 }
