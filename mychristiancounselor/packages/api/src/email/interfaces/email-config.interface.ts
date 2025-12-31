@@ -25,6 +25,7 @@ export interface SendEmailOptions {
   emailType: string; // Type of email for tracking
   fromEmail?: string; // Optional custom sender email
   fromName?: string; // Optional custom sender name
+  priority?: number; // Email priority: 1=urgent, 3=normal, 5=low
 }
 
 /**
