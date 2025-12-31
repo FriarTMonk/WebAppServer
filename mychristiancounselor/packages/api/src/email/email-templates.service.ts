@@ -9,6 +9,7 @@ import {
   CounselorAssignmentEmailData,
   OrgInvitationEmailData,
   BillingEmailData,
+  CrisisAlertEmailData,
   BaseTemplateData,
 } from './interfaces/email-template.interface';
 import { renderVerificationEmail } from './templates/verification.template';
@@ -26,6 +27,7 @@ import { renderOrg90DayReminderEmail } from './templates/org-90day-reminder.temp
 import { renderOrg30DayInvoiceEmail } from './templates/org-30day-invoice.template';
 import { renderOrgSuspensionNoticeEmail } from './templates/org-suspension-notice.template';
 import { renderOrgSuspendedEmail } from './templates/org-suspended.template';
+import { renderCrisisAlertEmail } from './templates/crisis-alert.template';
 
 /**
  * Service for rendering email templates
@@ -265,5 +267,12 @@ export class EmailTemplatesService {
       html: data.htmlBody,
       text: data.textBody,
     };
+  }
+
+  /**
+   * Render crisis alert email template
+   */
+  renderCrisisAlertEmail(data: CrisisAlertEmailData): EmailTemplate {
+    return renderCrisisAlertEmail(data);
   }
 }

@@ -28,7 +28,8 @@ export type EmailType =
   | 'note_added'
   | 'counselor_assignment'
   | 'org_invite'
-  | 'billing';
+  | 'billing'
+  | 'crisis_alert';
 
 /**
  * Verification email template data
@@ -110,4 +111,19 @@ export interface BillingEmailData extends BaseTemplateData {
   gracePeriodDays?: number;
   organizationName?: string;
   renewalDate?: Date;
+}
+
+/**
+ * Crisis alert email template data
+ */
+export interface CrisisAlertEmailData extends BaseTemplateData {
+  counselorName: string;
+  memberName: string;
+  memberEmail: string;
+  crisisType: string;
+  confidence: string;
+  detectionMethod: string;
+  triggeringMessage: string;
+  conversationUrl: string;
+  memberProfileUrl: string;
 }
