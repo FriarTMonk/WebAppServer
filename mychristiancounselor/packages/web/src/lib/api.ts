@@ -384,10 +384,10 @@ export const taskApi = {
     apiPost(`/counsel/tasks/${taskId}/remind`),
 
   // Member endpoints
-  getMyTasks: () => apiGet('/counsel/tasks/my-tasks'),
+  getMyTasks: () => apiGet('/counsel/tasks'),
 
   complete: (taskId: string) =>
-    apiPost(`/counsel/tasks/${taskId}/complete`),
+    apiPatch(`/counsel/tasks/${taskId}/complete`, {}),
 };
 
 // Assessment API
@@ -406,10 +406,10 @@ export const assessmentApi = {
     apiGet(`/counsel/assessments/member/${memberId}/history?type=${type}`),
 
   // Member endpoints
-  getMyAssessments: () => apiGet('/counsel/assessments/my-assessments'),
+  getMyAssessments: () => apiGet('/counsel/assessments/assigned'),
 
   submit: (assessmentId: string, responses: any) =>
-    apiPost(`/counsel/assessments/${assessmentId}/submit`, { responses }),
+    apiPost(`/counsel/assessments/assigned/${assessmentId}/submit`, { responses }),
 };
 
 // Workflow Rules API

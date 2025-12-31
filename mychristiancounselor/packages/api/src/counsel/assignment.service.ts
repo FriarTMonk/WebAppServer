@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CounselorAssignment,
@@ -79,7 +80,7 @@ export class AssignmentService {
         SELECT s."userId", MAX(m.timestamp) as "maxTimestamp"
         FROM "Message" m
         INNER JOIN "Session" s ON m."sessionId" = s.id
-        WHERE m.role = 'user' AND s."userId" IN (${this.prisma.join(memberIds)})
+        WHERE m.role = 'user' AND s."userId" IN (${Prisma.join(memberIds)})
         GROUP BY s."userId"
       `,
       // Count observations for all members
