@@ -62,6 +62,7 @@ export class AssignmentService {
       overdueTasksData,
       pendingAssessmentsData,
       wellbeingStatusesData,
+      conversationCountData,
     ] = await Promise.all([
       // Get last login for all members
       this.prisma.session.groupBy({
@@ -156,11 +157,7 @@ export class AssignmentService {
     const overdueTasksMap = new Map(overdueTasksData.map(t => [t.memberId, t._count.id]));
     const pendingAssessmentsMap = new Map(pendingAssessmentsData.map(a => [a.memberId, a._count.id]));
     const wellbeingStatusMap = new Map(wellbeingStatusesData.map(w => [w.memberId, w]));
-    const conversationCountMap = new Map(await this.prisma.session.groupBy({
-      by: ['userId'],
-      where: { userId: { in: memberIds } },
-      _count: { id: true },
-    }).then(data => data.map(d => [d.userId, d._count.id])));
+    const conversationCountMap = new Map(conversationCountData.map(d => [d.userId, d._count.id]));
 
     // Create members that don't have wellbeing status
     const missingWellbeingMemberIds = memberIds.filter(id => !wellbeingStatusMap.has(id));
