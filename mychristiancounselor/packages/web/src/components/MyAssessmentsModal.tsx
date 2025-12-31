@@ -66,6 +66,7 @@ export default function MyAssessmentsModal({ onClose, onAssessmentUpdate }: MyAs
     // TODO: Implement assessment form modal/page navigation
     // For now, show a toast message
     showToast('Assessment form will be implemented in a future task', 'info');
+    onAssessmentUpdate?.();
   };
 
   const pendingAssessments = useMemo(() => assessments.filter((a) => a.status === 'pending'), [assessments]);
