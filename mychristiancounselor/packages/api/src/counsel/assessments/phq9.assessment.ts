@@ -1,0 +1,155 @@
+import { AssessmentDefinition } from './assessment.types';
+
+export const PHQ9_ASSESSMENT: AssessmentDefinition = {
+  id: 'phq-9',
+  name: 'PHQ-9 (Patient Health Questionnaire)',
+  description: 'Standardized assessment for measuring depression severity',
+  type: 'clinical',
+  questions: [
+    {
+      id: 'phq9_q1',
+      text: 'Little interest or pleasure in doing things',
+      type: 'scale',
+      options: [
+        { value: 0, label: 'Not at all' },
+        { value: 1, label: 'Several days' },
+        { value: 2, label: 'More than half the days' },
+        { value: 3, label: 'Nearly every day' },
+      ],
+      required: true,
+    },
+    {
+      id: 'phq9_q2',
+      text: 'Feeling down, depressed, or hopeless',
+      type: 'scale',
+      options: [
+        { value: 0, label: 'Not at all' },
+        { value: 1, label: 'Several days' },
+        { value: 2, label: 'More than half the days' },
+        { value: 3, label: 'Nearly every day' },
+      ],
+      required: true,
+    },
+    {
+      id: 'phq9_q3',
+      text: 'Trouble falling or staying asleep, or sleeping too much',
+      type: 'scale',
+      options: [
+        { value: 0, label: 'Not at all' },
+        { value: 1, label: 'Several days' },
+        { value: 2, label: 'More than half the days' },
+        { value: 3, label: 'Nearly every day' },
+      ],
+      required: true,
+    },
+    {
+      id: 'phq9_q4',
+      text: 'Feeling tired or having little energy',
+      type: 'scale',
+      options: [
+        { value: 0, label: 'Not at all' },
+        { value: 1, label: 'Several days' },
+        { value: 2, label: 'More than half the days' },
+        { value: 3, label: 'Nearly every day' },
+      ],
+      required: true,
+    },
+    {
+      id: 'phq9_q5',
+      text: 'Poor appetite or overeating',
+      type: 'scale',
+      options: [
+        { value: 0, label: 'Not at all' },
+        { value: 1, label: 'Several days' },
+        { value: 2, label: 'More than half the days' },
+        { value: 3, label: 'Nearly every day' },
+      ],
+      required: true,
+    },
+    {
+      id: 'phq9_q6',
+      text: 'Feeling bad about yourself - or that you are a failure or have let yourself or your family down',
+      type: 'scale',
+      options: [
+        { value: 0, label: 'Not at all' },
+        { value: 1, label: 'Several days' },
+        { value: 2, label: 'More than half the days' },
+        { value: 3, label: 'Nearly every day' },
+      ],
+      required: true,
+    },
+    {
+      id: 'phq9_q7',
+      text: 'Trouble concentrating on things, such as reading the newspaper or watching television',
+      type: 'scale',
+      options: [
+        { value: 0, label: 'Not at all' },
+        { value: 1, label: 'Several days' },
+        { value: 2, label: 'More than half the days' },
+        { value: 3, label: 'Nearly every day' },
+      ],
+      required: true,
+    },
+    {
+      id: 'phq9_q8',
+      text: 'Moving or speaking so slowly that other people could have noticed. Or the opposite - being so fidgety or restless that you have been moving around a lot more than usual',
+      type: 'scale',
+      options: [
+        { value: 0, label: 'Not at all' },
+        { value: 1, label: 'Several days' },
+        { value: 2, label: 'More than half the days' },
+        { value: 3, label: 'Nearly every day' },
+      ],
+      required: true,
+    },
+    {
+      id: 'phq9_q9',
+      text: 'Thoughts that you would be better off dead, or of hurting yourself in some way',
+      type: 'scale',
+      options: [
+        { value: 0, label: 'Not at all' },
+        { value: 1, label: 'Several days' },
+        { value: 2, label: 'More than half the days' },
+        { value: 3, label: 'Nearly every day' },
+      ],
+      required: true,
+    },
+  ],
+  scoringRules: {
+    method: 'sum',
+    minScore: 0,
+    maxScore: 27,
+    severityLevels: [
+      {
+        level: 'none-minimal',
+        minScore: 0,
+        maxScore: 4,
+        description: 'No or minimal depression',
+      },
+      {
+        level: 'mild',
+        minScore: 5,
+        maxScore: 9,
+        description: 'Mild depression',
+      },
+      {
+        level: 'moderate',
+        minScore: 10,
+        maxScore: 14,
+        description: 'Moderate depression',
+      },
+      {
+        level: 'moderately-severe',
+        minScore: 15,
+        maxScore: 19,
+        description: 'Moderately severe depression',
+      },
+      {
+        level: 'severe',
+        minScore: 20,
+        maxScore: 27,
+        description: 'Severe depression',
+      },
+    ],
+  },
+};
