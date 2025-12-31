@@ -25,6 +25,7 @@ export function StatusColumnBadges({
     <div className="flex flex-wrap gap-1 mt-1">
       {totalTasks > 0 && (
         <button
+          type="button"
           onClick={onTasksClick}
           className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
             overdueTasks > 0
@@ -38,6 +39,7 @@ export function StatusColumnBadges({
       )}
       {pendingAssessments > 0 && (
         <button
+          type="button"
           onClick={onAssessmentsClick}
           className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors"
           title={`${pendingAssessments} pending assessment${pendingAssessments !== 1 ? 's' : ''}`}
