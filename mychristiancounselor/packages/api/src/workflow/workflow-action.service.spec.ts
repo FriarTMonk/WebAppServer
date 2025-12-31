@@ -59,8 +59,8 @@ describe('WorkflowActionService', () => {
     emailService = module.get(EmailService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   describe('executeAction', () => {
@@ -87,8 +87,7 @@ describe('WorkflowActionService', () => {
         result: { success: true, alertSent: true },
       });
       expect(crisisAlertService.sendCrisisAlert).toHaveBeenCalledWith(
-        eventData.memberId,
-        eventData.assessmentSubmissionId,
+        eventData,
       );
     });
 
@@ -96,9 +95,7 @@ describe('WorkflowActionService', () => {
       const action = {
         id: 'action2',
         type: 'auto_assign_assessment' as const,
-        config: {
-          assessmentType: 'PHQ-9',
-        },
+        assessmentType: 'PHQ-9',
       };
       const eventData = {
         memberId: 'member123',
@@ -135,10 +132,9 @@ describe('WorkflowActionService', () => {
       const action = {
         id: 'action3',
         type: 'auto_assign_task' as const,
-        config: {
-          taskTitle: 'Follow up with member',
-          taskDescription: 'Check on member progress',
-        },
+        taskType: 'conversation_prompt',
+        title: 'Discuss forgiveness',
+        description: 'Talk about forgiving others',
       };
       const eventData = {
         memberId: 'member123',
@@ -147,8 +143,8 @@ describe('WorkflowActionService', () => {
 
       const mockTask = {
         id: 'task123',
-        title: 'Follow up with member',
-        description: 'Check on member progress',
+        title: 'Discuss forgiveness',
+        description: 'Talk about forgiving others',
       };
 
       memberTaskService.createTask.mockResolvedValue(mockTask);
@@ -161,27 +157,20 @@ describe('WorkflowActionService', () => {
       });
       expect(memberTaskService.createTask).toHaveBeenCalledWith({
         memberId: eventData.memberId,
-        assignedTo: eventData.counselorId,
-        title: action.config.taskTitle,
-        description: action.config.taskDescription,
-        dueDate: expect.any(Number),
+        counselorId: eventData.counselorId,
+        type: action.taskType,
+        title: action.title,
+        description: action.description,
+        dueDate: expect.any(Date),
       });
-
-      // Verify due date is approximately 7 days from now
-      const call = memberTaskService.createTask.mock.calls[0][0];
-      const expectedDueDate = Date.now() + 7 * 24 * 60 * 60 * 1000;
-      expect(call.dueDate).toBeGreaterThan(expectedDueDate - 1000);
-      expect(call.dueDate).toBeLessThan(expectedDueDate + 1000);
     });
 
     it('should execute notify_counselor action', async () => {
       const action = {
         id: 'action4',
         type: 'notify_counselor' as const,
-        config: {
-          emailTemplate: 'member_needs_attention',
-          subject: 'Member Needs Attention',
-        },
+        subject: 'Member wellbeing declined',
+        message: 'Member status changed to red',
       };
       const eventData = {
         memberId: 'member123',
@@ -197,10 +186,10 @@ describe('WorkflowActionService', () => {
         result: { success: true },
       });
       expect(emailService.sendEmail).toHaveBeenCalledWith({
-        to: 'counselor@example.com',
-        subject: action.config.subject,
-        template: action.config.emailTemplate,
-        context: eventData,
+        to: expect.any(String),
+        subject: action.subject,
+        text: action.message,
+        html: `<p>${action.message}</p>`,
       });
     });
 

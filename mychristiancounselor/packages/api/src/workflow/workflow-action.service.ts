@@ -62,10 +62,7 @@ export class WorkflowActionService {
   private async executeSendCrisisAlert(
     eventData: EventData,
   ): Promise<ActionResult> {
-    const result = await this.crisisAlertService.sendCrisisAlert(
-      eventData.memberId,
-      eventData.assessmentSubmissionId,
-    );
+    const result = await this.crisisAlertService.sendCrisisAlert(eventData);
 
     return {
       success: true,
@@ -77,8 +74,8 @@ export class WorkflowActionService {
     action: WorkflowAction,
     eventData: EventData,
   ): Promise<ActionResult> {
-    const assessmentType = action.config.assessmentType;
-    const assessment = this.getAssessmentByType(assessmentType);
+    const assessmentType = action.assessmentType;
+    const assessment = await this.getAssessmentByType(assessmentType);
 
     const dueDate = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days from now
 
@@ -98,15 +95,13 @@ export class WorkflowActionService {
     action: WorkflowAction,
     eventData: EventData,
   ): Promise<ActionResult> {
-    const dueDate = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days from now
-    const assignedTo = eventData.counselorId || 'system';
-
     const result = await this.memberTaskService.createTask({
       memberId: eventData.memberId,
-      assignedTo,
-      title: action.config.taskTitle,
-      description: action.config.taskDescription,
-      dueDate,
+      counselorId: eventData.counselorId || 'system',
+      type: action.taskType,
+      title: action.title,
+      description: action.description,
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     });
 
     return {
@@ -120,13 +115,13 @@ export class WorkflowActionService {
     eventData: EventData,
   ): Promise<ActionResult> {
     const counselorId = eventData.counselorId || 'system';
-    const counselorEmail = this.getCounselorEmail(counselorId);
+    const counselorEmail = await this.getCounselorEmail(counselorId);
 
     const result = await this.emailService.sendEmail({
       to: counselorEmail,
-      subject: action.config.subject,
-      template: action.config.emailTemplate,
-      context: eventData,
+      subject: action.subject,
+      text: action.message,
+      html: `<p>${action.message}</p>`,
     });
 
     return {
@@ -139,7 +134,7 @@ export class WorkflowActionService {
    * Helper method to get assessment by type
    * This is a simplified version for the initial implementation
    */
-  private getAssessmentByType(type: string): { id: string } {
+  private async getAssessmentByType(type: string) {
     return {
       id: `assessment-${type.toLowerCase()}`,
     };
@@ -149,7 +144,7 @@ export class WorkflowActionService {
    * Helper method to get counselor email
    * This is a simplified version for the initial implementation
    */
-  private getCounselorEmail(counselorId: string): string {
+  private async getCounselorEmail(counselorId: string) {
     return 'counselor@example.com';
   }
 }
