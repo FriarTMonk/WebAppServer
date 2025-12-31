@@ -6,6 +6,7 @@ import { AssignmentService } from './assignment.service';
 import { ObservationService } from './observation.service';
 import { WellbeingAnalysisService } from './wellbeing-analysis.service';
 import { WellbeingAnalysisScheduler } from './wellbeing-analysis.scheduler';
+import { WellbeingHistoryService } from './wellbeing-history.service';
 import { ScriptureEnrichmentService } from './scripture-enrichment.service';
 import { SessionService } from './session.service';
 import { SessionLimitService } from './session-limit.service';
@@ -38,6 +39,7 @@ import { EmailModule } from '../email/email.module';
     ObservationService,
     WellbeingAnalysisService,
     WellbeingAnalysisScheduler,
+    WellbeingHistoryService,
     ScriptureEnrichmentService,
     SessionService,
     SessionLimitService,
@@ -51,6 +53,7 @@ import { EmailModule } from '../email/email.module';
     AssignmentService,
     ObservationService,
     WellbeingAnalysisService,
+    WellbeingHistoryService,
     SessionService,
     SessionLimitService,
     ScriptureEnrichmentService,
