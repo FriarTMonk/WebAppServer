@@ -56,6 +56,19 @@ export class TaskController {
   }
 
   /**
+   * GET /counsel/tasks/member/:memberId
+   * Get tasks for specific member (counselor only)
+   * Note: Requires counselor permission check
+   */
+  @Get('member/:memberId')
+  async getMemberTasks(
+    @Param('memberId') memberId: string,
+    @Query('status') status?: MemberTaskStatus,
+  ) {
+    return this.memberTaskService.getMemberTasks(memberId, status);
+  }
+
+  /**
    * GET /counsel/tasks/:id
    * Get specific task by ID
    */
@@ -94,18 +107,5 @@ export class TaskController {
       throw new Error('Unauthorized');
     }
     return this.memberTaskService.markComplete(id);
-  }
-
-  /**
-   * GET /counsel/tasks/member/:memberId
-   * Get tasks for specific member (counselor only)
-   * Note: Requires counselor permission check
-   */
-  @Get('member/:memberId')
-  async getMemberTasks(
-    @Param('memberId') memberId: string,
-    @Query('status') status?: MemberTaskStatus,
-  ) {
-    return this.memberTaskService.getMemberTasks(memberId, status);
   }
 }
