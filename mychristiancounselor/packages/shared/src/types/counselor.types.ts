@@ -129,6 +129,10 @@ export interface CounselorMemberSummary {
   totalConversations: number;
   observationCount: number;
   assignment: CounselorAssignment;
+  // Task and assessment counts for status badges
+  pendingTasks: number;
+  overdueTasks: number;
+  pendingAssessments: number;
 }
 
 // Notification Types

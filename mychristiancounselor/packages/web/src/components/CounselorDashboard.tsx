@@ -11,6 +11,7 @@ import ViewTasksModal from './ViewTasksModal';
 import AssignAssessmentModal from './AssignAssessmentModal';
 import ViewAssessmentsModal from './ViewAssessmentsModal';
 import WorkflowRulesModal from './WorkflowRulesModal';
+import { StatusColumnBadges } from './StatusColumnBadges';
 import { apiPost } from '@/lib/api';
 import { TourButton } from './TourButton';
 
@@ -231,15 +232,34 @@ export default function CounselorDashboard() {
                 return (
                   <tr key={memberSummary.member.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-2xl" title={isOverridden ? `AI suggested: ${aiStatus}` : 'AI status'}>
-                          {getStoplightEmoji(displayStatus)}
-                        </span>
-                        {isOverridden && (
-                          <span className="text-xs text-gray-500" title="Counselor overridden">
-                            ✏️
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-2xl" title={isOverridden ? `AI suggested: ${aiStatus}` : 'AI status'}>
+                            {getStoplightEmoji(displayStatus)}
                           </span>
-                        )}
+                          {isOverridden && (
+                            <span className="text-xs text-gray-500" title="Counselor overridden">
+                              ✏️
+                            </span>
+                          )}
+                        </div>
+                        <StatusColumnBadges
+                          pendingTasks={memberSummary.pendingTasks}
+                          overdueTasks={memberSummary.overdueTasks}
+                          pendingAssessments={memberSummary.pendingAssessments}
+                          onTasksClick={() => {
+                            setViewTasksModal({
+                              memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
+                              memberId: memberSummary.member.id,
+                            });
+                          }}
+                          onAssessmentsClick={() => {
+                            setViewAssessmentsModal({
+                              memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
+                              memberId: memberSummary.member.id,
+                            });
+                          }}
+                        />
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

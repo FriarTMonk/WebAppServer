@@ -96,6 +96,35 @@ export class AssignmentService {
           },
         });
 
+        // Count pending tasks
+        const pendingTasks = await this.prisma.memberTask.count({
+          where: {
+            memberId: assignment.memberId,
+            status: 'pending',
+            OR: [
+              { dueDate: null },
+              { dueDate: { gte: new Date() } },
+            ],
+          },
+        });
+
+        // Count overdue tasks
+        const overdueTasks = await this.prisma.memberTask.count({
+          where: {
+            memberId: assignment.memberId,
+            status: 'pending',
+            dueDate: { lt: new Date() },
+          },
+        });
+
+        // Count pending assessments
+        const pendingAssessments = await this.prisma.assignedAssessment.count({
+          where: {
+            memberId: assignment.memberId,
+            status: 'pending',
+          },
+        });
+
         // Get or create wellbeing status (mock for Phase 1)
         let wellbeingStatus = await this.prisma.memberWellbeingStatus.findUnique({
           where: {
@@ -125,6 +154,9 @@ export class AssignmentService {
           totalConversations,
           observationCount,
           assignment: assignment as any,
+          pendingTasks,
+          overdueTasks,
+          pendingAssessments,
         };
       })
     );
