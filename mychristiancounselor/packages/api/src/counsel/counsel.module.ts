@@ -16,6 +16,7 @@ import { NoteService } from './note.service';
 import { PermissionService } from './permission.service';
 import { CrisisAlertService } from './crisis-alert.service';
 import { AssessmentService } from './assessment.service';
+import { AssessmentScoringService } from './assessment-scoring.service';
 import { CounselController } from './counsel.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AiModule } from '../ai/ai.module';
@@ -52,6 +53,7 @@ import { EmailModule } from '../email/email.module';
     PermissionService,
     CrisisAlertService,
     AssessmentService,
+    AssessmentScoringService,
   ],
   exports: [
     CounselService,
@@ -69,6 +71,7 @@ import { EmailModule } from '../email/email.module';
     PermissionService,
     CrisisAlertService,
     AssessmentService,
+    AssessmentScoringService,
   ],
 })
 export class CounselModule {}
