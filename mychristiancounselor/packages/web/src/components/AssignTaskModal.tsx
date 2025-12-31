@@ -78,9 +78,12 @@ export default function AssignTaskModal({
             const data = await response.json();
             const filtered = data.filter((t: TaskTemplate) => t.type === selectedType);
             setTemplates(filtered);
+          } else {
+            setError('Failed to load templates. Please try again.');
           }
         } catch (err) {
           console.error('Error loading templates:', err);
+          setError('Failed to load templates. Please try again.');
         } finally {
           setLoadingTemplates(false);
         }
@@ -110,8 +113,24 @@ export default function AssignTaskModal({
     setStep('configure');
   };
 
+  const handleBack = () => {
+    setStep('select_type');
+    setTemplates([]);
+    setSelectedTemplate('');
+    setTitle('');
+    setDescription('');
+    setDueDate('');
+    setCounselorNotes('');
+    setError(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!selectedType) {
+      setError('Task type not selected');
+      return;
+    }
 
     if (!title.trim() || !description.trim()) {
       setError('Title and description are required');
@@ -124,7 +143,7 @@ export default function AssignTaskModal({
     try {
       const response = await taskApi.create({
         memberId,
-        type: selectedType!,
+        type: selectedType,
         title: title.trim(),
         description: description.trim(),
         dueDate: dueDate || undefined,
@@ -133,8 +152,12 @@ export default function AssignTaskModal({
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to assign task');
+        try {
+          const data = await response.json();
+          throw new Error(data.message || 'Failed to assign task');
+        } catch (parseError) {
+          throw new Error('Failed to assign task');
+        }
       }
 
       onSuccess();
@@ -312,7 +335,7 @@ export default function AssignTaskModal({
             <div className="px-6 py-4 border-t border-gray-200 flex gap-2 justify-end">
               <button
                 type="button"
-                onClick={() => setStep('select_type')}
+                onClick={handleBack}
                 disabled={submitting}
                 className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
