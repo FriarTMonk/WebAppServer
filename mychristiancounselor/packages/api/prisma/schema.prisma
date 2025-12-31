@@ -73,6 +73,16 @@ model User {
   ticketMessagesAuthored    TicketMessage[]          @relation("TicketMessagesAuthored")
   prospectsCreated          Prospect[]               @relation("ProspectsCreated")
   campaignsCreated          EmailCampaign[]          @relation("CampaignsCreated")
+  crisisAlerts              CrisisAlertLog[]         @relation("CrisisAlerts")
+  crisisAlertsReceived      CrisisAlertLog[]         @relation("CrisisAlertsReceived")
+  wellbeingHistory          MemberWellbeingHistory[] @relation("WellbeingHistory")
+  wellbeingOverrides        MemberWellbeingHistory[] @relation("WellbeingOverrides")
+  sessionSummaries          SessionSummary[]         @relation("SessionSummaries")
+  assessmentsCreated        Assessment[]             @relation("AssessmentsCreated")
+  assignedAssessments       AssignedAssessment[]     @relation("AssignedAssessments")
+  assessmentsAssigned       AssignedAssessment[]     @relation("AssessmentsAssigned")
+  memberTasks               MemberTask[]             @relation("MemberTasks")
+  tasksAssigned             MemberTask[]             @relation("TasksAssigned")
 
   @@index([email])
   @@index([verificationToken])
@@ -240,6 +250,7 @@ model Session {
   user                 User?          @relation(fields: [userId], references: [id])
   notes                SessionNote[]
   shares               SessionShare[]
+  summaries            SessionSummary[] @relation("SessionSummaries")
 
   @@index([createdAt])
   @@index([userId])
@@ -462,6 +473,7 @@ model EmailLog {
   clickedAt         DateTime?
   bouncedAt         DateTime?
   campaignRecipient EmailCampaignRecipient?
+  crisisAlert       CrisisAlertLog? @relation("CrisisAlertEmails")
 
   @@index([userId])
   @@index([recipientEmail])
@@ -1118,4 +1130,201 @@ model ConversationResourceMention {
   @@index([conversationId])
   @@index([bookId])
   @@index([externalOrgId])
+}
+
+// ========================================
+// COUNSELOR ALERT SYSTEM MODELS
+// ========================================
+
+// Crisis Alert Log - Tracks all crisis detections with/without emails
+model CrisisAlertLog {
+  id                String    @id @default(uuid())
+  memberId          String
+  member            User      @relation("CrisisAlerts", fields: [memberId], references: [id], onDelete: Cascade)
+  counselorId       String?
+  counselor         User?     @relation("CrisisAlertsReceived", fields: [counselorId], references: [id], onDelete: SetNull)
+  crisisType        String    // "suicidal_ideation", "self_harm", "severe_depression"
+  confidence        String    // "high", "medium", "low"
+  detectionMethod   String    // "pattern", "ai", "both"
+  triggeringMessage String    @db.Text
+  messageId         String?   // Reference to the actual message that triggered
+  emailSent         Boolean   @default(false)
+  emailLogId        String?   @unique
+  emailLog          EmailLog? @relation("CrisisAlertEmails", fields: [emailLogId], references: [id])
+  throttled         Boolean   @default(false)
+  throttleReason    String?
+  createdAt         DateTime  @default(now())
+
+  @@index([memberId])
+  @@index([counselorId])
+  @@index([createdAt])
+  @@index([emailSent])
+}
+
+// Historical wellbeing status tracking
+model MemberWellbeingHistory {
+  id               String    @id @default(uuid())
+  memberId         String
+  member           User      @relation("WellbeingHistory", fields: [memberId], references: [id], onDelete: Cascade)
+  status           String    // "green", "yellow", "red"
+  trajectory       String?   // "improving", "stable", "declining"
+  summary          String    @db.Text
+  overriddenBy     String?
+  overriddenByUser User?     @relation("WellbeingOverrides", fields: [overriddenBy], references: [id], onDelete: SetNull)
+  createdAt        DateTime  @default(now())
+
+  @@index([memberId])
+  @@index([createdAt])
+  @@index([status])
+}
+
+// Per-session AI summaries
+model SessionSummary {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   Session  @relation("SessionSummaries", fields: [sessionId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    User     @relation("SessionSummaries", fields: [memberId], references: [id], onDelete: Cascade)
+  summary   String   @db.Text
+  topics    String[] // ["forgiveness", "anxiety", "faith"]
+  sentiment String?  // "positive", "neutral", "negative"
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId])
+  @@index([memberId])
+  @@index([createdAt])
+}
+
+// Assessment templates (PHQ-9, GAD-7, custom)
+model Assessment {
+  id           String              @id @default(uuid())
+  name         String
+  type         String              // "clinical" or "custom"
+  category     String?             // "depression", "anxiety", "spiritual", etc.
+  questions    Json                // Array of question objects
+  scoringRules Json                // Scoring formula/rules
+  isActive     Boolean             @default(true)
+  createdBy    String?
+  createdByUser User?              @relation("AssessmentsCreated", fields: [createdBy], references: [id], onDelete: SetNull)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  schedules    AssessmentSchedule[]
+  assignments  AssignedAssessment[]
+
+  @@index([type])
+  @@index([category])
+  @@index([isActive])
+}
+
+// Assessment scheduling/automation rules
+model AssessmentSchedule {
+  id            String     @id @default(uuid())
+  assessmentId  String
+  assessment    Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  targetType    String     // "all", "role", "individual"
+  targetValue   String?    // Role name or user ID
+  schedule      String     // "weekly", "biweekly", "monthly", cron expression
+  triggers      Json?      // Event-based triggers
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([assessmentId])
+  @@index([isActive])
+}
+
+// Assessment assigned to a member
+model AssignedAssessment {
+  id            String               @id @default(uuid())
+  assessmentId  String
+  assessment    Assessment           @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  memberId      String
+  member        User                 @relation("AssignedAssessments", fields: [memberId], references: [id], onDelete: Cascade)
+  assignedBy    String?
+  assignedByUser User?               @relation("AssessmentsAssigned", fields: [assignedBy], references: [id], onDelete: SetNull)
+  dueDate       DateTime?
+  completedAt   DateTime?
+  status        String               @default("pending") // "pending", "completed", "expired"
+  createdAt     DateTime             @default(now())
+  responses     AssessmentResponse[]
+
+  @@index([assessmentId])
+  @@index([memberId])
+  @@index([assignedBy])
+  @@index([status])
+  @@index([dueDate])
+}
+
+// Member's answers and scores
+model AssessmentResponse {
+  id                   String             @id @default(uuid())
+  assignedAssessmentId String
+  assignedAssessment   AssignedAssessment @relation(fields: [assignedAssessmentId], references: [id], onDelete: Cascade)
+  answers              Json               // Array of answer objects
+  score                Float?
+  interpretation       String?            @db.Text
+  completedAt          DateTime           @default(now())
+
+  @@unique([assignedAssessmentId])
+  @@index([assignedAssessmentId])
+}
+
+// Member tasks assigned by counselors
+model MemberTask {
+  id          String    @id @default(uuid())
+  memberId    String
+  member      User      @relation("MemberTasks", fields: [memberId], references: [id], onDelete: Cascade)
+  counselorId String
+  counselor   User      @relation("TasksAssigned", fields: [counselorId], references: [id], onDelete: Cascade)
+  type        String    // "conversation_prompt", "offline_task", "guided_conversation"
+  title       String
+  description String    @db.Text
+  dueDate     DateTime?
+  completedAt DateTime?
+  status      String    @default("pending") // "pending", "completed", "overdue"
+  metadata    Json?     // Additional type-specific data
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([memberId])
+  @@index([counselorId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+// Workflow automation rules
+model WorkflowRule {
+  id         String              @id @default(uuid())
+  name       String
+  level      String              // "platform", "organization", "counselor"
+  ownerId    String?             // Organization ID or counselor user ID
+  trigger    Json                // Event trigger configuration
+  conditions Json?               // Conditions to evaluate
+  actions    Json                // Actions to execute
+  priority   Int                 @default(0)
+  isActive   Boolean             @default(true)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  executions WorkflowExecution[]
+
+  @@index([level])
+  @@index([ownerId])
+  @@index([isActive])
+}
+
+// Workflow execution audit log
+model WorkflowExecution {
+  id          String       @id @default(uuid())
+  ruleId      String
+  rule        WorkflowRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  triggeredBy String       // Event that triggered execution
+  context     Json         // Event context data
+  actions     Json         // Actions attempted
+  success     Boolean
+  error       String?      @db.Text
+  executedAt  DateTime     @default(now())
+
+  @@index([ruleId])
+  @@index([executedAt])
+  @@index([success])
 }
