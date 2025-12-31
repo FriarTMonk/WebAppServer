@@ -105,6 +105,7 @@
     "ts-node": "^10.9.2"
   },
   "scripts": {
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "ts-node prisma/seed.ts",
+    "seed:workflow-rules": "ts-node src/workflow/seed-rules.script.ts"
   }
 }
