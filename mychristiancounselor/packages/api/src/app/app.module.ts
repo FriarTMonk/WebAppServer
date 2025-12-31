@@ -26,6 +26,7 @@ import { MarketingModule } from '../marketing/marketing.module';
 import { ContentModule } from '../content/content.module';
 import { BookModule } from '../book/book.module';
 import { ResourcesModule } from '../resources/resources.module';
+import { WorkflowModule } from '../workflow/workflow.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CsrfGuard } from '../common/guards/csrf.guard';
 import { configValidationSchema } from '../config/config.validation';
@@ -83,6 +84,7 @@ import { EventsModule } from '../events/events.module';
     ContentModule,
     BookModule,
     ResourcesModule,
+    WorkflowModule,
   ],
   providers: [
     {
