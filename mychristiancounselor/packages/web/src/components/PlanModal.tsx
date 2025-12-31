@@ -244,7 +244,23 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
             </li>
             <li className="flex items-start">
               <span className="mr-2">✓</span>
-              <span>Counselor dashboard to view member summary</span>
+              <span>Counselor dashboard with member wellbeing monitoring</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">✓</span>
+              <span><strong className="text-green-900">NEW:</strong> Task assignment system - assign conversation topics, offline tasks, and guided conversations</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">✓</span>
+              <span><strong className="text-green-900">NEW:</strong> Mental health assessments - assign and track PHQ-9 (depression) and GAD-7 (anxiety) screenings</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">✓</span>
+              <span><strong className="text-green-900">NEW:</strong> Historical trends and analytics - view member wellbeing progression over time</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2">✓</span>
+              <span><strong className="text-green-900">NEW:</strong> Workflow automation rules - automate task and assessment assignments based on triggers</span>
             </li>
             <li className="flex items-start">
               <span className="mr-2">✓</span>
@@ -367,6 +383,30 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
             </tr>
             <tr>
               <td className="border border-gray-200 p-3 font-medium">Member Management</td>
+              <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
+              <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
+              <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
+            </tr>
+            <tr className="bg-green-50">
+              <td className="border border-gray-200 p-3 font-medium"><strong>Task Assignment System</strong> <span className="text-xs bg-green-200 text-green-900 px-2 py-0.5 rounded">NEW</span></td>
+              <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
+              <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
+              <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
+            </tr>
+            <tr className="bg-green-50">
+              <td className="border border-gray-200 p-3 font-medium"><strong>Mental Health Assessments</strong> <span className="text-xs bg-green-200 text-green-900 px-2 py-0.5 rounded">NEW</span></td>
+              <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
+              <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
+              <td className="border border-gray-200 p-3 text-center">✓ (PHQ-9, GAD-7)</td>
+            </tr>
+            <tr className="bg-green-50">
+              <td className="border border-gray-200 p-3 font-medium"><strong>Historical Trends & Analytics</strong> <span className="text-xs bg-green-200 text-green-900 px-2 py-0.5 rounded">NEW</span></td>
+              <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
+              <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
+              <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
+            </tr>
+            <tr className="bg-green-50">
+              <td className="border border-gray-200 p-3 font-medium"><strong>Workflow Automation Rules</strong> <span className="text-xs bg-green-200 text-green-900 px-2 py-0.5 rounded">NEW</span></td>
               <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
               <td className="border border-gray-200 p-3 text-center text-red-500">✗</td>
               <td className="border border-gray-200 p-3 text-center text-green-500">✓</td>
@@ -595,6 +635,22 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
               <div className="flex justify-between">
                 <span>Dashboard:</span>
                 <span className="text-green-500">✓</span>
+              </div>
+              <div className="flex justify-between bg-green-100 px-2 py-1 rounded">
+                <span className="font-semibold">Task Assignments:</span>
+                <span className="text-green-700">✓ NEW</span>
+              </div>
+              <div className="flex justify-between bg-green-100 px-2 py-1 rounded">
+                <span className="font-semibold">Assessments:</span>
+                <span className="text-green-700">✓ NEW</span>
+              </div>
+              <div className="flex justify-between bg-green-100 px-2 py-1 rounded">
+                <span className="font-semibold">Analytics:</span>
+                <span className="text-green-700">✓ NEW</span>
+              </div>
+              <div className="flex justify-between bg-green-100 px-2 py-1 rounded">
+                <span className="font-semibold">Automation:</span>
+                <span className="text-green-700">✓ NEW</span>
               </div>
               <div className="flex justify-between">
                 <span>Book Resources:</span>
