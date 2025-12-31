@@ -31,6 +31,7 @@ import { CsrfGuard } from '../common/guards/csrf.guard';
 import { configValidationSchema } from '../config/config.validation';
 import { winstonConfig } from '../common/logging/winston.config';
 import { getBullModuleOptions } from '../config/queue.config';
+import { EventsModule } from '../events/events.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { getBullModuleOptions } from '../config/queue.config';
     ]),
     // Winston logging
     WinstonModule.forRoot(winstonConfig),
+    EventsModule,
     PrismaModule,
     MetricsModule,
     HealthModule,
