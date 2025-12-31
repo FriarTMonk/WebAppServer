@@ -71,12 +71,6 @@ export default function MyAssessmentsModal({ onClose, onAssessmentUpdate }: MyAs
   const pendingAssessments = useMemo(() => assessments.filter((a) => a.status === 'pending'), [assessments]);
   const completedAssessments = useMemo(() => assessments.filter((a) => a.status === 'completed'), [assessments]);
 
-  const getAssessmentDescription = (type: string) => {
-    if (type === 'phq9') {
-      return 'Patient Health Questionnaire - measures depression severity over the past 2 weeks';
-    }
-    return 'Generalized Anxiety Disorder assessment - measures anxiety severity over the past 2 weeks';
-  };
 
   return (
     <div
@@ -131,56 +125,17 @@ export default function MyAssessmentsModal({ onClose, onAssessmentUpdate }: MyAs
               {/* Pending Assessments */}
               {pendingAssessments.length > 0 && (
                 <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <h3 className="text-lg font-semibold text-yellow-600">
-                      Pending ({pendingAssessments.length})
-                    </h3>
-                    <span className="px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
-                      Action Needed
-                    </span>
-                  </div>
+                  <h3 className="text-lg font-semibold text-yellow-600 mb-3">
+                    Pending ({pendingAssessments.length})
+                  </h3>
                   <div className="space-y-3">
                     {pendingAssessments.map((assessment) => (
-                      <div key={assessment.id} className="border-2 border-yellow-300 rounded-lg p-4">
-                        <div className="mb-3">
-                          <h4 className="font-semibold text-gray-900 mb-1">
-                            {assessment.type === 'phq9' ? 'PHQ-9 (Depression)' : 'GAD-7 (Anxiety)'}
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            {getAssessmentDescription(assessment.type)}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
-                          <span>Assigned: {new Date(assessment.assignedAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}</span>
-                          {assessment.dueDate && (
-                            <span className="text-yellow-600 font-medium">
-                              Due: {new Date(assessment.dueDate).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })}
-                            </span>
-                          )}
-                        </div>
-
-                        {assessment.noteToMember && (
-                          <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-gray-700">
-                            <span className="font-medium">Note from your counselor:</span> {assessment.noteToMember}
-                          </div>
-                        )}
-
-                        <button
-                          onClick={() => handleTakeAssessment(assessment)}
-                          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
-                        >
-                          Take Assessment
-                        </button>
-                      </div>
+                      <AssessmentCard
+                        key={assessment.id}
+                        assessment={assessment}
+                        showActions={true}
+                        onTakeAssessment={handleTakeAssessment}
+                      />
                     ))}
                   </div>
                 </div>
@@ -194,42 +149,10 @@ export default function MyAssessmentsModal({ onClose, onAssessmentUpdate }: MyAs
                   </h3>
                   <div className="space-y-3">
                     {completedAssessments.map((assessment) => (
-                      <div key={assessment.id} className="border border-gray-300 rounded-lg p-4 bg-gray-50">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h4 className="font-semibold text-gray-900 mb-1">
-                              {assessment.type === 'phq9' ? 'PHQ-9 (Depression)' : 'GAD-7 (Anxiety)'}
-                            </h4>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-gray-700">
-                                Score: {assessment.score}
-                              </span>
-                              {assessment.severity && (
-                                <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                  assessment.severity.toLowerCase() === 'minimal' ? 'bg-green-100 text-green-800' :
-                                  assessment.severity.toLowerCase() === 'mild' ? 'bg-yellow-100 text-yellow-800' :
-                                  assessment.severity.toLowerCase() === 'moderate' ? 'bg-orange-100 text-orange-800' :
-                                  'bg-red-100 text-red-800'
-                                }`}>
-                                  {assessment.severity}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          {assessment.completedAt && (
-                            <span className="text-green-600">
-                              Completed: {new Date(assessment.completedAt).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      <AssessmentCard
+                        key={assessment.id}
+                        assessment={assessment}
+                      />
                     ))}
                   </div>
                 </div>
