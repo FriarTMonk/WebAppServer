@@ -38,6 +38,9 @@ model User {
   verificationTokenExpiry   DateTime?
   adminActionsGiven         AdminAuditLog[]          @relation("AdminActions")
   adminActionsReceived      AdminAuditLog[]          @relation("ActionsReceived")
+  assessmentsCreated        Assessment[]             @relation("AssessmentsCreated")
+  assessmentsAssigned       AssignedAssessment[]     @relation("AssessmentsAssigned")
+  assignedAssessments       AssignedAssessment[]     @relation("AssignedAssessments")
   booksSubmitted            Book[]                   @relation("BooksSubmitted")
   bookEndorsements          BookEndorsement[]        @relation("BookEndorsements")
   counselorAssignments      CounselorAssignment[]    @relation("CounselorAssignments")
@@ -47,13 +50,22 @@ model User {
   coverageGrantsGiven       CounselorCoverageGrant[] @relation("CoverageGrantsGiven")
   observationsAuthored      CounselorObservation[]   @relation("ObservationsAuthored")
   observationsReceived      CounselorObservation[]   @relation("ObservationsReceived")
+  crisisAlertsReceived      CrisisAlertLog[]         @relation("CrisisAlertsReceived")
+  crisisAlerts              CrisisAlertLog[]         @relation("CrisisAlerts")
+  campaignsCreated          EmailCampaign[]          @relation("CampaignsCreated")
+  externalOrgsAdded         ExternalOrganization[]   @relation("ExternalOrgsAdded")
   holidaysCreated           Holiday[]                @relation("HolidaysCreated")
+  tasksAssigned             MemberTask[]             @relation("TasksAssigned")
+  memberTasks               MemberTask[]             @relation("MemberTasks")
+  wellbeingHistory          MemberWellbeingHistory[] @relation("WellbeingHistory")
+  wellbeingOverrides        MemberWellbeingHistory[] @relation("WellbeingOverrides")
   wellbeingStatus           MemberWellbeingStatus?
   notificationsReceived     Notification[]           @relation("NotificationsReceived")
   notificationsSent         Notification[]           @relation("NotificationsSent")
   invitationsReceived       OrganizationInvitation[] @relation("InvitedUser")
   invitationsCreated        OrganizationInvitation[] @relation("CreatedByUser")
   organizationMemberships   OrganizationMember[]
+  prospectsCreated          Prospect[]               @relation("ProspectsCreated")
   refreshTokens             RefreshToken[]
   salesActivitiesPerformed  SalesActivity[]          @relation("SalesActivitiesPerformed")
   salesNotesAuthored        SalesNote[]              @relation("SalesNotesAuthored")
@@ -61,9 +73,8 @@ model User {
   opportunitiesCreated      SalesOpportunity[]       @relation("OpportunitiesCreated")
   sessions                  Session[]
   sessionNotesAuthored      SessionNote[]            @relation("SessionNotesAuthored")
+  sessionSummaries          SessionSummary[]         @relation("SessionSummaries")
   subscriptions             Subscription[]
-  externalOrgsAdded         ExternalOrganization[]   @relation("ExternalOrgsAdded")
-  readingLists              UserReadingList[]        @relation("ReadingLists")
   ticketsAssigned           SupportTicket[]          @relation("TicketsAssigned")
   ticketsClosed             SupportTicket[]          @relation("TicketsClosed")
   ticketsCreated            SupportTicket[]          @relation("TicketsCreated")
@@ -71,18 +82,7 @@ model User {
   ticketAttachmentsUploaded TicketAttachment[]       @relation("TicketAttachmentsUploaded")
   ticketLinksCreated        TicketLink[]             @relation("TicketLinksCreated")
   ticketMessagesAuthored    TicketMessage[]          @relation("TicketMessagesAuthored")
-  prospectsCreated          Prospect[]               @relation("ProspectsCreated")
-  campaignsCreated          EmailCampaign[]          @relation("CampaignsCreated")
-  crisisAlerts              CrisisAlertLog[]         @relation("CrisisAlerts")
-  crisisAlertsReceived      CrisisAlertLog[]         @relation("CrisisAlertsReceived")
-  wellbeingHistory          MemberWellbeingHistory[] @relation("WellbeingHistory")
-  wellbeingOverrides        MemberWellbeingHistory[] @relation("WellbeingOverrides")
-  sessionSummaries          SessionSummary[]         @relation("SessionSummaries")
-  assessmentsCreated        Assessment[]             @relation("AssessmentsCreated")
-  assignedAssessments       AssignedAssessment[]     @relation("AssignedAssessments")
-  assessmentsAssigned       AssignedAssessment[]     @relation("AssessmentsAssigned")
-  memberTasks               MemberTask[]             @relation("MemberTasks")
-  tasksAssigned             MemberTask[]             @relation("TasksAssigned")
+  readingLists              UserReadingList[]        @relation("ReadingLists")
 
   @@index([email])
   @@index([verificationToken])
@@ -113,10 +113,6 @@ model Organization {
   id                                String                   @id @default(uuid())
   name                              String
   description                       String?
-  specialtyTags                     String[]                 @default([])
-  website                           String?
-  organizationAddressId             String?
-  organizationAddress               OrganizationAddress?     @relation(fields: [organizationAddressId], references: [id])
   licenseType                       String?
   licenseStatus                     String                   @default("trial")
   licenseExpiresAt                  DateTime?
@@ -127,19 +123,23 @@ model Organization {
   archivedAt                        DateTime?
   matureContentAccountTypeThreshold String?                  @default("teen")
   offersVirtualServices             Boolean                  @default(false)
+  organizationAddressId             String?
+  specialtyTags                     String[]                 @default([])
+  website                           String?
   auditLogs                         AdminAuditLog[]
   booksSubmitted                    Book[]                   @relation("BooksSubmittedByOrg")
   bookEndorsements                  BookEndorsement[]
   counselorAssignments              CounselorAssignment[]
+  externalOrgsRecommended           ExternalOrganization[]   @relation("ExternalOrgsRecommended")
   metricSnapshots                   MetricSnapshot[]
+  organizationAddress               OrganizationAddress?     @relation(fields: [organizationAddressId], references: [id])
   contract                          OrganizationContract?
   invitations                       OrganizationInvitation[]
   members                           OrganizationMember[]
   roles                             OrganizationRole[]
+  prospectsConverted                Prospect[]               @relation("ProspectConversions")
   salesOpportunities                SalesOpportunity[]
   supportTickets                    SupportTicket[]
-  externalOrgsRecommended           ExternalOrganization[]   @relation("ExternalOrgsRecommended")
-  prospectsConverted                Prospect[]               @relation("ProspectConversions")
 
   @@index([licenseStatus])
   @@index([licenseExpiresAt])
@@ -235,22 +235,22 @@ model MetricSnapshot {
 }
 
 model Session {
-  id                   String         @id @default(uuid())
+  id                   String          @id @default(uuid())
   userId               String?
   title                String
-  status               String         @default("active")
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
-  preferredTranslation String         @default("ASV")
-  topics               Json           @default("[]")
+  status               String          @default("active")
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  preferredTranslation String          @default("ASV")
+  topics               Json            @default("[]")
   archivedAt           DateTime?
   deletedAt            DateTime?
-  questionCount        Int            @default(0)
+  questionCount        Int             @default(0)
   messages             Message[]
-  user                 User?          @relation(fields: [userId], references: [id])
+  user                 User?           @relation(fields: [userId], references: [id])
   notes                SessionNote[]
   shares               SessionShare[]
-  summaries            SessionSummary[] @relation("SessionSummaries")
+  summaries            SessionSummary? @relation("SessionSummaries")
 
   @@index([createdAt])
   @@index([userId])
@@ -423,15 +423,15 @@ model CounselorCoverageGrant {
 }
 
 model MemberWellbeingStatus {
-  id                String   @id @default(uuid())
-  memberId          String   @unique
-  status            String
-  aiSuggestedStatus String
+  id                String          @id @default(uuid())
+  memberId          String          @unique
+  status            WellbeingStatus
+  aiSuggestedStatus WellbeingStatus
   overriddenBy      String?
   summary           String
-  lastAnalyzedAt    DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  member            User     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  lastAnalyzedAt    DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  member            User            @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([lastAnalyzedAt])
@@ -472,8 +472,8 @@ model EmailLog {
   openedAt          DateTime?
   clickedAt         DateTime?
   bouncedAt         DateTime?
+  crisisAlert       CrisisAlertLog?         @relation("CrisisAlertEmails")
   campaignRecipient EmailCampaignRecipient?
-  crisisAlert       CrisisAlertLog? @relation("CrisisAlertEmails")
 
   @@index([userId])
   @@index([recipientEmail])
@@ -503,18 +503,18 @@ model Prospect {
   website                   String?
   industry                  String?
   estimatedSize             String?
-  notes                     String?                  @db.Text
+  notes                     String?
   lastCampaignSentAt        DateTime?
   convertedToOrganizationId String?
-  convertedToOrganization   Organization?            @relation("ProspectConversions", fields: [convertedToOrganizationId], references: [id])
   convertedAt               DateTime?
   createdById               String
-  createdBy                 User                     @relation("ProspectsCreated", fields: [createdById], references: [id])
   createdAt                 DateTime                 @default(now())
   updatedAt                 DateTime                 @updatedAt
   archivedAt                DateTime?
-  contacts                  ProspectContact[]
   campaignRecipients        EmailCampaignRecipient[]
+  convertedToOrganization   Organization?            @relation("ProspectConversions", fields: [convertedToOrganizationId], references: [id])
+  createdBy                 User                     @relation("ProspectsCreated", fields: [createdById], references: [id])
+  contacts                  ProspectContact[]
 
   @@index([createdById])
   @@index([lastCampaignSentAt])
@@ -525,7 +525,6 @@ model Prospect {
 model ProspectContact {
   id                 String                   @id @default(uuid())
   prospectId         String
-  prospect           Prospect                 @relation(fields: [prospectId], references: [id], onDelete: Cascade)
   name               String
   email              String
   phone              String?
@@ -534,6 +533,7 @@ model ProspectContact {
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
   campaignRecipients EmailCampaignRecipient[]
+  prospect           Prospect                 @relation(fields: [prospectId], references: [id], onDelete: Cascade)
 
   @@unique([prospectId, email])
   @@index([prospectId])
@@ -544,15 +544,15 @@ model EmailCampaign {
   id           String                   @id @default(uuid())
   name         String
   subject      String
-  htmlBody     String                   @db.Text
-  textBody     String                   @db.Text
+  htmlBody     String
+  textBody     String
   status       EmailCampaignStatus      @default(draft)
   scheduledFor DateTime?
   sentAt       DateTime?
   createdById  String
-  createdBy    User                     @relation("CampaignsCreated", fields: [createdById], references: [id])
   createdAt    DateTime                 @default(now())
   updatedAt    DateTime                 @updatedAt
+  createdBy    User                     @relation("CampaignsCreated", fields: [createdById], references: [id])
   recipients   EmailCampaignRecipient[]
 
   @@index([createdById])
@@ -561,25 +561,11 @@ model EmailCampaign {
   @@index([sentAt])
 }
 
-enum EmailCampaignStatus {
-  draft
-  scheduled
-  sending
-  sent
-  failed
-  cancelled
-}
-
 model EmailCampaignRecipient {
   id                 String             @id @default(uuid())
   campaignId         String
-  campaign           EmailCampaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   prospectId         String
-  prospect           Prospect           @relation(fields: [prospectId], references: [id], onDelete: Cascade)
-  prospectContactId  String
-  prospectContact    ProspectContact    @relation(fields: [prospectContactId], references: [id], onDelete: Cascade)
   emailLogId         String?            @unique
-  emailLog           EmailLog?          @relation(fields: [emailLogId], references: [id])
   status             String             @default("pending")
   sentAt             DateTime?
   deliveredAt        DateTime?
@@ -591,6 +577,11 @@ model EmailCampaignRecipient {
   convertedAt        DateTime?
   conversionType     String?
   createdAt          DateTime           @default(now())
+  prospectContactId  String
+  campaign           EmailCampaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  emailLog           EmailLog?          @relation(fields: [emailLogId], references: [id])
+  prospectContact    ProspectContact    @relation(fields: [prospectContactId], references: [id], onDelete: Cascade)
+  prospect           Prospect           @relation(fields: [prospectId], references: [id], onDelete: Cascade)
   salesOpportunities SalesOpportunity[]
 
   @@unique([campaignId, prospectContactId])
@@ -788,7 +779,7 @@ model SafetyDetectionFeedback {
 }
 
 model Book {
-  id                        String                  @id @default(uuid())
+  id                        String                        @id @default(uuid())
   isbn                      String?
   title                     String
   author                    String
@@ -796,42 +787,42 @@ model Book {
   publicationYear           Int?
   description               String?
   coverImageUrl             String?
-  purchaseUrl               String?                 // URL where book can be purchased
   biblicalAlignmentScore    Int?
   evaluationVersion         String
   theologicalSummary        String?
-  denominationalTags        String[]                @default([])
+  denominationalTags        String[]                      @default([])
   genreTag                  String
-  matureContent             Boolean                 @default(false)
+  matureContent             Boolean                       @default(false)
   matureContentReason       String?
   scriptureComparisonNotes  String?
-  theologicalStrengths      String[]                @default([])
-  theologicalConcerns       String[]                @default([])
+  theologicalStrengths      String[]                      @default([])
+  theologicalConcerns       String[]                      @default([])
   scoringReasoning          String?
   aiModel                   String
   pdfStoragePath            String?
   pdfUploadedAt             DateTime?
-  pdfFilePath               String?                 // Path to PDF file on disk
-  pdfFileSize               Int?                    // File size in bytes
-  pdfLicenseType            PdfLicenseType?
-  pdfStorageTier            PdfStorageTier?
-  pdfFileHash               String?                 // SHA-256 hash for duplicate detection
-  pdfMetadataYear           Int?                    // Year extracted from PDF metadata
-  createdAt                 DateTime                @default(now())
-  updatedAt                 DateTime                @updatedAt
+  createdAt                 DateTime                      @default(now())
+  updatedAt                 DateTime                      @updatedAt
   submittedById             String
   submittedByOrganizationId String
   evaluationStatus          BookEvaluationStatus
   visibilityTier            BookVisibilityTier
   analysisLevel             BookAnalysisLevel
-  submittedBy               User                    @relation("BooksSubmitted", fields: [submittedById], references: [id])
-  submittedByOrganization   Organization            @relation("BooksSubmittedByOrg", fields: [submittedByOrganizationId], references: [id])
+  pdfStorageTier            PdfStorageTier?
+  pdfLicenseType            PdfLicenseType?
+  pdfFilePath               String?
+  pdfFileSize               Int?
+  pdfFileHash               String?
+  pdfMetadataYear           Int?
+  purchaseUrl               String?
+  submittedBy               User                          @relation("BooksSubmitted", fields: [submittedById], references: [id])
+  submittedByOrganization   Organization                  @relation("BooksSubmittedByOrg", fields: [submittedByOrganizationId], references: [id])
   endorsements              BookEndorsement[]
   evaluationHistory         BookEvaluation[]
+  conversationMentions      ConversationResourceMention[] @relation("ConversationMentions")
   doctrineCategoryScores    DoctrineCategoryScore[]
   purchaseLinks             PurchaseLink[]
   userReadingLists          UserReadingList[]             @relation("UserReadingLists")
-  conversationMentions      ConversationResourceMention[] @relation("ConversationMentions")
 
   @@index([evaluationStatus])
   @@index([visibilityTier])
@@ -927,13 +918,13 @@ model SalesOpportunity {
   followUpNotes        String?
   lossReason           LossReason?
   lossNotes            String?
-  campaignRecipientId  String?
-  campaignRecipient    EmailCampaignRecipient? @relation(fields: [campaignRecipientId], references: [id])
   createdAt            DateTime                @default(now())
   updatedAt            DateTime                @updatedAt
+  campaignRecipientId  String?
   activities           SalesActivity[]
   notes                SalesNote[]
   assignedTo           User?                   @relation("OpportunitiesAssigned", fields: [assignedToId], references: [id])
+  campaignRecipient    EmailCampaignRecipient? @relation(fields: [campaignRecipientId], references: [id])
   createdBy            User                    @relation("OpportunitiesCreated", fields: [createdById], references: [id])
   organization         Organization?           @relation(fields: [organizationId], references: [id])
 
@@ -981,6 +972,283 @@ model SalesNote {
   @@index([opportunityId])
   @@index([authorId])
   @@index([createdAt])
+}
+
+model OrganizationAddress {
+  id                    String                 @id @default(uuid())
+  street                String
+  city                  String
+  state                 String
+  zipCode               String
+  country               String                 @default("USA")
+  latitude              Float?
+  longitude             Float?
+  normalizedAddress     String                 @unique
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  externalOrganizations ExternalOrganization[]
+  organizations         Organization[]
+
+  @@index([city, state])
+  @@index([zipCode])
+}
+
+model ExternalOrganization {
+  id                          String                        @id @default(uuid())
+  name                        String
+  organizationTypes           String[]
+  specialtyTags               String[]
+  phone                       String?
+  email                       String?
+  website                     String?
+  hours                       String?
+  recommendedByOrganizationId String
+  recommendationNote          String
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime                      @updatedAt
+  addedById                   String
+  organizationAddressId       String?
+  conversationMentions        ConversationResourceMention[]
+  addedBy                     User                          @relation("ExternalOrgsAdded", fields: [addedById], references: [id])
+  organizationAddress         OrganizationAddress?          @relation(fields: [organizationAddressId], references: [id])
+  recommendedBy               Organization                  @relation("ExternalOrgsRecommended", fields: [recommendedByOrganizationId], references: [id], onDelete: Cascade)
+
+  @@index([recommendedByOrganizationId])
+  @@index([organizationAddressId])
+}
+
+model UserReadingList {
+  id             String    @id @default(uuid())
+  userId         String
+  bookId         String
+  status         String
+  progress       Int?
+  personalNotes  String?
+  personalRating Int?
+  dateStarted    DateTime?
+  dateFinished   DateTime?
+  addedAt        DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  book           Book      @relation("UserReadingLists", fields: [bookId], references: [id], onDelete: Cascade)
+  user           User      @relation("ReadingLists", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([userId, status])
+}
+
+model ConversationResourceMention {
+  id             String                @id @default(uuid())
+  conversationId String
+  messageId      String?
+  resourceType   String
+  bookId         String?
+  externalOrgId  String?
+  contextSnippet String?
+  mentionedAt    DateTime              @default(now())
+  book           Book?                 @relation("ConversationMentions", fields: [bookId], references: [id], onDelete: Cascade)
+  externalOrg    ExternalOrganization? @relation(fields: [externalOrgId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([bookId])
+  @@index([externalOrgId])
+}
+
+model CrisisAlertLog {
+  id                String          @id @default(uuid())
+  memberId          String
+  counselorId       String?
+  crisisType        CrisisType
+  confidence        ConfidenceLevel
+  detectionMethod   DetectionMethod
+  triggeringMessage String
+  messageId         String?
+  emailSent         Boolean         @default(false)
+  emailLogId        String?         @unique
+  throttled         Boolean         @default(false)
+  throttleReason    String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @default(now())
+  counselor         User?           @relation("CrisisAlertsReceived", fields: [counselorId], references: [id])
+  emailLog          EmailLog?       @relation("CrisisAlertEmails", fields: [emailLogId], references: [id])
+  member            User            @relation("CrisisAlerts", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([counselorId])
+  @@index([createdAt])
+  @@index([emailSent])
+  @@index([memberId, createdAt])
+}
+
+model MemberWellbeingHistory {
+  id               String               @id @default(uuid())
+  memberId         String
+  status           WellbeingStatus
+  trajectory       WellbeingTrajectory?
+  summary          String
+  overriddenBy     String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @default(now())
+  member           User                 @relation("WellbeingHistory", fields: [memberId], references: [id], onDelete: Cascade)
+  overriddenByUser User?                @relation("WellbeingOverrides", fields: [overriddenBy], references: [id])
+
+  @@index([memberId])
+  @@index([createdAt])
+  @@index([status])
+  @@index([memberId, createdAt])
+}
+
+model SessionSummary {
+  id        String         @id @default(uuid())
+  sessionId String         @unique
+  memberId  String
+  summary   String
+  topics    String[]
+  sentiment SentimentType?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @default(now())
+  member    User           @relation("SessionSummaries", fields: [memberId], references: [id], onDelete: Cascade)
+  session   Session        @relation("SessionSummaries", fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([createdAt])
+}
+
+model Assessment {
+  id            String               @id @default(uuid())
+  name          String
+  type          AssessmentType
+  category      String?
+  questions     Json
+  scoringRules  Json
+  isActive      Boolean              @default(true)
+  createdBy     String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  createdByUser User?                @relation("AssessmentsCreated", fields: [createdBy], references: [id])
+  schedules     AssessmentSchedule[]
+  assignments   AssignedAssessment[]
+
+  @@index([type])
+  @@index([category])
+  @@index([isActive])
+}
+
+model AssessmentSchedule {
+  id           String                       @id @default(uuid())
+  assessmentId String
+  targetType   AssessmentScheduleTargetType
+  targetValue  String?
+  schedule     String
+  triggers     Json?
+  isActive     Boolean                      @default(true)
+  createdAt    DateTime                     @default(now())
+  updatedAt    DateTime                     @updatedAt
+  assessment   Assessment                   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId])
+  @@index([isActive])
+}
+
+model AssignedAssessment {
+  id             String              @id @default(uuid())
+  assessmentId   String
+  memberId       String
+  assignedBy     String?
+  dueDate        DateTime?
+  completedAt    DateTime?
+  status         AssessmentStatus    @default(pending)
+  createdAt      DateTime            @default(now())
+  responses      AssessmentResponse?
+  assessment     Assessment          @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  assignedByUser User?               @relation("AssessmentsAssigned", fields: [assignedBy], references: [id])
+  member         User                @relation("AssignedAssessments", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId])
+  @@index([memberId])
+  @@index([assignedBy])
+  @@index([status])
+  @@index([dueDate])
+  @@index([memberId, dueDate])
+  @@index([memberId, status])
+}
+
+model AssessmentResponse {
+  id                   String             @id @default(uuid())
+  assignedAssessmentId String             @unique
+  answers              Json
+  score                Float?
+  interpretation       String?
+  completedAt          DateTime           @default(now())
+  assignedAssessment   AssignedAssessment @relation(fields: [assignedAssessmentId], references: [id], onDelete: Cascade)
+}
+
+model MemberTask {
+  id          String           @id @default(uuid())
+  memberId    String
+  counselorId String
+  type        MemberTaskType
+  title       String
+  description String
+  dueDate     DateTime?
+  completedAt DateTime?
+  status      MemberTaskStatus @default(pending)
+  metadata    Json?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  counselor   User             @relation("TasksAssigned", fields: [counselorId], references: [id], onDelete: Cascade)
+  member      User             @relation("MemberTasks", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([counselorId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([memberId, dueDate])
+  @@index([memberId, status])
+}
+
+model WorkflowRule {
+  id         String              @id @default(uuid())
+  name       String
+  level      WorkflowRuleLevel
+  ownerId    String?
+  trigger    Json
+  conditions Json?
+  actions    Json
+  priority   Int                 @default(0)
+  isActive   Boolean             @default(true)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  executions WorkflowExecution[]
+
+  @@index([level])
+  @@index([ownerId])
+  @@index([isActive])
+}
+
+model WorkflowExecution {
+  id          String       @id @default(uuid())
+  ruleId      String
+  triggeredBy String
+  context     Json
+  actions     Json
+  success     Boolean
+  error       String?
+  executedAt  DateTime     @default(now())
+  rule        WorkflowRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+  @@index([executedAt])
+  @@index([success])
+  @@index([ruleId, executedAt])
+}
+
+enum EmailCampaignStatus {
+  draft
+  scheduled
+  sending
+  sent
+  failed
+  cancelled
 }
 
 enum SLAStatus {
@@ -1048,283 +1316,73 @@ enum PdfLicenseType {
   analysis_only
 }
 
-// Deduplicated address table for organizations
-model OrganizationAddress {
-  id                     String                 @id @default(uuid())
-  street                 String
-  city                   String
-  state                  String
-  zipCode                String
-  country                String                 @default("USA")
-  latitude               Float?
-  longitude              Float?
-  // Normalized address for deduplication (e.g., "123 MAIN ST|CITY|STATE|ZIP")
-  normalizedAddress      String                 @unique
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
-  organizations          Organization[]
-  externalOrganizations  ExternalOrganization[]
-
-  @@index([city, state])
-  @@index([zipCode])
+enum AssessmentScheduleTargetType {
+  all
+  role
+  individual
 }
 
-// External organization referrals (Phase 2 of Biblical Resources)
-model ExternalOrganization {
-  id                          String                        @id @default(uuid())
-  name                        String
-  organizationTypes           String[]
-  specialtyTags               String[]
-  organizationAddressId       String?
-  organizationAddress         OrganizationAddress?          @relation(fields: [organizationAddressId], references: [id])
-  phone                       String?
-  email                       String?
-  website                     String?
-  hours                       String?
-  recommendedByOrganizationId String
-  recommendationNote          String
-  createdAt                   DateTime                      @default(now())
-  updatedAt                   DateTime                      @updatedAt
-  addedById                   String
-  conversationMentions        ConversationResourceMention[]
-  addedBy                     User                          @relation("ExternalOrgsAdded", fields: [addedById], references: [id])
-  recommendedBy               Organization                  @relation("ExternalOrgsRecommended", fields: [recommendedByOrganizationId], references: [id], onDelete: Cascade)
-
-  @@index([recommendedByOrganizationId])
-  @@index([organizationAddressId])
+enum AssessmentStatus {
+  pending
+  completed
+  expired
 }
 
-// User reading lists for personal book tracking
-model UserReadingList {
-  id             String    @id @default(uuid())
-  userId         String
-  bookId         String
-  status         String    // 'want_to_read' | 'currently_reading' | 'finished'
-  progress       Int?      // Percentage for currently_reading
-  personalNotes  String?   @db.Text
-  personalRating Int?      // 1-5 stars
-  dateStarted    DateTime?
-  dateFinished   DateTime?
-  addedAt        DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  book           Book      @relation("UserReadingLists", fields: [bookId], references: [id], onDelete: Cascade)
-  user           User      @relation("ReadingLists", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, bookId])
-  @@index([userId, status])
+enum AssessmentType {
+  clinical
+  custom
 }
 
-// Resource mentions in counseling conversations
-model ConversationResourceMention {
-  id             String                @id @default(uuid())
-  conversationId String                // Session ID
-  messageId      String?               // Specific message in conversation
-  resourceType   String                // 'book' | 'organization'
-  bookId         String?
-  externalOrgId  String?
-  contextSnippet String?               @db.Text
-  mentionedAt    DateTime              @default(now())
-  book           Book?                 @relation("ConversationMentions", fields: [bookId], references: [id], onDelete: Cascade)
-  externalOrg    ExternalOrganization? @relation(fields: [externalOrgId], references: [id], onDelete: Cascade)
-
-  @@index([conversationId])
-  @@index([bookId])
-  @@index([externalOrgId])
+enum ConfidenceLevel {
+  high
+  medium
+  low
 }
 
-// ========================================
-// COUNSELOR ALERT SYSTEM MODELS
-// ========================================
-
-// Crisis Alert Log - Tracks all crisis detections with/without emails
-model CrisisAlertLog {
-  id                String    @id @default(uuid())
-  memberId          String
-  member            User      @relation("CrisisAlerts", fields: [memberId], references: [id], onDelete: Cascade)
-  counselorId       String?
-  counselor         User?     @relation("CrisisAlertsReceived", fields: [counselorId], references: [id], onDelete: SetNull)
-  crisisType        String    // "suicidal_ideation", "self_harm", "severe_depression"
-  confidence        String    // "high", "medium", "low"
-  detectionMethod   String    // "pattern", "ai", "both"
-  triggeringMessage String    @db.Text
-  messageId         String?   // Reference to the actual message that triggered
-  emailSent         Boolean   @default(false)
-  emailLogId        String?   @unique
-  emailLog          EmailLog? @relation("CrisisAlertEmails", fields: [emailLogId], references: [id])
-  throttled         Boolean   @default(false)
-  throttleReason    String?
-  createdAt         DateTime  @default(now())
-
-  @@index([memberId])
-  @@index([counselorId])
-  @@index([createdAt])
-  @@index([emailSent])
+enum CrisisType {
+  suicidal_ideation
+  self_harm
+  severe_depression
 }
 
-// Historical wellbeing status tracking
-model MemberWellbeingHistory {
-  id               String    @id @default(uuid())
-  memberId         String
-  member           User      @relation("WellbeingHistory", fields: [memberId], references: [id], onDelete: Cascade)
-  status           String    // "green", "yellow", "red"
-  trajectory       String?   // "improving", "stable", "declining"
-  summary          String    @db.Text
-  overriddenBy     String?
-  overriddenByUser User?     @relation("WellbeingOverrides", fields: [overriddenBy], references: [id], onDelete: SetNull)
-  createdAt        DateTime  @default(now())
-
-  @@index([memberId])
-  @@index([createdAt])
-  @@index([status])
+enum DetectionMethod {
+  pattern
+  ai
+  both
 }
 
-// Per-session AI summaries
-model SessionSummary {
-  id        String   @id @default(uuid())
-  sessionId String
-  session   Session  @relation("SessionSummaries", fields: [sessionId], references: [id], onDelete: Cascade)
-  memberId  String
-  member    User     @relation("SessionSummaries", fields: [memberId], references: [id], onDelete: Cascade)
-  summary   String   @db.Text
-  topics    String[] // ["forgiveness", "anxiety", "faith"]
-  sentiment String?  // "positive", "neutral", "negative"
-  createdAt DateTime @default(now())
-
-  @@unique([sessionId])
-  @@index([memberId])
-  @@index([createdAt])
+enum MemberTaskStatus {
+  pending
+  completed
+  overdue
 }
 
-// Assessment templates (PHQ-9, GAD-7, custom)
-model Assessment {
-  id           String              @id @default(uuid())
-  name         String
-  type         String              // "clinical" or "custom"
-  category     String?             // "depression", "anxiety", "spiritual", etc.
-  questions    Json                // Array of question objects
-  scoringRules Json                // Scoring formula/rules
-  isActive     Boolean             @default(true)
-  createdBy    String?
-  createdByUser User?              @relation("AssessmentsCreated", fields: [createdBy], references: [id], onDelete: SetNull)
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-  schedules    AssessmentSchedule[]
-  assignments  AssignedAssessment[]
-
-  @@index([type])
-  @@index([category])
-  @@index([isActive])
+enum MemberTaskType {
+  conversation_prompt
+  offline_task
+  guided_conversation
 }
 
-// Assessment scheduling/automation rules
-model AssessmentSchedule {
-  id            String     @id @default(uuid())
-  assessmentId  String
-  assessment    Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  targetType    String     // "all", "role", "individual"
-  targetValue   String?    // Role name or user ID
-  schedule      String     // "weekly", "biweekly", "monthly", cron expression
-  triggers      Json?      // Event-based triggers
-  isActive      Boolean    @default(true)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-
-  @@index([assessmentId])
-  @@index([isActive])
+enum SentimentType {
+  positive
+  neutral
+  negative
 }
 
-// Assessment assigned to a member
-model AssignedAssessment {
-  id            String               @id @default(uuid())
-  assessmentId  String
-  assessment    Assessment           @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  memberId      String
-  member        User                 @relation("AssignedAssessments", fields: [memberId], references: [id], onDelete: Cascade)
-  assignedBy    String?
-  assignedByUser User?               @relation("AssessmentsAssigned", fields: [assignedBy], references: [id], onDelete: SetNull)
-  dueDate       DateTime?
-  completedAt   DateTime?
-  status        String               @default("pending") // "pending", "completed", "expired"
-  createdAt     DateTime             @default(now())
-  responses     AssessmentResponse[]
-
-  @@index([assessmentId])
-  @@index([memberId])
-  @@index([assignedBy])
-  @@index([status])
-  @@index([dueDate])
+enum WellbeingStatus {
+  green
+  yellow
+  red
 }
 
-// Member's answers and scores
-model AssessmentResponse {
-  id                   String             @id @default(uuid())
-  assignedAssessmentId String
-  assignedAssessment   AssignedAssessment @relation(fields: [assignedAssessmentId], references: [id], onDelete: Cascade)
-  answers              Json               // Array of answer objects
-  score                Float?
-  interpretation       String?            @db.Text
-  completedAt          DateTime           @default(now())
-
-  @@unique([assignedAssessmentId])
-  @@index([assignedAssessmentId])
+enum WellbeingTrajectory {
+  improving
+  stable
+  declining
 }
 
-// Member tasks assigned by counselors
-model MemberTask {
-  id          String    @id @default(uuid())
-  memberId    String
-  member      User      @relation("MemberTasks", fields: [memberId], references: [id], onDelete: Cascade)
-  counselorId String
-  counselor   User      @relation("TasksAssigned", fields: [counselorId], references: [id], onDelete: Cascade)
-  type        String    // "conversation_prompt", "offline_task", "guided_conversation"
-  title       String
-  description String    @db.Text
-  dueDate     DateTime?
-  completedAt DateTime?
-  status      String    @default("pending") // "pending", "completed", "overdue"
-  metadata    Json?     // Additional type-specific data
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([memberId])
-  @@index([counselorId])
-  @@index([status])
-  @@index([dueDate])
-}
-
-// Workflow automation rules
-model WorkflowRule {
-  id         String              @id @default(uuid())
-  name       String
-  level      String              // "platform", "organization", "counselor"
-  ownerId    String?             // Organization ID or counselor user ID
-  trigger    Json                // Event trigger configuration
-  conditions Json?               // Conditions to evaluate
-  actions    Json                // Actions to execute
-  priority   Int                 @default(0)
-  isActive   Boolean             @default(true)
-  createdAt  DateTime            @default(now())
-  updatedAt  DateTime            @updatedAt
-  executions WorkflowExecution[]
-
-  @@index([level])
-  @@index([ownerId])
-  @@index([isActive])
-}
-
-// Workflow execution audit log
-model WorkflowExecution {
-  id          String       @id @default(uuid())
-  ruleId      String
-  rule        WorkflowRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
-  triggeredBy String       // Event that triggered execution
-  context     Json         // Event context data
-  actions     Json         // Actions attempted
-  success     Boolean
-  error       String?      @db.Text
-  executedAt  DateTime     @default(now())
-
-  @@index([ruleId])
-  @@index([executedAt])
-  @@index([success])
+enum WorkflowRuleLevel {
+  platform
+  organization
+  counselor
 }
