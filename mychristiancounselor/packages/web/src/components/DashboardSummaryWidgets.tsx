@@ -2,7 +2,7 @@
 
 import { CheckSquare, ClipboardList, Workflow } from 'lucide-react';
 
-interface DashboardSummaryWidgetsProps {
+export interface DashboardSummaryWidgetsProps {
   taskStats: {
     total: number;
     pending: number;
@@ -24,6 +24,9 @@ interface DashboardSummaryWidgetsProps {
   onRulesClick: () => void;
 }
 
+const cardClassName =
+  'bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow text-left border border-gray-200 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none';
+
 export default function DashboardSummaryWidgets({
   taskStats,
   assessmentStats,
@@ -38,7 +41,8 @@ export default function DashboardSummaryWidgets({
       <button
         type="button"
         onClick={onTasksClick}
-        className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow text-left border border-gray-200"
+        className={cardClassName}
+        aria-label="View and filter members with active tasks"
       >
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-gray-600">Active Tasks</h3>
@@ -56,7 +60,8 @@ export default function DashboardSummaryWidgets({
       <button
         type="button"
         onClick={onAssessmentsClick}
-        className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow text-left border border-gray-200"
+        className={cardClassName}
+        aria-label="View and filter members with pending assessments"
       >
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-gray-600">Pending Assessments</h3>
@@ -74,7 +79,8 @@ export default function DashboardSummaryWidgets({
       <button
         type="button"
         onClick={onRulesClick}
-        className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow text-left border border-gray-200"
+        className={cardClassName}
+        aria-label="Manage workflow rules"
       >
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-gray-600">Active Workflow Rules</h3>
