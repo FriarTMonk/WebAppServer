@@ -269,3 +269,184 @@ export const organizationApi = {
     return apiGet(`/resources/organizations?${params.toString()}`, options);
   },
 };
+
+// Task & Assessment Types
+export type TaskType = 'conversation_prompt' | 'offline_task' | 'guided_conversation';
+export type TaskStatus = 'pending' | 'completed' | 'overdue';
+export type AssessmentType = 'phq9' | 'gad7';
+export type AssessmentStatus = 'pending' | 'completed';
+export type WorkflowRuleLevel = 'platform' | 'organization' | 'counselor';
+
+export interface MemberTask {
+  id: string;
+  memberId: string;
+  type: TaskType;
+  title: string;
+  description: string;
+  dueDate?: string;
+  priority: 'low' | 'medium' | 'high';
+  status: TaskStatus;
+  assignedById: string;
+  assignedAt: string;
+  completedAt?: string;
+  completionMethod?: 'manual' | 'auto';
+  counselorNotes?: string;
+}
+
+export interface TaskTemplate {
+  id: string;
+  type: TaskType;
+  title: string;
+  description: string;
+  category: string;
+}
+
+export interface AssessedAssessment {
+  id: string;
+  memberId: string;
+  type: AssessmentType;
+  status: AssessmentStatus;
+  assignedAt: string;
+  completedAt?: string;
+  dueDate?: string;
+  score?: number;
+  severity?: string;
+  noteToMember?: string;
+}
+
+export interface WorkflowRule {
+  id: string;
+  level: WorkflowRuleLevel;
+  name: string;
+  description: string;
+  trigger: string;
+  conditions: any;
+  actions: any;
+  enabled: boolean;
+  lastTriggered?: string;
+  createdById?: string;
+}
+
+export interface WorkflowRuleActivity {
+  id: string;
+  ruleId: string;
+  ruleName: string;
+  memberId: string;
+  triggeredAt: string;
+  triggerReason: string;
+  actionsTaken: string;
+}
+
+export interface MemberWellbeingHistoryItem {
+  id: string;
+  status: string;
+  recordedAt: string;
+  notes?: string;
+  overriddenBy?: string;
+}
+
+export interface AssessmentHistoryItem {
+  id: string;
+  type: AssessmentType;
+  score: number;
+  severity: string;
+  completedAt: string;
+}
+
+// Task API
+export const taskApi = {
+  getTemplates: () => apiGet('/counsel/tasks/templates'),
+
+  create: (data: {
+    memberId: string;
+    type: TaskType;
+    title: string;
+    description: string;
+    dueDate?: string;
+    priority: 'low' | 'medium' | 'high';
+    counselorNotes?: string;
+  }) => apiPost('/counsel/tasks', data),
+
+  getMemberTasks: (memberId: string) =>
+    apiGet(`/counsel/tasks/member/${memberId}`),
+
+  update: (taskId: string, data: {
+    title?: string;
+    description?: string;
+    dueDate?: string;
+    priority?: 'low' | 'medium' | 'high';
+    counselorNotes?: string;
+  }) => apiPatch(`/counsel/tasks/${taskId}`, data),
+
+  delete: (taskId: string) => apiDelete(`/counsel/tasks/${taskId}`),
+
+  sendReminder: (taskId: string) =>
+    apiPost(`/counsel/tasks/${taskId}/remind`),
+
+  // Member endpoints
+  getMyTasks: () => apiGet('/counsel/tasks/my-tasks'),
+
+  complete: (taskId: string) =>
+    apiPost(`/counsel/tasks/${taskId}/complete`),
+};
+
+// Assessment API
+export const assessmentApi = {
+  assign: (data: {
+    memberId: string;
+    type: AssessmentType;
+    dueDate?: string;
+    noteToMember?: string;
+  }) => apiPost('/counsel/assessments/assign', data),
+
+  getMemberAssessments: (memberId: string) =>
+    apiGet(`/counsel/assessments/member/${memberId}`),
+
+  getAssessmentHistory: (memberId: string, type: AssessmentType) =>
+    apiGet(`/counsel/assessments/member/${memberId}/history?type=${type}`),
+
+  // Member endpoints
+  getMyAssessments: () => apiGet('/counsel/assessments/my-assessments'),
+
+  submit: (assessmentId: string, responses: any) =>
+    apiPost(`/counsel/assessments/${assessmentId}/submit`, { responses }),
+};
+
+// Workflow Rules API
+export const workflowRulesApi = {
+  list: () => apiGet('/counsel/workflow-rules'),
+
+  getMemberRules: (memberId: string) =>
+    apiGet(`/counsel/workflow-rules/member/${memberId}`),
+
+  getActivity: (memberId: string) =>
+    apiGet(`/counsel/workflow-rules/member/${memberId}/activity`),
+
+  create: (data: {
+    name: string;
+    description: string;
+    trigger: string;
+    conditions: any;
+    actions: any;
+    applyTo: 'member' | 'all' | 'organization';
+    targetId?: string;
+  }) => apiPost('/counsel/workflow-rules', data),
+
+  update: (ruleId: string, data: { enabled?: boolean }) =>
+    apiPatch(`/counsel/workflow-rules/${ruleId}`, data),
+
+  delete: (ruleId: string) =>
+    apiDelete(`/counsel/workflow-rules/${ruleId}`),
+};
+
+// Member History API
+export const memberHistoryApi = {
+  getWellbeingHistory: (memberId: string, days: number = 90) =>
+    apiGet(`/counsel/members/${memberId}/history?days=${days}`),
+
+  getAssessmentHistory: (memberId: string) =>
+    apiGet(`/counsel/members/${memberId}/assessment-history`),
+
+  getEventTimeline: (memberId: string) =>
+    apiGet(`/counsel/members/${memberId}/events`),
+};
