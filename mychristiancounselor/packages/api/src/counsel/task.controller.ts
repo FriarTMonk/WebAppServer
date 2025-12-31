@@ -10,7 +10,7 @@ import {
   Request,
   ForbiddenException,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { IsCounselorGuard } from './guards/is-counselor.guard';
 import { MemberTaskService } from './member-task.service';
 import { TaskTemplateService } from './task-template.service';
