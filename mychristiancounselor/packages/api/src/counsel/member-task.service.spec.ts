@@ -2,7 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { MemberTaskService } from './member-task.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { MemberTaskStatus } from '@prisma/client';
+import { MemberTaskStatus, Prisma } from '@prisma/client';
+import { InternalServerErrorException, NotFoundException } from '@nestjs/common';
 
 describe('MemberTaskService', () => {
   let service: MemberTaskService;
@@ -130,7 +131,7 @@ describe('MemberTaskService', () => {
   describe('markComplete', () => {
     it('should mark task as completed and emit event', async () => {
       const taskId = 'task-789';
-      const existingTask = {
+      const completedTask = {
         id: taskId,
         memberId: 'member-123',
         counselorId: 'counselor-456',
@@ -138,20 +139,13 @@ describe('MemberTaskService', () => {
         title: 'Read Psalm 23',
         description: 'Daily reading',
         dueDate: new Date(),
-        status: 'pending',
-        completedAt: null,
+        status: 'completed',
+        completedAt: new Date(),
         metadata: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      const completedTask = {
-        ...existingTask,
-        status: 'completed',
-        completedAt: new Date(),
-      };
-
-      mockPrismaService.memberTask.findUnique.mockResolvedValue(existingTask);
       mockPrismaService.memberTask.update.mockResolvedValue(completedTask);
 
       const result = await service.markComplete(taskId);
@@ -165,19 +159,81 @@ describe('MemberTaskService', () => {
         },
       });
       expect(eventEmitter.emit).toHaveBeenCalledWith('task.completed', {
-        memberId: existingTask.memberId,
-        taskId: existingTask.id,
-        taskType: existingTask.type,
-        counselorId: existingTask.counselorId,
+        memberId: completedTask.memberId,
+        taskId: completedTask.id,
+        taskType: completedTask.type,
+        counselorId: completedTask.counselorId,
         timestamp: expect.any(Date),
       });
     });
 
     it('should throw NotFoundException if task does not exist', async () => {
-      mockPrismaService.memberTask.findUnique.mockResolvedValue(null);
+      const error = new Prisma.PrismaClientKnownRequestError(
+        'Record not found',
+        {
+          code: 'P2025',
+          clientVersion: '5.0.0',
+        },
+      );
+      mockPrismaService.memberTask.update.mockRejectedValue(error);
 
       await expect(service.markComplete('nonexistent')).rejects.toThrow(
-        'Task not found',
+        NotFoundException,
+      );
+    });
+
+    it('should handle database errors gracefully', async () => {
+      const error = new Prisma.PrismaClientKnownRequestError(
+        'Database connection error',
+        {
+          code: 'P2002',
+          clientVersion: '5.0.0',
+        },
+      );
+      mockPrismaService.memberTask.update.mockRejectedValue(error);
+
+      await expect(service.markComplete('task-123')).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+  });
+
+  describe('Database Error Handling', () => {
+    it('should handle database errors in createTask', async () => {
+      const dto = {
+        memberId: 'member-123',
+        counselorId: 'counselor-456',
+        type: 'offline_task' as const,
+        title: 'Test Task',
+        description: 'Test Description',
+      };
+
+      const error = new Prisma.PrismaClientKnownRequestError(
+        'Foreign key constraint failed',
+        {
+          code: 'P2003',
+          clientVersion: '5.0.0',
+        },
+      );
+      mockPrismaService.memberTask.create.mockRejectedValue(error);
+
+      await expect(service.createTask(dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('should handle database errors in getMemberTasks', async () => {
+      const error = new Prisma.PrismaClientKnownRequestError(
+        'Database timeout',
+        {
+          code: 'P1008',
+          clientVersion: '5.0.0',
+        },
+      );
+      mockPrismaService.memberTask.findMany.mockRejectedValue(error);
+
+      await expect(service.getMemberTasks('member-123')).rejects.toThrow(
+        InternalServerErrorException,
       );
     });
   });

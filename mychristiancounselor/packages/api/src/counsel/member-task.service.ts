@@ -1,17 +1,13 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { MemberTaskType, MemberTaskStatus } from '@prisma/client';
-
-export interface CreateTaskDto {
-  memberId: string;
-  counselorId: string;
-  type: MemberTaskType;
-  title: string;
-  description: string;
-  dueDate?: Date;
-  metadata?: any;
-}
+import { MemberTaskStatus, Prisma } from '@prisma/client';
+import { CreateTaskDto } from './dto/create-task.dto';
 
 @Injectable()
 export class MemberTaskService {
@@ -30,18 +26,28 @@ export class MemberTaskService {
       `Creating ${dto.type} task for member ${dto.memberId} by counselor ${dto.counselorId}`,
     );
 
-    return this.prisma.memberTask.create({
-      data: {
-        memberId: dto.memberId,
-        counselorId: dto.counselorId,
-        type: dto.type,
-        title: dto.title,
-        description: dto.description,
-        dueDate: dto.dueDate,
-        status: 'pending',
-        metadata: dto.metadata,
-      },
-    });
+    try {
+      return await this.prisma.memberTask.create({
+        data: {
+          memberId: dto.memberId,
+          counselorId: dto.counselorId,
+          type: dto.type,
+          title: dto.title,
+          description: dto.description,
+          dueDate: dto.dueDate,
+          status: 'pending',
+          metadata: dto.metadata,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        this.logger.error(
+          `Database error creating task: ${error.code} - ${error.message}`,
+        );
+        throw new InternalServerErrorException('Failed to create task');
+      }
+      throw error;
+    }
   }
 
   /**
@@ -54,13 +60,23 @@ export class MemberTaskService {
       `Fetching tasks for member ${memberId}${status ? ` with status ${status}` : ''}`,
     );
 
-    return this.prisma.memberTask.findMany({
-      where: {
-        memberId,
-        ...(status ? { status } : {}),
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    try {
+      return await this.prisma.memberTask.findMany({
+        where: {
+          memberId,
+          ...(status ? { status } : {}),
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        this.logger.error(
+          `Database error fetching tasks: ${error.code} - ${error.message}`,
+        );
+        throw new InternalServerErrorException('Failed to fetch tasks');
+      }
+      throw error;
+    }
   }
 
   /**
@@ -69,31 +85,41 @@ export class MemberTaskService {
   async markComplete(taskId: string) {
     this.logger.log(`Marking task ${taskId} as completed`);
 
-    const task = await this.prisma.memberTask.findUnique({
-      where: { id: taskId },
-    });
+    try {
+      // Use a single update with where clause to avoid race condition
+      const updatedTask = await this.prisma.memberTask.update({
+        where: { id: taskId },
+        data: {
+          status: 'completed',
+          completedAt: new Date(),
+        },
+      });
 
-    if (!task) {
-      throw new NotFoundException('Task not found');
+      // Emit task.completed event
+      this.eventEmitter.emit('task.completed', {
+        memberId: updatedTask.memberId,
+        taskId: updatedTask.id,
+        taskType: updatedTask.type,
+        counselorId: updatedTask.counselorId,
+        timestamp: new Date(),
+      });
+
+      return updatedTask;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        // Record not found
+        throw new NotFoundException('Task not found');
+      }
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        this.logger.error(
+          `Database error completing task: ${error.code} - ${error.message}`,
+        );
+        throw new InternalServerErrorException('Failed to complete task');
+      }
+      throw error;
     }
-
-    const updatedTask = await this.prisma.memberTask.update({
-      where: { id: taskId },
-      data: {
-        status: 'completed',
-        completedAt: new Date(),
-      },
-    });
-
-    // Emit task.completed event
-    this.eventEmitter.emit('task.completed', {
-      memberId: task.memberId,
-      taskId: task.id,
-      taskType: task.type,
-      counselorId: task.counselorId,
-      timestamp: new Date(),
-    });
-
-    return updatedTask;
   }
 }
