@@ -18,7 +18,12 @@ async function seedPlatformRules() {
 
     await prisma.workflowRule.create({
       data: {
-        ...rule,
+        name: rule.name,
+        level: rule.level,
+        trigger: rule.trigger,
+        conditions: rule.conditions,
+        actions: rule.actions,
+        priority: rule.priority,
         ownerId: null,
         isActive: true,
       },

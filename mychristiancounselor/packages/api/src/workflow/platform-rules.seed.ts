@@ -58,7 +58,6 @@ export const PLATFORM_DEFAULT_RULES = [
     name: 'Task Overdue → Reminder',
     level: 'platform' as WorkflowRuleLevel,
     trigger: { event: 'task.overdue' },
-    conditions: null,
     actions: [
       {
         type: 'notify_counselor',
