@@ -11,7 +11,6 @@ interface HistoricalTrendsModalProps {
   memberName: string;
   memberId: string;
   onClose: () => void;
-  onSuccess: () => void;
 }
 
 // Event timeline type (not yet in api.ts)
@@ -30,7 +29,6 @@ export default function HistoricalTrendsModal({
   memberName,
   memberId,
   onClose,
-  onSuccess,
 }: HistoricalTrendsModalProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>(90);
   const [wellbeingHistory, setWellbeingHistory] = useState<MemberWellbeingHistoryItem[]>([]);
@@ -175,10 +173,6 @@ export default function HistoricalTrendsModal({
       severe: 'text-red-700 bg-red-100',
     };
     return colors[severity] || 'text-gray-700 bg-gray-100';
-  };
-
-  const getAssessmentTypeLabel = (type: string) => {
-    return type === 'phq9' ? 'PHQ-9' : type === 'gad7' ? 'GAD-7' : type;
   };
 
   const getEventTypeLabel = (type: string) => {
@@ -512,7 +506,7 @@ export default function HistoricalTrendsModal({
           <button
             type="button"
             onClick={handleExportCSV}
-            className="px-4 py-2 text-blue-700 border border-blue-300 rounded hover:bg-blue-50"
+            className="px-4 py-2 text-blue-700 border border-blue-300 rounded hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading || error !== null}
           >
             Export CSV
