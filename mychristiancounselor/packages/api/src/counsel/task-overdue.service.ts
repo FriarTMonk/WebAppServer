@@ -19,38 +19,67 @@ export class TaskOverdueService {
   async processOverdueTasks() {
     this.logger.log('Starting overdue task detection...');
 
-    const now = new Date();
+    try {
+      const now = new Date();
 
-    // Find all pending tasks with dueDate in the past
-    const overdueTasks = await this.prisma.memberTask.findMany({
-      where: {
-        status: 'pending',
-        dueDate: { lt: now },
-      },
-    });
+      // Find all pending tasks with dueDate in the past
+      const overdueTasks = await this.prisma.memberTask.findMany({
+        where: {
+          status: 'pending',
+          dueDate: { lt: now },
+        },
+      });
 
-    this.logger.log(`Found ${overdueTasks.length} overdue tasks`);
+      this.logger.log(`Found ${overdueTasks.length} overdue tasks`);
 
-    for (const task of overdueTasks) {
-      // Update status to overdue
-      await this.prisma.memberTask.update({
-        where: { id: task.id },
+      if (overdueTasks.length === 0) {
+        this.logger.log('No overdue tasks to process');
+        return;
+      }
+
+      // Extract task IDs for bulk update
+      const taskIds = overdueTasks.map((task) => task.id);
+
+      // Bulk update all overdue tasks
+      await this.prisma.memberTask.updateMany({
+        where: { id: { in: taskIds } },
         data: { status: 'overdue' },
       });
 
-      // Emit task.overdue event
-      this.eventEmitter.emit('task.overdue', {
-        taskId: task.id,
-        memberId: task.memberId,
-        counselorId: task.counselorId,
-        taskType: task.type,
-        dueDate: task.dueDate,
-        timestamp: new Date(),
-      });
+      this.logger.log(`Updated ${taskIds.length} tasks to overdue status`);
 
-      this.logger.log(`Task ${task.id} marked as overdue`);
+      // Emit events for each task with individual error handling
+      let successCount = 0;
+      let failedCount = 0;
+
+      for (const task of overdueTasks) {
+        try {
+          this.eventEmitter.emit('task.overdue', {
+            taskId: task.id,
+            memberId: task.memberId,
+            counselorId: task.counselorId,
+            taskType: task.type,
+            dueDate: task.dueDate,
+            timestamp: new Date(),
+          });
+          successCount++;
+        } catch (error) {
+          failedCount++;
+          this.logger.error(
+            `Failed to emit event for task ${task.id}: ${error.message}`,
+            error.stack,
+          );
+        }
+      }
+
+      this.logger.log(
+        `Overdue task detection complete: ${successCount} events emitted, ${failedCount} failed`,
+      );
+    } catch (error) {
+      this.logger.error(
+        'Error in processOverdueTasks:',
+        error.stack,
+      );
     }
-
-    this.logger.log('Overdue task detection complete');
   }
 }
