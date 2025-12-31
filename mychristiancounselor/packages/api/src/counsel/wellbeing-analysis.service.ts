@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CounselingAiService } from '../ai/counseling-ai.service';
+import { WellbeingHistoryService } from './wellbeing-history.service';
+import { TrajectoryCalculationService } from './trajectory-calculation.service';
 
 @Injectable()
 export class WellbeingAnalysisService {
@@ -9,6 +11,8 @@ export class WellbeingAnalysisService {
   constructor(
     private prisma: PrismaService,
     private counselingAi: CounselingAiService,
+    private wellbeingHistoryService: WellbeingHistoryService,
+    private trajectoryService: TrajectoryCalculationService,
   ) {}
 
   /**
@@ -53,6 +57,35 @@ export class WellbeingAnalysisService {
           lastAnalyzedAt: new Date(),
         },
       });
+
+      // Get the actual updated/created status record
+      const updatedStatus = await this.prisma.memberWellbeingStatus.findUnique({
+        where: { memberId },
+      });
+
+      // Record status change to history if status actually changed
+      if (!existing || existing.status !== updatedStatus.status) {
+        await this.wellbeingHistoryService.recordStatusChange({
+          memberId,
+          status: updatedStatus.status,
+          summary,
+        });
+
+        this.logger.log(
+          `Recorded status change for ${memberId}: ${existing?.status || 'none'} -> ${updatedStatus.status}`
+        );
+      }
+
+      // Calculate trajectory
+      const trajectory = await this.trajectoryService.calculateTrajectory(memberId);
+
+      // Update status with trajectory
+      await this.prisma.memberWellbeingStatus.update({
+        where: { memberId },
+        data: { trajectory },
+      });
+
+      this.logger.log(`Updated trajectory for ${memberId}: ${trajectory}`);
 
       this.logger.log(`Completed wellbeing analysis for member ${memberId}: ${status}`);
     } catch (error) {
@@ -271,6 +304,24 @@ Write in professional pastoral language suitable for clinical documentation.`;
           updatedAt: new Date(),
         },
       });
+
+      // Record the override to history
+      await this.wellbeingHistoryService.recordStatusChange({
+        memberId,
+        status: newStatus,
+        summary: `Status overridden by counselor. Reason: ${reason}`,
+        overriddenBy: counselorId,
+      });
+
+      // Recalculate trajectory after override
+      const trajectory = await this.trajectoryService.calculateTrajectory(memberId);
+
+      await this.prisma.memberWellbeingStatus.update({
+        where: { memberId },
+        data: { trajectory },
+      });
+
+      this.logger.log(`Status override recorded to history and trajectory recalculated: ${trajectory}`);
 
       // Log the override action (for audit trail)
       this.logger.log(
