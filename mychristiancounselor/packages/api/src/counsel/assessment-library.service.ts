@@ -10,23 +10,35 @@ export class AssessmentLibraryService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Helper: Get user and verify permission to access assessment library
+   * Helper: Get user's organization and verify permission to access assessment library
    */
   private async getUserWithPermissionCheck(userId: string) {
+    // Check if user is a counselor
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { organizationId: true, isCounselor: true },
+      select: {
+        isCounselor: true,
+        counselorAssignments: {
+          where: { status: 'active' },
+          select: { organizationId: true },
+          orderBy: { assignedAt: 'desc' },
+          take: 1,
+        },
+      },
     });
 
     if (!user || !user.isCounselor) {
       throw new ForbiddenException('Only counselors can access assessment library');
     }
 
-    if (!user.organizationId) {
-      throw new ForbiddenException('User must belong to an organization');
+    // Get organization from first active counselor assignment
+    const organizationId = user.counselorAssignments[0]?.organizationId;
+
+    if (!organizationId) {
+      throw new ForbiddenException('Counselor must have an active assignment to access assessment library');
     }
 
-    return user;
+    return { organizationId };
   }
 
   /**
@@ -57,10 +69,10 @@ export class AssessmentLibraryService {
    * Get all custom assessments for user's organization
    */
   async list(userId: string, filters: AssessmentLibraryFiltersDto) {
-    const user = await this.getUserWithPermissionCheck(userId);
+    const { organizationId } = await this.getUserWithPermissionCheck(userId);
 
     const where: any = {
-      organizationId: user.organizationId,
+      organizationId,
     };
 
     if (filters.type) {
@@ -97,7 +109,7 @@ export class AssessmentLibraryService {
    * Get single assessment with full details
    */
   async getById(userId: string, assessmentId: string) {
-    const user = await this.getUserWithPermissionCheck(userId);
+    const { organizationId } = await this.getUserWithPermissionCheck(userId);
 
     const assessment = await this.prisma.assessment.findUnique({
       where: { id: assessmentId },
@@ -117,7 +129,7 @@ export class AssessmentLibraryService {
       throw new NotFoundException('Assessment not found');
     }
 
-    if (assessment.organizationId !== user.organizationId) {
+    if (assessment.organizationId !== organizationId) {
       throw new ForbiddenException('Cannot access assessments from other organizations');
     }
 
@@ -128,7 +140,7 @@ export class AssessmentLibraryService {
    * Create new custom assessment with validation
    */
   async create(userId: string, dto: CreateCustomAssessmentDto) {
-    const user = await this.getUserWithPermissionCheck(userId);
+    const { organizationId } = await this.getUserWithPermissionCheck(userId);
 
     // Validate questions
     this.validateQuestions(dto.questions);
@@ -162,7 +174,7 @@ export class AssessmentLibraryService {
         category: dto.category,
         questions: dto.questions as any,
         scoringRules: dto.scoringRules as any,
-        organizationId: user.organizationId,
+        organizationId,
         createdBy: userId,
       },
       include: {
