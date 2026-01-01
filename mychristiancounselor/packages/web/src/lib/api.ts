@@ -412,6 +412,29 @@ export const assessmentApi = {
     apiPost(`/counsel/assessments/assigned/${assessmentId}/submit`, { responses }),
 };
 
+// Assessment Library API
+export const assessmentLibraryApi = {
+  list: (type?: 'custom_assessment' | 'custom_questionnaire') => {
+    const params = type ? `?type=${type}` : '';
+    return apiGet(`/counsel/assessments/library${params}`);
+  },
+  getById: (id: string) => apiGet(`/counsel/assessments/library/${id}`),
+  create: (data: {
+    name: string;
+    type: 'custom_assessment' | 'custom_questionnaire';
+    category?: string;
+    questions: any[];
+    scoringRules?: any;
+  }) => apiPost('/counsel/assessments/library', data),
+  update: (id: string, data: {
+    name?: string;
+    questions?: any[];
+    scoringRules?: any;
+    isActive?: boolean;
+  }) => apiPatch(`/counsel/assessments/library/${id}`, data),
+  delete: (id: string) => apiDelete(`/counsel/assessments/library/${id}`),
+};
+
 // Workflow Rules API
 export const workflowRulesApi = {
   list: () => apiGet('/workflow/rules'),
