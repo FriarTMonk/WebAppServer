@@ -26,6 +26,8 @@ import { TaskOverdueService } from './task-overdue.service';
 import { CounselController } from './counsel.controller';
 import { AssessmentController } from './assessment.controller';
 import { WellbeingController } from './wellbeing.controller';
+import { AssessmentLibraryController } from './assessment-library.controller';
+import { AssessmentLibraryService } from './assessment-library.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AiModule } from '../ai/ai.module';
 import { ScriptureModule } from '../scripture/scripture.module';
@@ -47,6 +49,7 @@ import { EmailModule } from '../email/email.module';
     AssessmentController,
     WellbeingController,
     TaskController,
+    AssessmentLibraryController,
   ],
   providers: [
     CounselService,
@@ -68,6 +71,7 @@ import { EmailModule } from '../email/email.module';
     AssessmentService,
     AssessmentScoringService,
     AssessmentSchedulingService,
+    AssessmentLibraryService,
     MemberTaskService,
     TaskTemplateService,
     TaskCompletionDetectionService,
