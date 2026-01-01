@@ -13,32 +13,24 @@ export class AssessmentLibraryService {
    * Helper: Get user's organization and verify permission to access assessment library
    */
   private async getUserWithPermissionCheck(userId: string) {
-    // Check if user is a counselor
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        isCounselor: true,
-        counselorAssignments: {
-          where: { status: 'active' },
-          select: { organizationId: true },
-          orderBy: { assignedAt: 'desc' },
-          take: 1,
-        },
-      },
+    // Check if user has Counselor role in any organization
+    const memberships = await this.prisma.organizationMember.findMany({
+      where: { userId },
+      include: { role: true },
     });
 
-    if (!user || !user.isCounselor) {
+    if (memberships.length === 0) {
+      throw new ForbiddenException('User is not a member of any organization');
+    }
+
+    // Find organization where user has Counselor role
+    const counselorMembership = memberships.find(m => m.role.name.includes('Counselor'));
+
+    if (!counselorMembership) {
       throw new ForbiddenException('Only counselors can access assessment library');
     }
 
-    // Get organization from first active counselor assignment
-    const organizationId = user.counselorAssignments[0]?.organizationId;
-
-    if (!organizationId) {
-      throw new ForbiddenException('Counselor must have an active assignment to access assessment library');
-    }
-
-    return { organizationId };
+    return { organizationId: counselorMembership.organizationId };
   }
 
   /**
