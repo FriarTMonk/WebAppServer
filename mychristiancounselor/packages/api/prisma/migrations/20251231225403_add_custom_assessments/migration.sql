@@ -1,7 +1,11 @@
 -- AlterEnum
--- This migration removes the 'custom' value and adds 'custom_assessment' and 'custom_questionnaire'
+-- This migration adds 'custom_assessment' and 'custom_questionnaire' values
+-- The old 'custom' value is migrated to 'custom_assessment'
 ALTER TYPE "AssessmentType" ADD VALUE 'custom_assessment';
 ALTER TYPE "AssessmentType" ADD VALUE 'custom_questionnaire';
+
+-- Migrate existing 'custom' assessments to 'custom_assessment'
+UPDATE "Assessment" SET type = 'custom_assessment' WHERE type = 'custom';
 
 -- AlterTable
 ALTER TABLE "Assessment" ADD COLUMN "organizationId" TEXT;
