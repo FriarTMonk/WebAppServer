@@ -96,7 +96,7 @@ export class WorkflowRuleService {
     const assignments = await this.prisma.counselorAssignment.findMany({
       where: {
         counselorId,
-        memberIds: { has: memberId },
+        memberId: memberId,
       },
       select: { organizationId: true },
     });
@@ -123,9 +123,9 @@ export class WorkflowRuleService {
   async getMemberActivity(memberId: string, counselorId: string) {
     this.logger.log(`Getting workflow activity for member: ${memberId}`);
 
-    // Get workflow executions for this member
+    // Get workflow executions triggered by this member
     const executions = await this.prisma.workflowExecution.findMany({
-      where: { memberId },
+      where: { triggeredBy: memberId },
       include: {
         rule: {
           select: {
@@ -140,11 +140,13 @@ export class WorkflowRuleService {
     // Format for frontend
     return executions.map(exec => ({
       id: exec.id,
+      ruleId: exec.ruleId,
       ruleName: exec.rule.name,
-      triggeredAt: exec.executedAt,
-      triggerReason: exec.triggerDetails || 'Rule conditions met',
-      actionsTaken: Array.isArray(exec.result)
-        ? exec.result.map((r: any) => r.action).join(', ')
+      memberId: exec.triggeredBy,
+      triggeredAt: exec.executedAt.toISOString(),
+      triggerReason: (exec.context as any)?.reason || 'Rule conditions met',
+      actionsTaken: Array.isArray((exec.actions as any))
+        ? (exec.actions as any).map((a: any) => a.type || a.action).join(', ')
         : 'Actions executed',
     }));
   }

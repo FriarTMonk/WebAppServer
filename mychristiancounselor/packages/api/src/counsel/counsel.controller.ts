@@ -444,7 +444,6 @@ export class CounselController {
         summary: true,
         lastAnalyzedAt: true,
         overriddenBy: true,
-        overriddenAt: true,
       },
     });
 
@@ -470,7 +469,7 @@ export class CounselController {
         status: 'completed',
       },
       include: {
-        score: true,
+        responses: true,
       },
       orderBy: { completedAt: 'desc' },
     });
@@ -479,8 +478,8 @@ export class CounselController {
       id: a.id,
       type: a.assessmentId,
       completedAt: a.completedAt,
-      score: a.score?.totalScore || 0,
-      severity: a.score?.severity || 'unknown',
+      score: a.responses?.score || 0,
+      severity: a.responses?.interpretation || 'unknown',
     }));
   }
 
@@ -511,9 +510,9 @@ export class CounselController {
         orderBy: { createdAt: 'desc' },
         take: 20,
       }),
-      // Workflow executions
+      // Workflow executions (triggeredBy contains the member ID)
       this.prisma.workflowExecution.findMany({
-        where: { memberId },
+        where: { triggeredBy: memberId },
         include: { rule: true },
         orderBy: { executedAt: 'desc' },
         take: 20,

@@ -138,7 +138,7 @@ export class AssessmentService {
         status: 'completed',
       },
       include: {
-        score: true,
+        responses: true,
       },
       orderBy: { completedAt: 'desc' },
     });
@@ -148,8 +148,8 @@ export class AssessmentService {
       id: assignment.id,
       type,
       completedAt: assignment.completedAt?.toISOString() || '',
-      score: assignment.score?.totalScore || 0,
-      severity: assignment.score?.severity || 'unknown',
+      score: assignment.responses?.score || 0,
+      severity: assignment.responses?.interpretation || 'unknown',
     }));
   }
 }

@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Question, QuestionType } from '@/types/assessment';
 import { Trash2 } from 'lucide-react';
 

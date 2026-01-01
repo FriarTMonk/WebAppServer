@@ -154,6 +154,15 @@ export default function WorkflowRulesModal({
     });
   };
 
+  const formatTrigger = (trigger: any) => {
+    if (!trigger) return 'Not configured';
+    if (typeof trigger === 'string') return trigger;
+    // If it's an object, try to extract meaningful info
+    if (trigger.event) return trigger.event;
+    if (trigger.type) return trigger.type;
+    return JSON.stringify(trigger);
+  };
+
   const renderRuleSection = (
     title: string,
     rulesList: WorkflowRule[],
@@ -203,7 +212,7 @@ export default function WorkflowRulesModal({
                   </div>
                   <p className="text-sm text-gray-600 mb-2">{rule.description}</p>
                   <div className="text-xs text-gray-500">
-                    <span className="font-medium">Trigger:</span> {rule.trigger}
+                    <span className="font-medium">Trigger:</span> {formatTrigger(rule.trigger)}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
                     <span className="font-medium">Last triggered:</span>{' '}
