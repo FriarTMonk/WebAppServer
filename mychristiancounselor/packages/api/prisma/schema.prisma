@@ -126,6 +126,7 @@ model Organization {
   organizationAddressId             String?
   specialtyTags                     String[]                 @default([])
   website                           String?
+  assessments                       Assessment[]
   auditLogs                         AdminAuditLog[]
   booksSubmitted                    Book[]                   @relation("BooksSubmittedByOrg")
   bookEndorsements                  BookEndorsement[]
@@ -1114,23 +1115,27 @@ model SessionSummary {
 }
 
 model Assessment {
-  id            String               @id @default(uuid())
-  name          String
-  type          AssessmentType
-  category      String?
-  questions     Json
-  scoringRules  Json
-  isActive      Boolean              @default(true)
-  createdBy     String?
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  createdByUser User?                @relation("AssessmentsCreated", fields: [createdBy], references: [id])
-  schedules     AssessmentSchedule[]
-  assignments   AssignedAssessment[]
+  id             String               @id @default(uuid())
+  name           String
+  type           AssessmentType
+  category       String?
+  questions      Json
+  scoringRules   Json
+  organizationId String?
+  isActive       Boolean              @default(true)
+  createdBy      String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  organization   Organization?        @relation(fields: [organizationId], references: [id])
+  createdByUser  User?                @relation("AssessmentsCreated", fields: [createdBy], references: [id])
+  schedules      AssessmentSchedule[]
+  assignments    AssignedAssessment[]
 
   @@index([type])
   @@index([category])
   @@index([isActive])
+  @@index([organizationId])
+  @@index([type, organizationId])
 }
 
 model AssessmentSchedule {
@@ -1330,7 +1335,8 @@ enum AssessmentStatus {
 
 enum AssessmentType {
   clinical
-  custom
+  custom_assessment
+  custom_questionnaire
 }
 
 enum ConfidenceLevel {
