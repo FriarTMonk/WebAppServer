@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateCustomAssessmentDto } from './dto/create-custom-assessment.dto';
+import { CreateCustomAssessmentDto, QuestionDto } from './dto/create-custom-assessment.dto';
 import { UpdateCustomAssessmentDto } from './dto/update-custom-assessment.dto';
 import { AssessmentLibraryFiltersDto } from './dto/assessment-library-filters.dto';
 import { AssessmentType } from '@prisma/client';
@@ -10,10 +10,9 @@ export class AssessmentLibraryService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Get all custom assessments for user's organization
+   * Helper: Get user and verify permission to access assessment library
    */
-  async list(userId: string, filters: AssessmentLibraryFiltersDto) {
-    // Get user's organization
+  private async getUserWithPermissionCheck(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { organizationId: true, isCounselor: true },
@@ -27,13 +26,47 @@ export class AssessmentLibraryService {
       throw new ForbiddenException('User must belong to an organization');
     }
 
+    return user;
+  }
+
+  /**
+   * Helper: Validate questions have proper structure
+   */
+  private validateQuestions(questions: QuestionDto[]) {
+    if (questions.length === 0) {
+      throw new BadRequestException('Assessment must have at least one question');
+    }
+
+    for (const question of questions) {
+      if (
+        (question.type === 'multiple_choice_single' || question.type === 'multiple_choice_multi') &&
+        (!question.options || question.options.length < 2)
+      ) {
+        throw new BadRequestException(`Question "${question.text}" must have at least 2 options`);
+      }
+
+      if (question.type === 'rating_scale') {
+        if (!question.scale || question.scale.min >= question.scale.max) {
+          throw new BadRequestException(`Question "${question.text}" has invalid rating scale`);
+        }
+      }
+    }
+  }
+
+  /**
+   * Get all custom assessments for user's organization
+   */
+  async list(userId: string, filters: AssessmentLibraryFiltersDto) {
+    const user = await this.getUserWithPermissionCheck(userId);
+
     const where: any = {
       organizationId: user.organizationId,
-      type: { in: [AssessmentType.custom_assessment, AssessmentType.custom_questionnaire] },
     };
 
     if (filters.type) {
       where.type = filters.type;
+    } else {
+      where.type = { in: [AssessmentType.custom_assessment, AssessmentType.custom_questionnaire] };
     }
 
     return this.prisma.assessment.findMany({
@@ -64,14 +97,7 @@ export class AssessmentLibraryService {
    * Get single assessment with full details
    */
   async getById(userId: string, assessmentId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { organizationId: true, isCounselor: true },
-    });
-
-    if (!user || !user.isCounselor) {
-      throw new ForbiddenException('Only counselors can access assessment library');
-    }
+    const user = await this.getUserWithPermissionCheck(userId);
 
     const assessment = await this.prisma.assessment.findUnique({
       where: { id: assessmentId },
@@ -102,40 +128,10 @@ export class AssessmentLibraryService {
    * Create new custom assessment with validation
    */
   async create(userId: string, dto: CreateCustomAssessmentDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { organizationId: true, isCounselor: true },
-    });
-
-    if (!user || !user.isCounselor) {
-      throw new ForbiddenException('Only counselors can create assessments');
-    }
-
-    if (!user.organizationId) {
-      throw new ForbiddenException('User must belong to an organization');
-    }
+    const user = await this.getUserWithPermissionCheck(userId);
 
     // Validate questions
-    if (dto.questions.length === 0) {
-      throw new BadRequestException('Assessment must have at least one question');
-    }
-
-    // Validate multiple choice questions have at least 2 options
-    for (const question of dto.questions) {
-      if (
-        (question.type === 'multiple_choice_single' || question.type === 'multiple_choice_multi') &&
-        (!question.options || question.options.length < 2)
-      ) {
-        throw new BadRequestException(`Question "${question.text}" must have at least 2 options`);
-      }
-
-      // Validate rating scales
-      if (question.type === 'rating_scale') {
-        if (!question.scale || question.scale.min >= question.scale.max) {
-          throw new BadRequestException(`Question "${question.text}" has invalid rating scale`);
-        }
-      }
-    }
+    this.validateQuestions(dto.questions);
 
     // Validate scoring rules for custom_assessment
     if (dto.type === AssessmentType.custom_assessment) {
@@ -195,25 +191,7 @@ export class AssessmentLibraryService {
 
     // Validate questions if provided
     if (dto.questions) {
-      if (dto.questions.length === 0) {
-        throw new BadRequestException('Assessment must have at least one question');
-      }
-
-      // Same validation as create
-      for (const question of dto.questions) {
-        if (
-          (question.type === 'multiple_choice_single' || question.type === 'multiple_choice_multi') &&
-          (!question.options || question.options.length < 2)
-        ) {
-          throw new BadRequestException(`Question "${question.text}" must have at least 2 options`);
-        }
-
-        if (question.type === 'rating_scale') {
-          if (!question.scale || question.scale.min >= question.scale.max) {
-            throw new BadRequestException(`Question "${question.text}" has invalid rating scale`);
-          }
-        }
-      }
+      this.validateQuestions(dto.questions);
     }
 
     // Validate scoring rules if provided
