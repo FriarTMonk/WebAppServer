@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npx nx reset)",
       "Bash(rm:*)",
-      "Bash(npx prisma migrate:*)"
+      "Bash(npx prisma migrate:*)",
+      "Skill(superpowers:subagent-driven-development)"
     ],
     "deny": [],
     "ask": []
