@@ -1,7 +1,8 @@
 import { IsOptional, IsEnum } from 'class-validator';
+import { AssessmentType } from '@prisma/client';
 
 export class AssessmentLibraryFiltersDto {
   @IsOptional()
-  @IsEnum(['custom_assessment', 'custom_questionnaire'])
-  type?: 'custom_assessment' | 'custom_questionnaire';
+  @IsEnum(AssessmentType)
+  type?: AssessmentType.custom_assessment | AssessmentType.custom_questionnaire;
 }
