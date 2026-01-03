@@ -40,7 +40,7 @@ export default function LandingPage() {
             name: 'MyChristianCounselor',
             description: 'Online Christian counseling, biblical counseling, and AI-powered counseling tools available 24/7',
             url: 'https://www.mychristiancounselor.online',
-            logo: 'https://www.mychristiancounselor.online/logo.png',
+            logo: 'https://www.mychristiancounselor.online/logo.jpg',
             priceRange: '$$',
             areaServed: {
               '@type': 'Country',
@@ -92,7 +92,11 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-xl sm:text-2xl font-bold text-teal-700">MyChristianCounselor</h1>
+              <img
+                src="/logo.jpg"
+                alt="MyChristianCounselor Online"
+                className="h-12 w-auto"
+              />
             </div>
 
             {/* Desktop Navigation - Hidden on Mobile */}

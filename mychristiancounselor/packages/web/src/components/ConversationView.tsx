@@ -274,7 +274,11 @@ export function ConversationView() {
       <div className="bg-white border-b border-gray-200 p-4">
         <div className="flex justify-between items-center mb-2">
           <div className="flex items-center gap-2 lg:gap-4">
-            <h1 className="text-xl lg:text-2xl font-bold text-gray-900">MyChristianCounselor</h1>
+            <img
+              src="/logo.jpg"
+              alt="MyChristianCounselor Online"
+              className="h-8 lg:h-10 w-auto"
+            />
             <div className="hidden lg:block">
               <OrganizationSwitcher />
             </div>
