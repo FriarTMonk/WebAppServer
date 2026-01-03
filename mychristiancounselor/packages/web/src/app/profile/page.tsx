@@ -170,7 +170,7 @@ export default function ProfilePage() {
       <div className="max-w-4xl mx-auto px-4">
         <div className="mb-6">
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/home')}
             className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
           >
             ← Back

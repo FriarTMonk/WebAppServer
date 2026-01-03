@@ -247,10 +247,10 @@ export default function OrganizationDetailPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push('/admin/organizations')}
               className="text-blue-600 hover:underline mb-2 text-sm"
             >
-              ← Back
+              ← Back to Organizations
             </button>
             <h2 className="text-3xl font-bold text-gray-900">
               {organization?.name || 'Organization Details'}

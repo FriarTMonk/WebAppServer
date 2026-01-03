@@ -162,7 +162,7 @@ export default function SharedConversationPage() {
         userRole="viewer"
         currentUserId={user?.id || ''}
         canAddNotes={canAddNotes}
-        onBack={() => router.back()}
+        onBack={() => router.push(isAuthenticated ? '/home' : '/login')}
         showPrintButton={false}
         backButtonText="← Back"
       />

@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import { CreateProspectContactDto } from './create-prospect-contact.dto';
+import { UpdateProspectContactDto } from './update-prospect-contact.dto';
 
 export class UpdateProspectDto {
   @IsString()
@@ -10,8 +10,8 @@ export class UpdateProspectDto {
   @IsArray()
   @IsOptional()
   @ValidateNested({ each: true })
-  @Type(() => CreateProspectContactDto)
-  contacts?: CreateProspectContactDto[];
+  @Type(() => UpdateProspectContactDto)
+  contacts?: UpdateProspectContactDto[];
 
   @IsString()
   @IsOptional()

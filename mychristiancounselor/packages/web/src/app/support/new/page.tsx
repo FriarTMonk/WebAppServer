@@ -146,7 +146,7 @@ export default function CreateTicketPage() {
       <div className="max-w-3xl mx-auto px-4">
         <div className="mb-6">
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/support/tickets')}
             className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
           >
             ← Back
@@ -285,7 +285,7 @@ export default function CreateTicketPage() {
             <div className="flex justify-end gap-3 pt-4">
               <button
                 type="button"
-                onClick={() => router.back()}
+                onClick={() => router.push('/support/tickets')}
                 className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 disabled={loading}
               >

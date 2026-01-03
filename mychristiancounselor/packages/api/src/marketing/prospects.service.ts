@@ -205,9 +205,12 @@ export class ProspectsService {
 
     // If contacts are provided, replace all contacts
     if (contacts) {
+      // Strip database-generated fields before passing to Prisma
+      const cleanContacts = contacts.map(({ id, prospectId, createdAt, updatedAt, ...contact }) => contact);
+
       updateData.contacts = {
         deleteMany: {}, // Delete all existing contacts
-        create: contacts, // Create new contacts
+        create: cleanContacts, // Create new contacts (without DB fields)
       };
     }
 

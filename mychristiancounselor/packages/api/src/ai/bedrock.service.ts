@@ -214,7 +214,9 @@ export class BedrockService {
 
       return JSON.parse(jsonText);
     } catch (error) {
-      this.logger.error(`Failed to parse JSON response: ${textContent.text.substring(0, 500)}...`);
+      this.logger.error(`Failed to parse JSON response. Raw response (first 1000 chars): ${textContent.text.substring(0, 1000)}`);
+      this.logger.error(`Extracted text (first 1000 chars): ${this.extractJSON(textContent.text.trim()).substring(0, 1000)}`);
+      this.logger.error(`Parse error: ${error.message}`);
       throw new Error('Model did not return valid JSON');
     }
   }
@@ -226,12 +228,12 @@ export class BedrockService {
     // Remove leading/trailing whitespace
     let cleaned = text.trim();
 
-    // Strategy 1: Try to strip markdown code fences with language identifier
-    if (cleaned.match(/^```(?:json|JSON)\s*\n/)) {
+    // Strategy 1: Try to strip markdown code fences with language identifier (newline optional)
+    if (cleaned.match(/^```(?:json|JSON)\s*/)) {
       cleaned = cleaned.replace(/^```(?:json|JSON)\s*\n?/, '').replace(/\n?```\s*$/, '');
     }
-    // Strategy 2: Try to strip generic markdown code fences
-    else if (cleaned.match(/^```\s*\n/)) {
+    // Strategy 2: Try to strip generic markdown code fences (newline optional)
+    else if (cleaned.match(/^```\s*/)) {
       cleaned = cleaned.replace(/^```\s*\n?/, '').replace(/\n?```\s*$/, '');
     }
     // Strategy 3: Look for JSON embedded within markdown code blocks anywhere in text
