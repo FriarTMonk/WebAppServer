@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { TRANSLATIONS } from '@mychristiancounselor/shared';
 import { seedHolidays } from './seeds/seed-holidays';
+import { PLATFORM_DEFAULT_RULES } from '../src/workflow/platform-rules.seed';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -202,6 +203,38 @@ async function seedPlatformOrganization() {
   console.log('✓ Platform organization setup complete');
 }
 
+async function seedPlatformWorkflowRules() {
+  console.log('\nSeeding platform default workflow rules...');
+
+  for (const rule of PLATFORM_DEFAULT_RULES) {
+    const existing = await prisma.workflowRule.findFirst({
+      where: { name: rule.name, level: 'platform' },
+    });
+
+    if (existing) {
+      console.log(`✓ Rule "${rule.name}" already exists, skipping`);
+      continue;
+    }
+
+    await prisma.workflowRule.create({
+      data: {
+        name: rule.name,
+        level: rule.level,
+        trigger: rule.trigger,
+        conditions: rule.conditions,
+        actions: rule.actions,
+        priority: rule.priority,
+        ownerId: null,
+        isActive: true,
+      },
+    });
+
+    console.log(`✓ Created rule: ${rule.name}`);
+  }
+
+  console.log('✓ Platform workflow rules seeded successfully');
+}
+
 async function main() {
   console.log('Starting database seed...\n');
 
@@ -212,6 +245,7 @@ async function main() {
     await seedTranslations();
     await seedVerses();
     await seedHolidays();
+    await seedPlatformWorkflowRules();
 
     console.log('\n✅ Database seeding completed!');
     console.log('\n📋 Platform Admin Credentials:');
