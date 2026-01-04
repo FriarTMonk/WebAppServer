@@ -159,13 +159,22 @@ You'll have opportunities for more specific questions after this.`;
 
     const enhancedSystemPrompt = SYSTEM_PROMPT + questionLimitGuidance;
 
+    // Dynamic token budget based on question phase
+    // Comprehensive guidance needs more space to avoid JSON truncation
+    const maxTokensComprehensive = this.configService.get<number>('AI_MAX_TOKENS_COMPREHENSIVE') || 3200;
+    const maxTokensClarifying = this.configService.get<number>('AI_MAX_TOKENS_CLARIFYING') || 800;
+
+    const maxTokens = (questionPhase === 'force-answer' || questionPhase === 'critical')
+      ? maxTokensComprehensive  // Generous space for comprehensive biblical guidance
+      : maxTokensClarifying;     // Standard for clarifying questions
+
     const parsed = await withRetry(
       () => this.bedrock.jsonCompletion('sonnet', [
         { role: 'system', content: enhancedSystemPrompt },
         { role: 'user', content: userPrompt },
       ], {
         temperature: 0.7,
-        max_tokens: 800,
+        max_tokens: maxTokens,
       }),
       { maxAttempts: 3, initialDelayMs: 1000 },
       this.logger

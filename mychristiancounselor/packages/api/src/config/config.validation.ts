@@ -26,6 +26,10 @@ export const configValidationSchema = Joi.object({
   AWS_SECRET_ACCESS_KEY: Joi.string().required(),
   AWS_REGION: Joi.string().default('us-east-1'),
 
+  // AI Token Budgets
+  AI_MAX_TOKENS_CLARIFYING: Joi.number().default(800),
+  AI_MAX_TOKENS_COMPREHENSIVE: Joi.number().default(3200),
+
   // Payment Service (Stripe)
   STRIPE_SECRET_KEY: Joi.string().required(),
   STRIPE_WEBHOOK_SECRET: Joi.string().optional(),
