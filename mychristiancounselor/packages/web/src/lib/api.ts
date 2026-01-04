@@ -11,6 +11,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 interface FetchOptions extends RequestInit {
   skipAuth?: boolean;
   _isRetry?: boolean; // Internal flag to prevent infinite retry loops
+  timeout?: number; // Timeout in milliseconds (default: none)
 }
 
 /**
@@ -18,7 +19,7 @@ interface FetchOptions extends RequestInit {
  * refreshes expired tokens, and handles session timeouts gracefully
  */
 export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
-  const { skipAuth, _isRetry, ...fetchOptions } = options;
+  const { skipAuth, _isRetry, timeout, ...fetchOptions } = options;
 
   // Add authorization header if not skipping auth
   if (!skipAuth) {
@@ -34,11 +35,25 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
   // Include credentials for CSRF protection (sends Origin header and cookies)
   fetchOptions.credentials = 'include';
 
+  // Set up timeout with AbortController if timeout is specified
+  let timeoutId: NodeJS.Timeout | undefined;
+  if (timeout) {
+    const controller = new AbortController();
+    fetchOptions.signal = controller.signal;
+
+    timeoutId = setTimeout(() => {
+      controller.abort();
+    }, timeout);
+  }
+
   // Construct full URL
   const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
 
   try {
     const response = await fetch(url, fetchOptions);
+
+    // Clear timeout if request completes successfully
+    if (timeoutId) clearTimeout(timeoutId);
 
     // Handle authentication errors gracefully
     // 401 = Unauthorized (invalid/expired token) -> try to refresh, then redirect if refresh fails
@@ -82,6 +97,9 @@ export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
 
     return response;
   } catch (error) {
+    // Clear timeout on error
+    if (timeoutId) clearTimeout(timeoutId);
+
     // Silently handle AbortError (expected when component unmounts or request is cancelled)
     if (error instanceof Error && error.name === 'AbortError') {
       throw error; // Re-throw without logging - this is expected behavior

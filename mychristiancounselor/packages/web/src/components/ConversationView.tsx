@@ -187,12 +187,16 @@ export function ConversationView() {
     setIsLoading(true);
 
     try {
+      // AI responses can take longer due to Bedrock API processing + retry logic
+      // 60 second timeout allows for 3 retry attempts with exponential backoff
       const response = await apiPost('/counsel/ask', {
         message: inputValue,
         sessionId,
         preferredTranslation,
         comparisonMode,
         comparisonTranslations: comparisonMode ? comparisonTranslations : undefined,
+      }, {
+        timeout: 60000, // 60 seconds
       });
 
       if (!response.ok) {
@@ -247,11 +251,23 @@ export function ConversationView() {
       }
     } catch (error) {
       console.error('Error sending message:', error);
+
+      // Provide more helpful error messages based on error type
+      let errorContent = 'Sorry, there was an error processing your request. Please try again.';
+
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorContent = 'The request took too long and timed out. Our AI service may be experiencing high demand. Please try again in a moment.';
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('Network')) {
+          errorContent = 'Unable to connect to the server. Please check your internet connection and try again.';
+        }
+      }
+
       const errorMessage: Message = {
         id: Date.now().toString(),
         sessionId: sessionId || '',
         role: 'system',
-        content: 'Sorry, there was an error processing your request. Please try again.',
+        content: errorContent,
         scriptureReferences: [],
         timestamp: new Date(),
       };
