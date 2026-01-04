@@ -3,6 +3,10 @@
 # Soft Launch Deployment Script
 # Deploys API and Web services to AWS Lightsail
 # Version: soft-launch.26 (API), soft-launch.25 (Web)
+#
+# IMPORTANT: This script automatically updates lightsail-*-deployment.json files
+# with the newly pushed image tags. This ensures deployments always use the
+# correct image version and prevents deploying stale code.
 
 set -e  # Exit on error
 
@@ -46,8 +50,15 @@ if ! command_exists aws; then
     exit 1
 fi
 
+if ! command_exists jq; then
+    echo -e "${RED}ERROR: jq is not installed${NC}"
+    echo "Please install jq: https://stedolan.github.io/jq/download/"
+    exit 1
+fi
+
 echo -e "${GREEN}✓ Docker is installed${NC}"
 echo -e "${GREEN}✓ AWS CLI is installed${NC}"
+echo -e "${GREEN}✓ jq is installed${NC}"
 echo ""
 
 # Check Docker is running
@@ -131,49 +142,79 @@ echo -e "${GREEN}✓ Both Docker images built successfully${NC}"
 echo ""
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  Step 2: Push Images to Lightsail (Parallel)${NC}"
+echo -e "${BLUE}  Step 2: Push Images & Update Configs${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Push both images in parallel
+# Push API image and capture the output
 echo -e "${YELLOW}Pushing API image to Lightsail...${NC}"
-aws lightsail push-container-image \
+API_PUSH_OUTPUT=$(aws lightsail push-container-image \
   --service-name ${API_SERVICE} \
   --label ${API_VERSION} \
   --image api:${API_VERSION} \
-  --region ${REGION} &
-API_PUSH_PID=$!
+  --region ${REGION} 2>&1)
 
+if [ $? -ne 0 ]; then
+    echo -e "${RED}ERROR: Failed to push API image to Lightsail${NC}"
+    echo "$API_PUSH_OUTPUT"
+    exit 1
+fi
+
+# Extract the new image tag from the output
+API_IMAGE_TAG=$(echo "$API_PUSH_OUTPUT" | grep -oP ':\K[^ ]+' | head -1)
+if [ -z "$API_IMAGE_TAG" ]; then
+    echo -e "${RED}ERROR: Could not extract API image tag from push output${NC}"
+    echo "$API_PUSH_OUTPUT"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ API image pushed: ${API_IMAGE_TAG}${NC}"
+echo ""
+
+# Push Web image and capture the output
 echo -e "${YELLOW}Pushing Web image to Lightsail...${NC}"
-aws lightsail push-container-image \
+WEB_PUSH_OUTPUT=$(aws lightsail push-container-image \
   --service-name ${WEB_SERVICE} \
   --label ${WEB_VERSION} \
   --image web:${WEB_VERSION} \
-  --region ${REGION} &
-WEB_PUSH_PID=$!
+  --region ${REGION} 2>&1)
 
-# Wait for both pushes to complete
-echo -e "${YELLOW}Waiting for both pushes to complete (this may take a few minutes)...${NC}"
-wait $API_PUSH_PID
-API_PUSH_STATUS=$?
-wait $WEB_PUSH_PID
-WEB_PUSH_STATUS=$?
-
-if [ $API_PUSH_STATUS -ne 0 ]; then
-    echo -e "${RED}ERROR: Failed to push API image to Lightsail${NC}"
-    exit 1
-fi
-
-if [ $WEB_PUSH_STATUS -ne 0 ]; then
+if [ $? -ne 0 ]; then
     echo -e "${RED}ERROR: Failed to push Web image to Lightsail${NC}"
+    echo "$WEB_PUSH_OUTPUT"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Both images pushed to Lightsail${NC}"
+# Extract the new image tag from the output
+WEB_IMAGE_TAG=$(echo "$WEB_PUSH_OUTPUT" | grep -oP ':\K[^ ]+' | head -1)
+if [ -z "$WEB_IMAGE_TAG" ]; then
+    echo -e "${RED}ERROR: Could not extract Web image tag from push output${NC}"
+    echo "$WEB_PUSH_OUTPUT"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Web image pushed: ${WEB_IMAGE_TAG}${NC}"
+echo ""
+
+# Update API deployment JSON with new image tag
+echo -e "${YELLOW}Updating API deployment config with new image tag...${NC}"
+if [ ! -f "lightsail-api-deployment.json" ]; then
+    echo -e "${RED}ERROR: lightsail-api-deployment.json not found${NC}"
+    exit 1
+fi
+
+# Create backup
+cp lightsail-api-deployment.json lightsail-api-deployment.json.backup
+
+# Update the image tag in the JSON file
+jq --arg img "$API_IMAGE_TAG" '.containers.api.image = $img' lightsail-api-deployment.json > lightsail-api-deployment.json.tmp
+mv lightsail-api-deployment.json.tmp lightsail-api-deployment.json
+
+echo -e "${GREEN}✓ API deployment config updated${NC}"
 echo ""
 
 # Deploy API service
-echo -e "${YELLOW}Deploying API service...${NC}"
+echo -e "${YELLOW}Deploying API service with image: ${API_IMAGE_TAG}...${NC}"
 aws lightsail create-container-service-deployment \
   --service-name ${API_SERVICE} \
   --cli-input-json file://lightsail-api-deployment.json \
@@ -233,40 +274,29 @@ fi
 
 echo ""
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  Step 2: Build and Deploy Web${NC}"
+echo -e "${BLUE}  Step 3: Deploy Web${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Build Web Docker image (using prebuilt)
-echo -e "${YELLOW}Building Web Docker image from prebuilt artifacts...${NC}"
-docker build -f Dockerfile.web-prebuilt -t web:${WEB_VERSION} .
-
-if [ $? -ne 0 ]; then
-    echo -e "${RED}ERROR: Web Docker build failed${NC}"
+# Update Web deployment JSON with new image tag
+echo -e "${YELLOW}Updating Web deployment config with new image tag...${NC}"
+if [ ! -f "lightsail-web-deployment.json" ]; then
+    echo -e "${RED}ERROR: lightsail-web-deployment.json not found${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Web Docker image built successfully${NC}"
-echo ""
+# Create backup
+cp lightsail-web-deployment.json lightsail-web-deployment.json.backup
 
-# Push Web image to Lightsail (no pre-tagging needed)
-echo -e "${YELLOW}Pushing Web image to Lightsail (this may take a few minutes)...${NC}"
-aws lightsail push-container-image \
-  --service-name ${WEB_SERVICE} \
-  --label ${WEB_VERSION} \
-  --image web:${WEB_VERSION} \
-  --region ${REGION}
+# Update the image tag in the JSON file
+jq --arg img "$WEB_IMAGE_TAG" '.containers.web.image = $img' lightsail-web-deployment.json > lightsail-web-deployment.json.tmp
+mv lightsail-web-deployment.json.tmp lightsail-web-deployment.json
 
-if [ $? -ne 0 ]; then
-    echo -e "${RED}ERROR: Failed to push Web image to Lightsail${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✓ Web image pushed to Lightsail${NC}"
+echo -e "${GREEN}✓ Web deployment config updated${NC}"
 echo ""
 
 # Deploy Web service
-echo -e "${YELLOW}Deploying Web service...${NC}"
+echo -e "${YELLOW}Deploying Web service with image: ${WEB_IMAGE_TAG}...${NC}"
 aws lightsail create-container-service-deployment \
   --service-name ${WEB_SERVICE} \
   --cli-input-json file://lightsail-web-deployment.json \
@@ -326,6 +356,28 @@ echo ""
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Deployment Complete!${NC}"
 echo -e "${GREEN}========================================${NC}"
+echo ""
+
+# Run deployment verification
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}  Running Deployment Verification${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+
+if [ -f "scripts/verify-deployment.sh" ]; then
+    bash scripts/verify-deployment.sh
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ DEPLOYMENT VERIFICATION FAILED${NC}"
+        echo -e "${RED}The deployment completed but verification checks failed.${NC}"
+        echo -e "${RED}Please investigate the issues above.${NC}"
+        exit 1
+    fi
+else
+    echo -e "${YELLOW}WARNING: Verification script not found${NC}"
+    echo "  scripts/verify-deployment.sh does not exist"
+    echo "  Skipping automated verification"
+fi
+
 echo ""
 echo -e "${YELLOW}IMPORTANT NEXT STEPS:${NC}"
 echo ""
