@@ -6,13 +6,37 @@ set -e
 
 API_URL="https://api.mychristiancounselor.online"
 
-echo "1. Checking health endpoint..."
-HEALTH=$(curl -s "$API_URL/health/live" | jq -r '.status')
-if [ "$HEALTH" != "alive" ]; then
-    echo "❌ FAILED: Health check returned: $HEALTH"
+echo "1. Checking readiness endpoint..."
+READY_RESPONSE=$(curl -s "$API_URL/health/ready")
+READY_STATUS=$(echo "$READY_RESPONSE" | jq -r '.status')
+
+if [ "$READY_STATUS" != "ready" ]; then
+    echo "❌ FAILED: Readiness check returned: $READY_STATUS"
+    echo "Response: $READY_RESPONSE"
     exit 1
 fi
-echo "✅ Health check passed"
+
+# Verify all health checks passed
+DB_CHECK=$(echo "$READY_RESPONSE" | jq -r '.checks[] | select(.name=="database") | .status')
+REDIS_CHECK=$(echo "$READY_RESPONSE" | jq -r '.checks[] | select(.name=="redis") | .status')
+ENV_CHECK=$(echo "$READY_RESPONSE" | jq -r '.checks[] | select(.name=="environment") | .status')
+
+if [ "$DB_CHECK" != "healthy" ]; then
+    echo "❌ FAILED: Database check unhealthy"
+    exit 1
+fi
+
+if [ "$REDIS_CHECK" != "healthy" ]; then
+    echo "❌ FAILED: Redis check unhealthy"
+    exit 1
+fi
+
+if [ "$ENV_CHECK" != "healthy" ]; then
+    echo "❌ FAILED: Environment variables check unhealthy"
+    exit 1
+fi
+
+echo "✅ Readiness check passed (database, Redis, environment all healthy)"
 
 echo "2. Checking CORS headers..."
 CORS=$(curl -s -I -H "Origin: https://www.mychristiancounselor.online" "$API_URL/profile" | grep -i "access-control-allow-origin")

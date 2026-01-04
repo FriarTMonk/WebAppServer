@@ -145,17 +145,62 @@ function validateEnvironment(): void {
 }
 
 async function bootstrap() {
+  console.log('🚀 Starting MyChristianCounselor API...');
+  console.log(`   Node.js version: ${process.version}`);
+  console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`   Timestamp: ${new Date().toISOString()}`);
+  console.log('');
+
+  console.log('📦 Creating NestJS application...');
   const app = await NestFactory.create(AppModule, {
     rawBody: true, // Enable raw body parsing for Stripe webhooks
     bufferLogs: true, // Buffer logs until Winston is ready
   });
+  console.log('✅ NestJS application created');
 
   // Use Winston logger
+  console.log('📝 Initializing Winston logger...');
   const logger = app.get(WINSTON_MODULE_NEST_PROVIDER);
   app.useLogger(logger);
+  logger.log('✅ Winston logger initialized');
+
+  // Test database connection
+  logger.log('🗄️  Testing database connection...');
+  try {
+    const prisma = app.get('PrismaService');
+    await prisma.$queryRaw`SELECT 1`;
+    logger.log('✅ Database connection established');
+  } catch (error) {
+    logger.error('❌ Database connection failed', error.message);
+    throw new Error('Failed to connect to database');
+  }
+
+  // Test Redis connection (for queue system)
+  logger.log('🔴 Testing Redis connection...');
+  try {
+    const Redis = require('ioredis');
+    const redisHost = process.env.REDIS_HOST || 'localhost';
+    const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
+    const testRedis = new Redis({
+      host: redisHost,
+      port: redisPort,
+      password: process.env.REDIS_PASSWORD,
+      lazyConnect: true,
+      retryStrategy: () => null,
+      maxRetriesPerRequest: 1,
+    });
+    await testRedis.connect();
+    await testRedis.ping();
+    await testRedis.quit();
+    logger.log('✅ Redis connection established');
+  } catch (error) {
+    logger.error('❌ Redis connection failed', error.message);
+    throw new Error('Failed to connect to Redis');
+  }
 
   // Force HTTPS in production
   if (process.env.NODE_ENV === 'production') {
+    logger.log('🔒 Configuring HTTPS redirect...');
     app.use((req, res, next) => {
       // Allow HTTP for health check endpoints (needed for load balancer health checks)
       if (req.url.startsWith('/health/')) {
@@ -170,9 +215,11 @@ async function bootstrap() {
       }
       next();
     });
+    logger.log('✅ HTTPS redirect configured');
   }
 
   // Security: Helmet for HTTP security headers
+  logger.log('🛡️  Configuring security headers...');
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -196,8 +243,10 @@ async function bootstrap() {
       },
     })
   );
+  logger.log('✅ Security headers configured');
 
   // Enable CORS - allow web app and www variant
+  logger.log('🌐 Configuring CORS...');
   const corsOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
     : ['http://localhost:3699'];
@@ -206,11 +255,15 @@ async function bootstrap() {
     origin: corsOrigins,
     credentials: true,
   });
+  logger.log(`✅ CORS enabled for origins: ${corsOrigins.join(', ')}`);
 
   // Global exception filter for consistent error handling
+  logger.log('🔧 Configuring global exception filter...');
   app.useGlobalFilters(new HttpExceptionFilter());
+  logger.log('✅ Global exception filter configured');
 
   // Enable validation
+  logger.log('✔️  Enabling request validation...');
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -218,8 +271,10 @@ async function bootstrap() {
       transform: true,
     })
   );
+  logger.log('✅ Request validation enabled');
 
   // Swagger API Documentation
+  logger.log('📚 Setting up Swagger API documentation...');
   const config = new DocumentBuilder()
     .setTitle('MyChristianCounselor API')
     .setDescription('API documentation for MyChristianCounselor platform')
@@ -254,16 +309,75 @@ async function bootstrap() {
       showRequestDuration: true,
     },
   });
+  logger.log('✅ Swagger documentation configured');
 
   const port = process.env.PORT || 3697;
+  logger.log(`🎧 Starting server on port ${port}...`);
   await app.listen(port);
 
-  logger.log(`🚀 API server running on http://localhost:${port}`);
-  logger.log(`🔒 Security headers enabled with Helmet`);
-  logger.log(`📚 API documentation available at http://localhost:${port}/api/docs`);
+  logger.log('');
+  logger.log('═══════════════════════════════════════════════════════');
+  logger.log('✅ APPLICATION SUCCESSFULLY STARTED');
+  logger.log('═══════════════════════════════════════════════════════');
+  logger.log(`🚀 API server listening on port ${port}`);
+  logger.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.log(`🔒 Security: Helmet headers enabled`);
+  logger.log(`🌐 CORS: Enabled for ${corsOrigins.length} origin(s)`);
+  logger.log(`📚 Swagger docs: http://localhost:${port}/api/docs`);
+  logger.log(`🏥 Health check: http://localhost:${port}/health/ready`);
+  logger.log(`⏱️  Uptime: ${Math.floor(process.uptime())}s`);
+  logger.log(`💾 Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB / ${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`);
+  logger.log('═══════════════════════════════════════════════════════');
+  logger.log('');
+
+  // Report successful startup to Sentry
+  const Sentry = require('@sentry/nestjs');
+  Sentry.addBreadcrumb({
+    category: 'startup',
+    message: 'Application successfully started',
+    level: 'info',
+    data: {
+      port,
+      environment: process.env.NODE_ENV || 'development',
+      nodeVersion: process.version,
+      uptime: Math.floor(process.uptime()),
+      memoryUsage: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    },
+  });
 }
 
 // Validate environment variables before starting the application
 validateEnvironment();
 
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('');
+  console.error('═══════════════════════════════════════════════════════');
+  console.error('❌ APPLICATION STARTUP FAILED');
+  console.error('═══════════════════════════════════════════════════════');
+  console.error(`Error: ${error.message}`);
+  console.error(`Stack: ${error.stack}`);
+  console.error('═══════════════════════════════════════════════════════');
+  console.error('');
+
+  // Report startup failure to Sentry
+  const Sentry = require('@sentry/nestjs');
+  Sentry.captureException(error, {
+    level: 'fatal',
+    tags: {
+      startup: 'failed',
+      environment: process.env.NODE_ENV || 'development',
+    },
+    contexts: {
+      startup: {
+        phase: 'bootstrap',
+        timestamp: new Date().toISOString(),
+        nodeVersion: process.version,
+      },
+    },
+  });
+
+  // Wait for Sentry to flush before exiting
+  Sentry.close(2000).then(() => {
+    process.exit(1);
+  });
+});

@@ -4,6 +4,16 @@ import { nodeProfilingIntegration } from '@sentry/profiling-node';
 /**
  * Initialize Sentry for error tracking and performance monitoring
  * Free tier includes 5,000 errors per month
+ *
+ * ALERT CONFIGURATION (via Sentry Dashboard):
+ * 1. Go to https://sentry.io/settings/[your-org]/projects/[your-project]/alerts/
+ * 2. Create alert rules for:
+ *    - High error rate (>10 errors in 5 minutes)
+ *    - Fatal errors (level: fatal)
+ *    - Startup failures (tag: startup=failed)
+ *    - Database connection failures (message contains "Database")
+ *    - Redis connection failures (message contains "Redis")
+ * 3. Configure notification channels (Email, Slack, PagerDuty, etc.)
  */
 export function initializeSentry() {
   const dsn = process.env.SENTRY_DSN;
@@ -23,6 +33,15 @@ export function initializeSentry() {
     tracesSampleRate: environment === 'production' ? 0.1 : 1.0, // 10% in production, 100% in dev
     profilesSampleRate: environment === 'production' ? 0.1 : 1.0,
 
+    // Enable debug mode in development
+    debug: environment === 'development',
+
+    // Release tracking
+    release: process.env.npm_package_version || 'unknown',
+
+    // Server name
+    serverName: process.env.HOSTNAME || 'unknown',
+
     // Integrations
     integrations: [
       // Performance monitoring
@@ -34,6 +53,20 @@ export function initializeSentry() {
       // Express integration
       Sentry.expressIntegration(),
     ],
+
+    // Add default tags for all events
+    initialScope: {
+      tags: {
+        runtime: 'node',
+        nodeVersion: process.version,
+      },
+      contexts: {
+        runtime: {
+          name: 'node',
+          version: process.version,
+        },
+      },
+    },
 
     // Before send hook to filter sensitive data
     beforeSend(event, hint) {
