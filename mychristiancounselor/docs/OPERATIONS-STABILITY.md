@@ -32,13 +32,7 @@ This document addresses the recurring outage issues and establishes procedures t
 
 **Solutions Needed:**
 
-🔲 **Scale to 2 Containers**
-- Eliminates single point of failure
-- Enables zero-downtime deployments
-- AWS automatically load balances and handles failures
-- Cost: ~$20/month additional for API service
-
-🔲 **Enhanced Health Checks**
+🔲 **Enhanced Health Checks** (PRIORITY 1)
 - Add `/health/ready` endpoint that checks:
   - Database connectivity
   - Redis connectivity
@@ -46,7 +40,7 @@ This document addresses the recurring outage issues and establishes procedures t
   - Application fully initialized
 - Update AWS Lightsail health check path to `/health/ready`
 
-🔲 **Startup Logging Enhancement**
+🔲 **Startup Logging Enhancement** (PRIORITY 2)
 - Add explicit log messages for each startup phase:
   - "Database connection established"
   - "Redis connection established"
@@ -54,6 +48,36 @@ This document addresses the recurring outage issues and establishes procedures t
   - "Application successfully started"
   - "Listening on port 3697"
 - Makes partial startup failures immediately visible
+
+🔲 **External Monitoring** (PRIORITY 3)
+- Set up UptimeRobot or similar service
+- Monitor actual API endpoints (not just `/health/live`)
+- Check every 5 minutes
+- Alert via email/SMS when down
+- Track uptime metrics
+
+🔲 **Sentry Alerts Configuration** (PRIORITY 4)
+- Add startup event logging
+- Add custom context for all errors
+- Set up alerts for high error rates
+- Alert on application startup failures
+- Alert on database/Redis connection failures
+
+🔲 **Verify Stability** (PRIORITY 5)
+- Monitor for 30+ days with 1 container
+- Confirm zero unexpected outages
+- Confirm all deployments successful
+- Confirm issues detected within 5 minutes
+- Document any remaining issues
+
+🔲 **Scale to 2 Containers** (FINAL STEP - ONLY AFTER STABILITY PROVEN)
+- Do NOT scale until 1 container is 100% stable for 30+ days
+- Scaling with broken containers = 2x the failures
+- Once stable, scaling provides:
+  - Zero-downtime deployments
+  - Automatic failover
+  - Load balancing
+- Cost: ~$20/month additional for API service
 
 ### 2. Why do we continue to experience these outages?
 
@@ -112,9 +136,23 @@ This document addresses the recurring outage issues and establishes procedures t
 - No alerts when API becomes unreachable
 - No monitoring of actual API endpoints (only health endpoint)
 
-**Solutions Needed:**
+**Solutions Needed (In Priority Order):**
 
-🔲 **Enhance Sentry Integration**
+🔲 **1. Enhanced Health Checks**
+- Implement `/health/ready` endpoint (see Priority 1 above)
+- Update AWS Lightsail to use `/health/ready` instead of `/health/live`
+
+🔲 **2. Startup Logging**
+- Add explicit log messages for each startup phase
+- Makes partial startup failures immediately visible
+
+🔲 **3. External Monitoring (UptimeRobot or similar)**
+- Monitor actual API endpoints (not just `/health/live`)
+- Check every 5 minutes
+- Alert via email/SMS when down
+- Track uptime metrics
+
+🔲 **4. Enhance Sentry Integration**
 - Add startup event logging
 - Add custom context for all errors
 - Set up alerts for:
@@ -123,13 +161,7 @@ This document addresses the recurring outage issues and establishes procedures t
   - Database connection failures
   - Redis connection failures
 
-🔲 **External Monitoring (UptimeRobot or similar)**
-- Monitor actual API endpoints (not just `/health/live`)
-- Check every 5 minutes
-- Alert via email/SMS when down
-- Track uptime metrics
-
-🔲 **CloudWatch Logs Monitoring**
+🔲 **5. CloudWatch Logs Monitoring (Optional)**
 - Set up log group filters for error patterns
 - Alert on specific patterns:
   - "Starting Nest application" without corresponding "Listening on port"
@@ -181,23 +213,44 @@ The deployment script had a critical gap:
 
 ## Implementation Priority
 
-### Immediate (Completed)
+### Phase 1: Fix Deployment Process (✅ COMPLETED)
 ✅ Fix deployment script to update JSON configs automatically
 ✅ Add deployment verification script
 ✅ Add jq to prerequisites
 ✅ Create this operations document
 
-### Short Term (This Week)
-🔲 Scale API to 2 containers
-🔲 Enhance health checks with `/health/ready` endpoint
-🔲 Set up external monitoring (UptimeRobot)
-🔲 Configure Sentry alerts properly
+### Phase 2: Make One Container 100% Stable (CURRENT FOCUS)
+🔲 **Priority 1: Enhanced Health Checks**
+  - Implement `/health/ready` endpoint
+  - Verify database, Redis, env vars, full startup
+  - Update AWS Lightsail health check path
 
-### Medium Term (This Month)
-🔲 Set up CloudWatch Logs monitoring
-🔲 Add comprehensive startup logging
-🔲 Document runbook for common issues
+🔲 **Priority 2: Startup Logging**
+  - Add explicit log messages for each startup phase
+  - Make partial startup failures visible immediately
+
+🔲 **Priority 3: External Monitoring**
+  - Set up UptimeRobot or similar
+  - Monitor actual API endpoints
+  - Configure SMS/email alerts
+
+🔲 **Priority 4: Sentry Alerts**
+  - Configure proper error alerting
+  - Add startup event logging
+  - Set up custom error contexts
+
+🔲 **Priority 5: Verify Stability**
+  - Monitor for 30+ days with 1 container
+  - Confirm zero unexpected outages
+  - Document any remaining issues
+
+### Phase 3: Scale for Zero-Downtime (FUTURE - AFTER STABILITY PROVEN)
+🔲 Scale API to 2 containers (ONLY after 30+ days of proven stability)
+🔲 Set up CloudWatch Logs monitoring (optional)
 🔲 Create monitoring dashboard
+🔲 Document runbook for common issues
+
+**IMPORTANT:** Do not proceed to Phase 3 until Phase 2 shows 30+ days of 100% stability. Scaling with unstable containers just means 2x the failures.
 
 ## Deployment Checklist
 
@@ -267,14 +320,24 @@ bash scripts/verify-deployment.sh
 
 ## Cost Analysis
 
+### Phase 2: Stabilization (Immediate)
 | Improvement | Monthly Cost | Impact |
 |-------------|-------------|---------|
-| Scale API to 2 containers | ~$20 | High - eliminates downtime |
+| Enhanced health checks | $0 | Critical - detect failures |
+| Startup logging | $0 | Critical - diagnose issues |
 | UptimeRobot Pro | $7 | High - external monitoring |
-| Enhanced logging | $0 | High - better debugging |
-| Sentry alerts | $0 (included) | Medium - catch errors faster |
-| CloudWatch alerts | ~$1 | Medium - catch log patterns |
-| **Total** | **~$28/month** | **Major stability improvement** |
+| Sentry alerts | $0 (included) | High - catch errors faster |
+| **Phase 2 Total** | **$7/month** | **Critical for stability** |
+
+### Phase 3: Scaling (After 30+ days stability)
+| Improvement | Monthly Cost | Impact |
+|-------------|-------------|---------|
+| Scale API to 2 containers | ~$20 | High - zero downtime |
+| CloudWatch alerts | ~$1 | Medium - log patterns |
+| **Phase 3 Total** | **~$21/month** | **Operational excellence** |
+
+**Total Investment:** $28/month for full production-grade stability
+**Current Investment:** $7/month to fix root causes first
 
 ## Success Metrics
 
@@ -287,9 +350,18 @@ We'll know we've succeeded when:
 
 ## Next Steps
 
-1. Review this document
-2. Approve scaling to 2 containers
-3. Implement enhanced health checks
-4. Set up external monitoring
-5. Configure Sentry alerts
-6. Test full deployment cycle with new procedures
+### Immediate (Phase 2 - Stabilization)
+1. Review and approve this operations plan
+2. Implement enhanced `/health/ready` endpoint
+3. Add comprehensive startup logging
+4. Set up UptimeRobot external monitoring
+5. Configure Sentry alerts properly
+6. Monitor stability for 30+ days
+
+### Future (Phase 3 - After Stability Proven)
+7. Review 30-day stability metrics
+8. If stable, scale to 2 containers
+9. Set up CloudWatch log monitoring (optional)
+10. Create operational dashboard
+
+**DO NOT skip to Phase 3 without completing Phase 2 and proving stability.**
