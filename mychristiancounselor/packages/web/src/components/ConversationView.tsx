@@ -41,6 +41,7 @@ export function ConversationView() {
   const [messages, setMessages] = useState<ExtendedMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [preferredTranslation, setPreferredTranslation] = useState<BibleTranslation>(DEFAULT_TRANSLATION);
   const [comparisonMode, setComparisonMode] = useState(false);
@@ -185,6 +186,16 @@ export function ConversationView() {
     setMessages((prev) => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
+    setLoadingMessage(null);
+
+    // Show progressive loading messages for long waits
+    const loadingTimer1 = setTimeout(() => {
+      setLoadingMessage('Processing your question...');
+    }, 8000); // After 8 seconds
+
+    const loadingTimer2 = setTimeout(() => {
+      setLoadingMessage('This is taking longer than usual. Our AI service may be experiencing high demand. Please continue to wait...');
+    }, 20000); // After 20 seconds
 
     try {
       // AI responses can take longer due to Bedrock API processing + retry logic
@@ -274,6 +285,9 @@ export function ConversationView() {
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setLoadingMessage(null);
+      clearTimeout(loadingTimer1);
+      clearTimeout(loadingTimer2);
     }
   };
 
@@ -573,7 +587,7 @@ export function ConversationView() {
               </React.Fragment>
             ))}
 
-            {isLoading && <ThinkingIndicator />}
+            {isLoading && <ThinkingIndicator message={loadingMessage} />}
 
             <div ref={messagesEndRef} />
           </div>

@@ -15,7 +15,11 @@ const THINKING_SYNONYMS = [
   'Meditating',
 ];
 
-export function ThinkingIndicator() {
+interface ThinkingIndicatorProps {
+  message?: string | null;
+}
+
+export function ThinkingIndicator({ message }: ThinkingIndicatorProps = {}) {
   const [currentWord, setCurrentWord] = useState(THINKING_SYNONYMS[0]);
   const [dots, setDots] = useState('');
 
@@ -48,6 +52,11 @@ export function ThinkingIndicator() {
         <div className="text-gray-600 font-medium">
           {currentWord}{dots}
         </div>
+        {message && (
+          <div className="text-gray-500 text-sm mt-2">
+            {message}
+          </div>
+        )}
       </div>
     </div>
   );
