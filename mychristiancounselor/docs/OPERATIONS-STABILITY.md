@@ -49,12 +49,16 @@ This document addresses the recurring outage issues and establishes procedures t
   - "Listening on port 3697"
 - Makes partial startup failures immediately visible
 
-🔲 **External Monitoring** (PRIORITY 3)
-- Set up UptimeRobot or similar service
-- Monitor actual API endpoints (not just `/health/live`)
-- Check every 5 minutes
-- Alert via email/SMS when down
-- Track uptime metrics
+🔲 **External Monitoring - AWS CloudWatch Synthetics** (PRIORITY 3)
+- Deploy CloudWatch Synthetics canary (see `aws/cloudwatch-synthetics/`)
+- Comprehensive API testing every 5 minutes:
+  - `/health/ready` validation (database, Redis, environment)
+  - CORS headers verification
+  - Response time monitoring
+  - Optional: Authentication flow testing
+- Alert via SNS (email/SMS) when failures detected
+- Cost: ~$10/month (vs UptimeRobot $7/month for basic ping)
+- **Much better than UptimeRobot** - actually tests API functionality
 
 🔲 **Sentry Alerts Configuration** (PRIORITY 4)
 - Add startup event logging
@@ -146,11 +150,13 @@ This document addresses the recurring outage issues and establishes procedures t
 - Add explicit log messages for each startup phase
 - Makes partial startup failures immediately visible
 
-🔲 **3. External Monitoring (UptimeRobot or similar)**
-- Monitor actual API endpoints (not just `/health/live`)
-- Check every 5 minutes
-- Alert via email/SMS when down
-- Track uptime metrics
+🔲 **3. External Monitoring (AWS CloudWatch Synthetics)**
+- Deploy canary from `aws/cloudwatch-synthetics/`
+- Comprehensive API testing every 5 minutes
+- Tests health checks, CORS, performance, optionally authentication
+- Alert via SNS (email/SMS) when down
+- Track uptime and performance metrics
+- Cost: ~$10/month
 
 🔲 **4. Enhance Sentry Integration**
 - Add startup event logging
@@ -315,8 +321,8 @@ bash scripts/verify-deployment.sh
 ### Target State
 - **AWS Lightsail**: Enhanced `/health/ready` checks
 - **Sentry**: Full error tracking with custom contexts and alerts
-- **UptimeRobot**: External monitoring with SMS/email alerts
-- **CloudWatch**: Log pattern matching with alerts
+- **CloudWatch Synthetics**: Comprehensive external API testing with SNS alerts
+- **CloudWatch Logs**: Log pattern matching with alerts (optional)
 
 ## Cost Analysis
 
@@ -325,9 +331,9 @@ bash scripts/verify-deployment.sh
 |-------------|-------------|---------|
 | Enhanced health checks | $0 | Critical - detect failures |
 | Startup logging | $0 | Critical - diagnose issues |
-| UptimeRobot Pro | $7 | High - external monitoring |
+| CloudWatch Synthetics | ~$10 | High - comprehensive API testing |
 | Sentry alerts | $0 (included) | High - catch errors faster |
-| **Phase 2 Total** | **$7/month** | **Critical for stability** |
+| **Phase 2 Total** | **~$10/month** | **Critical for stability** |
 
 ### Phase 3: Scaling (After 30+ days stability)
 | Improvement | Monthly Cost | Impact |
@@ -336,8 +342,10 @@ bash scripts/verify-deployment.sh
 | CloudWatch alerts | ~$1 | Medium - log patterns |
 | **Phase 3 Total** | **~$21/month** | **Operational excellence** |
 
-**Total Investment:** $28/month for full production-grade stability
-**Current Investment:** $7/month to fix root causes first
+**Total Investment:** ~$31/month for full production-grade stability
+**Current Investment:** ~$10/month to fix root causes first
+
+**Note:** CloudWatch Synthetics (~$10/month) is better value than UptimeRobot ($7/month) because it actually tests API functionality, not just HTTP status.
 
 ## Success Metrics
 
@@ -351,12 +359,13 @@ We'll know we've succeeded when:
 ## Next Steps
 
 ### Immediate (Phase 2 - Stabilization)
-1. Review and approve this operations plan
-2. Implement enhanced `/health/ready` endpoint
-3. Add comprehensive startup logging
-4. Set up UptimeRobot external monitoring
-5. Configure Sentry alerts properly
-6. Monitor stability for 30+ days
+1. ✅ Review and approve this operations plan
+2. ✅ Implement enhanced `/health/ready` endpoint
+3. ✅ Add comprehensive startup logging
+4. ✅ Configure Sentry alerts
+5. 🔲 Deploy CloudWatch Synthetics canary (`cd aws/cloudwatch-synthetics && bash deploy-canary.sh`)
+6. 🔲 Configure Sentry alert rules in dashboard
+7. 🔲 Monitor stability for 30+ days
 
 ### Future (Phase 3 - After Stability Proven)
 7. Review 30-day stability metrics

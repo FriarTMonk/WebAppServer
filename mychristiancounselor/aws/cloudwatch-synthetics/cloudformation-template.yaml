@@ -1,0 +1,341 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudWatch Synthetics Canary for MyChristianCounselor API Health Monitoring'
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Email address to receive alerts when canary fails
+    Default: support@mychristiancounselor.online
+
+  AlertPhoneNumber:
+    Type: String
+    Description: 'Phone number for SMS alerts (format: +1234567890, leave empty to disable SMS)'
+    Default: ''
+
+  CanarySchedule:
+    Type: String
+    Description: How often to run the canary (rate expression)
+    Default: 'rate(5 minutes)'
+    AllowedValues:
+      - 'rate(1 minute)'
+      - 'rate(5 minutes)'
+      - 'rate(10 minutes)'
+      - 'rate(15 minutes)'
+
+  Environment:
+    Type: String
+    Description: Environment name
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+
+Conditions:
+  HasPhoneNumber: !Not [!Equals [!Ref AlertPhoneNumber, '']]
+
+Resources:
+  # S3 Bucket for Canary Artifacts (screenshots, logs, HAR files)
+  CanaryArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'mychristiancounselor-canary-artifacts-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldArtifacts
+            Status: Enabled
+            ExpirationInDays: 30  # Keep artifacts for 30 days
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: MyChristianCounselor Canary Artifacts
+        - Key: Environment
+          Value: !Ref Environment
+
+  # IAM Role for Canary
+  CanaryExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'MyChristianCounselor-Canary-Role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/CloudWatchSyntheticsFullAccess'
+      Policies:
+        - PolicyName: CanaryS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:GetObject'
+                  - 's3:ListBucket'
+                Resource:
+                  - !GetAtt CanaryArtifactsBucket.Arn
+                  - !Sub '${CanaryArtifactsBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
+              - Effect: Allow
+                Action:
+                  - 'cloudwatch:PutMetricData'
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    'cloudwatch:namespace': 'CloudWatchSynthetics'
+      Tags:
+        - Key: Name
+          Value: MyChristianCounselor Canary Execution Role
+        - Key: Environment
+          Value: !Ref Environment
+
+  # SNS Topic for Alerts
+  CanaryAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub 'MyChristianCounselor-Canary-Alerts-${Environment}'
+      DisplayName: 'MyChristianCounselor API Health Alerts'
+      Tags:
+        - Key: Name
+          Value: MyChristianCounselor Canary Alerts
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Email Subscription
+  CanaryAlertEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref CanaryAlertTopic
+      Endpoint: !Ref AlertEmail
+
+  # SMS Subscription (conditional)
+  CanaryAlertSMSSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasPhoneNumber
+    Properties:
+      Protocol: sms
+      TopicArn: !Ref CanaryAlertTopic
+      Endpoint: !Ref AlertPhoneNumber
+
+  # CloudWatch Synthetics Canary
+  APIHealthCanary:
+    Type: AWS::Synthetics::Canary
+    Properties:
+      Name: !Sub 'api-health-${Environment}'
+      ArtifactS3Location: !Sub 's3://${CanaryArtifactsBucket}/canary-artifacts'
+      ExecutionRoleArn: !GetAtt CanaryExecutionRole.Arn
+      RuntimeVersion: 'syn-nodejs-puppeteer-9.0'  # Latest Node.js runtime
+      Schedule:
+        Expression: !Ref CanarySchedule
+        DurationInSeconds: 0  # Run indefinitely
+      RunConfig:
+        TimeoutInSeconds: 60
+        MemoryInMB: 1024
+        ActiveTracing: true
+      SuccessRetentionPeriod: 31  # Keep successful run data for 31 days
+      FailureRetentionPeriod: 31  # Keep failed run data for 31 days
+      Code:
+        Handler: 'api-health-canary.handler'
+        Script: |
+          // PLACEHOLDER - Replace with actual canary script
+          // This will be replaced during deployment with the contents of api-health-canary.js
+          const synthetics = require('Synthetics');
+          const log = require('SyntheticsLogger');
+
+          exports.handler = async () => {
+            log.info('Canary placeholder - deploy with actual script');
+            return await synthetics.executeHttpStep('ApiHealthTest', async () => {
+              log.info('Running API health test');
+            });
+          };
+      StartCanaryAfterCreation: true
+      Tags:
+        - Key: Name
+          Value: MyChristianCounselor API Health Canary
+        - Key: Environment
+          Value: !Ref Environment
+
+  # CloudWatch Alarm: Canary Failure
+  CanaryFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'MyChristianCounselor-API-Health-Failure-${Environment}'
+      AlarmDescription: 'Alert when API health check canary fails'
+      MetricName: 'SuccessPercent'
+      Namespace: 'CloudWatchSynthetics'
+      Statistic: Average
+      Period: 300  # 5 minutes
+      EvaluationPeriods: 1
+      Threshold: 90  # Alert if success rate drops below 90%
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: CanaryName
+          Value: !Ref APIHealthCanary
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref CanaryAlertTopic
+      OKActions:
+        - !Ref CanaryAlertTopic
+      TreatMissingData: breaching
+
+  # CloudWatch Alarm: High Response Time
+  CanaryHighLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'MyChristianCounselor-API-High-Latency-${Environment}'
+      AlarmDescription: 'Alert when API response time exceeds 3 seconds'
+      MetricName: 'Duration'
+      Namespace: 'CloudWatchSynthetics'
+      Statistic: Average
+      Period: 300  # 5 minutes
+      EvaluationPeriods: 2  # Alert after 2 consecutive high-latency periods
+      Threshold: 3000  # 3 seconds in milliseconds
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CanaryName
+          Value: !Ref APIHealthCanary
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref CanaryAlertTopic
+      OKActions:
+        - !Ref CanaryAlertTopic
+      TreatMissingData: notBreaching
+
+  # CloudWatch Alarm: Canary Not Running
+  CanaryNotRunningAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'MyChristianCounselor-Canary-Not-Running-${Environment}'
+      AlarmDescription: 'Alert when canary stops running (no metrics for 15 minutes)'
+      MetricName: 'SuccessPercent'
+      Namespace: 'CloudWatchSynthetics'
+      Statistic: SampleCount
+      Period: 900  # 15 minutes
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: CanaryName
+          Value: !Ref APIHealthCanary
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref CanaryAlertTopic
+      TreatMissingData: breaching
+
+  # CloudWatch Dashboard
+  CanaryDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub 'MyChristianCounselor-API-Health-${Environment}'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["CloudWatchSynthetics", "SuccessPercent", {"stat": "Average", "yAxis": "left"}]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "API Health Success Rate",
+                "yAxis": {
+                  "left": {
+                    "min": 0,
+                    "max": 100
+                  }
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["CloudWatchSynthetics", "Duration", {"stat": "Average"}]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "API Response Time (ms)",
+                "yAxis": {
+                  "left": {
+                    "min": 0
+                  }
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["CloudWatchSynthetics", "Failed", {"stat": "Sum", "color": "#d62728"}],
+                  [".", "Success", {"stat": "Sum", "color": "#2ca02c"}]
+                ],
+                "period": 3600,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "Canary Runs (Last 24 Hours)",
+                "yAxis": {
+                  "left": {
+                    "min": 0
+                  }
+                }
+              }
+            }
+          ]
+        }
+
+Outputs:
+  CanaryName:
+    Description: Name of the CloudWatch Synthetics Canary
+    Value: !Ref APIHealthCanary
+    Export:
+      Name: !Sub '${AWS::StackName}-CanaryName'
+
+  CanaryArn:
+    Description: ARN of the CloudWatch Synthetics Canary
+    Value: !GetAtt APIHealthCanary.Id
+    Export:
+      Name: !Sub '${AWS::StackName}-CanaryArn'
+
+  ArtifactsBucket:
+    Description: S3 bucket containing canary artifacts (screenshots, logs, HAR files)
+    Value: !Ref CanaryArtifactsBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-ArtifactsBucket'
+
+  SNSTopicArn:
+    Description: SNS Topic ARN for canary alerts
+    Value: !Ref CanaryAlertTopic
+    Export:
+      Name: !Sub '${AWS::StackName}-SNSTopicArn'
+
+  DashboardURL:
+    Description: URL to CloudWatch Dashboard
+    Value: !Sub 'https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${CanaryDashboard}'
+
+  CanaryConsoleURL:
+    Description: URL to view canary in CloudWatch Synthetics console
+    Value: !Sub 'https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#synthetics:canary/detail/${APIHealthCanary}'
+
+  CostEstimate:
+    Description: Estimated monthly cost
+    Value: '$10.37 for 8,640 runs/month at 5-minute intervals'
