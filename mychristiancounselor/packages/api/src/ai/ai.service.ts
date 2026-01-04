@@ -59,7 +59,7 @@ export class AiService {
   }
 
   // ============================================================================
-  // COUNSELING AI METHODS (OpenAI)
+  // COUNSELING AI METHODS (AWS Bedrock)
   // ============================================================================
 
   async generateResponse(
@@ -306,7 +306,7 @@ Respond with ONLY "true" or "false" and nothing else.`;
   }
 
   // ============================================================================
-  // SUPPORT TICKET AI METHODS (Anthropic Claude)
+  // SUPPORT TICKET AI METHODS (AWS Bedrock)
   // ============================================================================
 
   /**

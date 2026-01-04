@@ -10,7 +10,9 @@ describe('CounselingAiService', () => {
   const mockConfigService = {
     get: jest.fn((key: string) => {
       const config = {
-        OPENAI_API_KEY: 'test-key',
+        AWS_ACCESS_KEY_ID: 'test-key',
+        AWS_SECRET_ACCESS_KEY: 'test-secret',
+        AWS_REGION: 'us-east-1',
       };
       return config[key];
     }),
