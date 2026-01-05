@@ -15,8 +15,6 @@ const synthetics = require('Synthetics');
 const log = require('SyntheticsLogger');
 const https = require('https');
 const http = require('http');
-const AWS = require('aws-sdk');
-const cloudwatch = new AWS.CloudWatch({ region: 'us-east-2' });
 
 // Configuration
 const WEB_BASE_URL = 'https://www.mychristiancounselor.online';
@@ -91,59 +89,45 @@ const calculateApdexScore = () => {
 };
 
 /**
- * Send custom metrics to CloudWatch
+ * Log performance metrics using CloudWatch Embedded Metric Format (EMF)
+ * This automatically creates CloudWatch metrics without needing metric filters
  */
-const sendMetricsToCloudWatch = async () => {
+const logPerformanceMetrics = () => {
   const apdexScore = calculateApdexScore();
 
-  const params = {
-    Namespace: 'MyChristianCounselor/Web',
-    MetricData: [
-      {
-        MetricName: 'ApdexScore',
-        Value: apdexScore,
-        Unit: 'None',
-        Timestamp: new Date(),
-      },
-      {
-        MetricName: 'HomepageResponseTime',
-        Value: performanceMetrics.homepage?.responseTime || 0,
-        Unit: 'Milliseconds',
-        Timestamp: new Date(),
-      },
-      {
-        MetricName: 'LoginPageResponseTime',
-        Value: performanceMetrics.login?.responseTime || 0,
-        Unit: 'Milliseconds',
-        Timestamp: new Date(),
-      },
-      {
-        MetricName: 'SatisfiedRequests',
-        Value: performanceMetrics.satisfiedRequests,
-        Unit: 'Count',
-        Timestamp: new Date(),
-      },
-      {
-        MetricName: 'ToleratingRequests',
-        Value: performanceMetrics.toleratingRequests,
-        Unit: 'Count',
-        Timestamp: new Date(),
-      },
-      {
-        MetricName: 'FrustratedRequests',
-        Value: performanceMetrics.frustratedRequests,
-        Unit: 'Count',
-        Timestamp: new Date(),
-      },
-    ],
+  // Use CloudWatch Embedded Metric Format (EMF)
+  // This creates metrics directly in CloudWatch
+  const emfMetrics = {
+    _aws: {
+      Timestamp: Date.now(),
+      CloudWatchMetrics: [
+        {
+          Namespace: 'MyChristianCounselor/Web',
+          Dimensions: [['Environment']],
+          Metrics: [
+            { Name: 'ApdexScore', Unit: 'None' },
+            { Name: 'HomepageResponseTime', Unit: 'Milliseconds' },
+            { Name: 'LoginPageResponseTime', Unit: 'Milliseconds' },
+            { Name: 'SatisfiedRequests', Unit: 'Count' },
+            { Name: 'ToleratingRequests', Unit: 'Count' },
+            { Name: 'FrustratedRequests', Unit: 'Count' },
+          ],
+        },
+      ],
+    },
+    Environment: 'production',
+    ApdexScore: apdexScore,
+    HomepageResponseTime: performanceMetrics.homepage?.responseTime || 0,
+    LoginPageResponseTime: performanceMetrics.login?.responseTime || 0,
+    SatisfiedRequests: performanceMetrics.satisfiedRequests,
+    ToleratingRequests: performanceMetrics.toleratingRequests,
+    FrustratedRequests: performanceMetrics.frustratedRequests,
   };
 
-  try {
-    await cloudwatch.putMetricData(params).promise();
-    log.info(`✓ Metrics sent to CloudWatch (Apdex: ${apdexScore.toFixed(3)})`);
-  } catch (error) {
-    log.error(`Failed to send metrics to CloudWatch: ${error.message}`);
-  }
+  // Log as JSON on a single line for EMF processing
+  console.log(JSON.stringify(emfMetrics));
+
+  log.info(`✓ Performance metrics logged via EMF (Apdex: ${apdexScore.toFixed(3)})`);
 };
 
 /**
@@ -329,8 +313,8 @@ const webHealthTest = async function () {
     // Test 4: Static Assets
     await testStaticAssets();
 
-    // Send performance metrics to CloudWatch
-    await sendMetricsToCloudWatch();
+    // Log performance metrics
+    logPerformanceMetrics();
 
     log.info('');
     log.info('═══════════════════════════════════════════════════════');
@@ -341,11 +325,11 @@ const webHealthTest = async function () {
     log.info('');
 
   } catch (error) {
-    // Still send metrics even if tests failed
+    // Still log metrics even if tests failed
     try {
-      await sendMetricsToCloudWatch();
+      logPerformanceMetrics();
     } catch (metricsError) {
-      log.error(`Failed to send metrics: ${metricsError.message}`);
+      log.error(`Failed to log metrics: ${metricsError.message}`);
     }
 
     log.error('');
