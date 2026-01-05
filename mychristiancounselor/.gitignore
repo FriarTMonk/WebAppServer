@@ -42,6 +42,9 @@ logs
 backups
 *.sql
 *.sql.gz
+*.backup
+*.bak
+*~
 
 # System Files
 .DS_Store
