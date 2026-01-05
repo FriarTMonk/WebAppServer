@@ -56,7 +56,7 @@ export class HealthService {
     checks.push(redisCheck);
 
     // Check environment variables
-    const envCheck = this.checkEnvironmentVariables();
+    const envCheck = await this.checkEnvironmentVariables();
     checks.push(envCheck);
 
     // Determine overall health
@@ -108,41 +108,55 @@ export class HealthService {
 
   /**
    * Check Redis connectivity
+   * Uses retry logic with short timeout for health checks
    */
   private async checkRedis(): Promise<HealthCheck> {
     const startTime = Date.now();
+    const maxRetries = 3;
+    const retryDelay = 500; // 500ms between retries
+    let lastError: Error;
 
-    try {
-      // Connect if not already connected
-      if (this.redisClient.status !== 'ready') {
-        await this.redisClient.connect();
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Connect if not already connected
+        if (this.redisClient.status !== 'ready') {
+          await this.redisClient.connect();
+        }
+
+        // Simple PING command to check if Redis is reachable
+        const response = await this.redisClient.ping();
+
+        const responseTime = Date.now() - startTime;
+
+        if (response !== 'PONG') {
+          throw new Error(`Unexpected Redis response: ${response}`);
+        }
+
+        return {
+          name: 'redis',
+          status: 'healthy',
+          responseTime,
+        };
+      } catch (error) {
+        lastError = error;
+
+        // If not the last attempt, wait and retry
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        }
+
+        // Last attempt failed
+        const responseTime = Date.now() - startTime;
+        this.logger.error(`Redis health check failed after ${maxRetries} attempts`, error);
+
+        return {
+          name: 'redis',
+          status: 'unhealthy',
+          responseTime,
+          error: error.message,
+        };
       }
-
-      // Simple PING command to check if Redis is reachable
-      const response = await this.redisClient.ping();
-
-      const responseTime = Date.now() - startTime;
-
-      if (response !== 'PONG') {
-        throw new Error(`Unexpected Redis response: ${response}`);
-      }
-
-      return {
-        name: 'redis',
-        status: 'healthy',
-        responseTime,
-      };
-    } catch (error) {
-      const responseTime = Date.now() - startTime;
-
-      this.logger.error('Redis health check failed', error);
-
-      return {
-        name: 'redis',
-        status: 'unhealthy',
-        responseTime,
-        error: error.message,
-      };
     }
   }
 

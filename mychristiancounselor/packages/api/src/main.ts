@@ -164,40 +164,6 @@ async function bootstrap() {
   app.useLogger(logger);
   logger.log('✅ Winston logger initialized');
 
-  // Test database connection
-  logger.log('🗄️  Testing database connection...');
-  try {
-    const prisma = app.get('PrismaService');
-    await prisma.$queryRaw`SELECT 1`;
-    logger.log('✅ Database connection established');
-  } catch (error) {
-    logger.error('❌ Database connection failed', error.message);
-    throw new Error('Failed to connect to database');
-  }
-
-  // Test Redis connection (for queue system)
-  logger.log('🔴 Testing Redis connection...');
-  try {
-    const Redis = require('ioredis');
-    const redisHost = process.env.REDIS_HOST || 'localhost';
-    const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
-    const testRedis = new Redis({
-      host: redisHost,
-      port: redisPort,
-      password: process.env.REDIS_PASSWORD,
-      lazyConnect: true,
-      retryStrategy: () => null,
-      maxRetriesPerRequest: 1,
-    });
-    await testRedis.connect();
-    await testRedis.ping();
-    await testRedis.quit();
-    logger.log('✅ Redis connection established');
-  } catch (error) {
-    logger.error('❌ Redis connection failed', error.message);
-    throw new Error('Failed to connect to Redis');
-  }
-
   // Force HTTPS in production
   if (process.env.NODE_ENV === 'production') {
     logger.log('🔒 Configuring HTTPS redirect...');

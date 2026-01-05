@@ -12,6 +12,7 @@
  * Better than UptimeRobot because it actually tests API functionality
  */
 
+// AWS CloudWatch Synthetics runtime modules (provided by Lambda environment)
 const synthetics = require('Synthetics');
 const log = require('SyntheticsLogger');
 const https = require('https');
@@ -283,6 +284,6 @@ const apiHealthTest = async function () {
 };
 
 exports.handler = async () => {
-  // CloudWatch Synthetics wrapper
-  return await synthetics.executeHttpStep('ApiHealthTest', apiHealthTest);
+  // Execute the API health test
+  await apiHealthTest();
 };

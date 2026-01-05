@@ -129,13 +129,38 @@ echo -e "${BLUE}  Step 3: Deploy CloudFormation Stack${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Build parameters
-PARAMETERS="ParameterKey=AlertEmail,ParameterValue=$ALERT_EMAIL"
-PARAMETERS="$PARAMETERS ParameterKey=CanarySchedule,ParameterValue=rate($INTERVAL minutes)"
-PARAMETERS="$PARAMETERS ParameterKey=Environment,ParameterValue=$ENVIRONMENT"
+# Build parameters JSON file
+PARAMS_FILE="$TEMP_DIR/parameters.json"
+cat > "$PARAMS_FILE" <<EOF
+[
+  {
+    "ParameterKey": "AlertEmail",
+    "ParameterValue": "$ALERT_EMAIL"
+  },
+  {
+    "ParameterKey": "CanarySchedule",
+    "ParameterValue": "rate($INTERVAL minutes)"
+  },
+  {
+    "ParameterKey": "Environment",
+    "ParameterValue": "$ENVIRONMENT"
+  }
+EOF
 
 if [ -n "$ALERT_PHONE" ]; then
-    PARAMETERS="$PARAMETERS ParameterKey=AlertPhoneNumber,ParameterValue=$ALERT_PHONE"
+    # Add phone parameter if provided (remove trailing ] first, then add it)
+    sed -i '$ d' "$PARAMS_FILE"
+    cat >> "$PARAMS_FILE" <<EOF
+  },
+  {
+    "ParameterKey": "AlertPhoneNumber",
+    "ParameterValue": "$ALERT_PHONE"
+  }
+]
+EOF
+else
+    # Close JSON array
+    echo "]" >> "$PARAMS_FILE"
 fi
 
 # Check if stack exists
@@ -151,7 +176,7 @@ fi
 aws cloudformation $OPERATION \
     --stack-name $STACK_NAME \
     --template-body file://$TEMPLATE_FILE \
-    --parameters $PARAMETERS \
+    --parameters file://$PARAMS_FILE \
     --capabilities CAPABILITY_NAMED_IAM \
     --region $REGION \
     --tags Key=Project,Value=MyChristianCounselor Key=Environment,Value=$ENVIRONMENT
@@ -176,10 +201,10 @@ CANARY_NAME=$(aws cloudformation describe-stacks \
 
 echo -e "${YELLOW}Updating canary with actual code...${NC}"
 
-# Update canary with the actual script
+# Update canary with the actual script from S3
 aws synthetics update-canary \
     --name "$CANARY_NAME" \
-    --code "Handler=index.handler,ZipFile=fileb://$TEMP_DIR/canary.zip" \
+    --code "Handler=index.handler,S3Bucket=$BUCKET_NAME,S3Key=canary-code/canary.zip" \
     --runtime-version "syn-nodejs-puppeteer-9.0" \
     --region $REGION
 

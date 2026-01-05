@@ -161,7 +161,8 @@ if [ $? -ne 0 ]; then
 fi
 
 # Extract the new image tag from the output
-API_IMAGE_TAG=$(echo "$API_PUSH_OUTPUT" | grep -oP ':\K[^ ]+' | head -1)
+# AWS outputs: Refer to this image as ":api.soft-launch-32.168" in deployments.
+API_IMAGE_TAG=$(echo "$API_PUSH_OUTPUT" | grep -oP 'Refer to this image as "\K[^"]+' | head -1)
 if [ -z "$API_IMAGE_TAG" ]; then
     echo -e "${RED}ERROR: Could not extract API image tag from push output${NC}"
     echo "$API_PUSH_OUTPUT"
@@ -186,7 +187,8 @@ if [ $? -ne 0 ]; then
 fi
 
 # Extract the new image tag from the output
-WEB_IMAGE_TAG=$(echo "$WEB_PUSH_OUTPUT" | grep -oP ':\K[^ ]+' | head -1)
+# AWS outputs: Refer to this image as ":web.soft-launch-32.168" in deployments.
+WEB_IMAGE_TAG=$(echo "$WEB_PUSH_OUTPUT" | grep -oP 'Refer to this image as "\K[^"]+' | head -1)
 if [ -z "$WEB_IMAGE_TAG" ]; then
     echo -e "${RED}ERROR: Could not extract Web image tag from push output${NC}"
     echo "$WEB_PUSH_OUTPUT"
