@@ -42,13 +42,23 @@ export class BedrockService {
       throw new Error('AWS credentials not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY');
     }
 
-    // Initialize Bedrock client
+    // Initialize Bedrock client with timeout configuration
+    const bedrockTimeoutMs = this.configService.get<number>('BEDROCK_TIMEOUT_MS') || 50000;
     this.bedrockClient = new BedrockRuntimeClient({
       region: this.region,
       credentials: {
         accessKeyId,
         secretAccessKey,
       },
+      // Configurable request timeout (default 50s)
+      // Should be less than Node.js server timeout to ensure proper error handling
+      requestHandler: {
+        requestTimeout: bedrockTimeoutMs,
+        httpsAgent: {
+          timeout: bedrockTimeoutMs,
+        },
+      },
+      maxAttempts: 1, // Disable SDK retries (we handle retries at application level)
     });
 
     this.logger.log(`✅ AWS Bedrock initialized (region: ${this.region})`);

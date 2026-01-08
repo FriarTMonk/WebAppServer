@@ -51,12 +51,14 @@ DEPLOYED_IMAGE=$(aws lightsail get-container-services --service-name api --regio
 echo "Deployed image: $DEPLOYED_IMAGE"
 
 echo "4. Checking environment variables..."
+# Read expected value from config file instead of hardcoding
+EXPECTED_AI_TOKENS=$(jq -r '.containers.api.environment.AI_MAX_TOKENS_COMPREHENSIVE' lightsail-api-deployment.json)
 AI_TOKENS=$(aws lightsail get-container-services --service-name api --region us-east-2 --query 'containerServices[0].currentDeployment.containers.api.environment.AI_MAX_TOKENS_COMPREHENSIVE' --output text)
-if [ "$AI_TOKENS" != "3200" ]; then
-    echo "❌ FAILED: AI_MAX_TOKENS_COMPREHENSIVE is $AI_TOKENS, expected 3200"
+if [ "$AI_TOKENS" != "$EXPECTED_AI_TOKENS" ]; then
+    echo "❌ FAILED: AI_MAX_TOKENS_COMPREHENSIVE is $AI_TOKENS, expected $EXPECTED_AI_TOKENS"
     exit 1
 fi
-echo "✅ Environment variables correct"
+echo "✅ Environment variables correct (AI_MAX_TOKENS_COMPREHENSIVE=$AI_TOKENS)"
 
 echo ""
 echo "✅ ALL VERIFICATION CHECKS PASSED"

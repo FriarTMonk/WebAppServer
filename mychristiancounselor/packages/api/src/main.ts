@@ -279,7 +279,13 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3697;
   logger.log(`🎧 Starting server on port ${port}...`);
-  await app.listen(port);
+
+  // Configure HTTP server timeout (default 120s)
+  // Should be greater than Bedrock timeout to allow proper error handling
+  const serverTimeoutMs = parseInt(process.env.SERVER_TIMEOUT_MS || '120000', 10);
+  const server = await app.listen(port);
+  server.setTimeout(serverTimeoutMs);
+  logger.log(`⏱️  Server timeout configured: ${serverTimeoutMs}ms`);
 
   logger.log('');
   logger.log('═══════════════════════════════════════════════════════');

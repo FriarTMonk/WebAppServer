@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SupportService } from '../support/support.service';
 import { SalesService } from '../sales/sales.service';
 import { EmailService } from '../email/email.service';
+import { OptOutService } from '../marketing/opt-out.service';
 import { PostmarkInboundDto } from './dto/postmark-inbound.dto';
 import { CreateTicketDto } from '../support/dto/create-ticket.dto';
 import { CreateOpportunityDto } from '../sales/dto/create-opportunity.dto';
@@ -17,6 +18,7 @@ export class WebhooksService {
     private supportService: SupportService,
     private salesService: SalesService,
     private emailService: EmailService,
+    private optOutService: OptOutService,
   ) {}
 
   async handleInboundEmail(emailData: PostmarkInboundDto): Promise<any> {
@@ -295,6 +297,37 @@ MyChristianCounselor Support Team`,
       const subject = emailData.Subject || 'No Subject';
       const body = emailData.TextBody || emailData.HtmlBody || '';
 
+      // Check for opt-out request FIRST
+      const isOptOut = this.optOutService.isOptOutRequest(`${subject} ${body}`);
+
+      if (isOptOut) {
+        this.logger.log(`Detected opt-out request from ${fromEmail}`);
+
+        // Process the opt-out
+        const optOutResult = await this.optOutService.processOptOut(fromEmail);
+
+        if (optOutResult.success) {
+          this.logger.log(
+            `Successfully processed opt-out for ${fromEmail}: ` +
+            `contact=${optOutResult.contactOptedOut}, prospect=${optOutResult.prospectOptedOut}`
+          );
+
+          // Send confirmation email
+          await this.sendOptOutConfirmationEmail(fromEmail, fromName);
+
+          return {
+            success: true,
+            optedOut: true,
+            contactOptedOut: optOutResult.contactOptedOut,
+            prospectOptedOut: optOutResult.prospectOptedOut,
+            message: optOutResult.message,
+          };
+        } else {
+          this.logger.warn(`Opt-out processing failed for ${fromEmail}: ${optOutResult.message}`);
+          // Continue with normal sales flow if opt-out fails (email might not be in system)
+        }
+      }
+
       // Check if this email is from a prospect contact in a marketing campaign
       let campaignRecipientId: string | undefined;
       const prospectContact = await this.prisma.prospectContact.findFirst({
@@ -304,6 +337,15 @@ MyChristianCounselor Support Team`,
 
       if (prospectContact) {
         this.logger.log(`Found prospect contact ${prospectContact.id} for email ${fromEmail} (prospect: ${prospectContact.prospectId})`);
+
+        // Check if already opted out - don't create opportunity
+        if (prospectContact.optOut) {
+          this.logger.warn(`Email from opted-out contact ${fromEmail} - skipping opportunity creation`);
+          return {
+            success: false,
+            error: 'Contact has opted out of communications',
+          };
+        }
 
         // Find the most recent EmailCampaignRecipient that hasn't been marked as replied
         const recipient = await this.prisma.emailCampaignRecipient.findFirst({
@@ -585,5 +627,62 @@ MyChristianCounselor Sales Team`,
     });
 
     this.logger.log(`Sent sales confirmation email to ${toEmail} for opportunity ${opportunityId}`);
+  }
+
+  /**
+   * Send opt-out confirmation email
+   */
+  private async sendOptOutConfirmationEmail(
+    toEmail: string,
+    toName: string
+  ): Promise<void> {
+    const webAppUrl = process.env.WEB_APP_URL || 'https://www.mychristiancounselor.online';
+
+    await this.emailService.sendEmail({
+      to: toEmail,
+      subject: 'Unsubscribe Confirmed - MyChristianCounselor',
+      text: `Hello ${toName},
+
+You have been successfully unsubscribed from our marketing communications.
+
+You will no longer receive marketing emails from MyChristianCounselor.
+
+If you believe this was done in error, or if you would like to resubscribe in the future, please contact our team at ${process.env.SUPPORT_EMAIL || 'support@mychristiancounselor.online'}.
+
+Thank you,
+MyChristianCounselor Team`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb;">Unsubscribe Confirmed</h2>
+
+          <p>Hello ${toName},</p>
+
+          <p>You have been successfully unsubscribed from our marketing communications.</p>
+
+          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p style="margin: 5px 0;">
+              ✅ You will no longer receive marketing emails from MyChristianCounselor.
+            </p>
+          </div>
+
+          <p style="color: #6b7280; font-size: 14px;">
+            If you believe this was done in error, or if you would like to resubscribe in the future,
+            please contact our team at
+            <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@mychristiancounselor.online'}" style="color: #2563eb;">
+              ${process.env.SUPPORT_EMAIL || 'support@mychristiancounselor.online'}
+            </a>.
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+          <p style="color: #6b7280; font-size: 12px;">
+            Thank you,<br>
+            MyChristianCounselor Team
+          </p>
+        </div>
+      `,
+    });
+
+    this.logger.log(`Sent opt-out confirmation email to ${toEmail}`);
   }
 }

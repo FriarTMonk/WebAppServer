@@ -508,6 +508,8 @@ model Prospect {
   lastCampaignSentAt        DateTime?
   convertedToOrganizationId String?
   convertedAt               DateTime?
+  optOut                    Boolean                  @default(false)
+  optOutAt                  DateTime?
   createdById               String
   createdAt                 DateTime                 @default(now())
   updatedAt                 DateTime                 @updatedAt
@@ -521,6 +523,7 @@ model Prospect {
   @@index([lastCampaignSentAt])
   @@index([archivedAt])
   @@index([convertedToOrganizationId])
+  @@index([optOut])
 }
 
 model ProspectContact {
@@ -531,6 +534,8 @@ model ProspectContact {
   phone              String?
   title              String?
   isPrimary          Boolean                  @default(false)
+  optOut             Boolean                  @default(false)
+  optOutAt           DateTime?
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
   campaignRecipients EmailCampaignRecipient[]
@@ -539,6 +544,7 @@ model ProspectContact {
   @@unique([prospectId, email])
   @@index([prospectId])
   @@index([email])
+  @@index([optOut])
 }
 
 model EmailCampaign {

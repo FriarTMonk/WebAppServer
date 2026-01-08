@@ -199,7 +199,9 @@ export function ConversationView() {
 
     try {
       // AI responses can take longer due to Bedrock API processing + retry logic
-      // 60 second timeout allows for 3 retry attempts with exponential backoff
+      // Configurable timeout prevents premature failures while allowing full response generation
+      // Default 90s: Bedrock timeout is 50s, Node.js is 120s, so 90s provides buffer without masking issues
+      const timeoutMs = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT_MS || '90000', 10);
       const response = await apiPost('/counsel/ask', {
         message: inputValue,
         sessionId,
@@ -207,11 +209,18 @@ export function ConversationView() {
         comparisonMode,
         comparisonTranslations: comparisonMode ? comparisonTranslations : undefined,
       }, {
-        timeout: 60000, // 60 seconds
+        timeout: timeoutMs,
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        // Capture response details for debugging
+        const errorBody = await response.text();
+        console.error('API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorBody
+        });
+        throw new Error(`Failed to send message: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
