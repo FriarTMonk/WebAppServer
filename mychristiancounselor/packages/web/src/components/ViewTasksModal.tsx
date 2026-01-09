@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { MemberTask, taskApi } from '@/lib/api';
 import { TaskCard } from './shared/TaskCard';
+import EditTaskModal from './EditTaskModal';
 
 interface ViewTasksModalProps {
   memberName: string;
@@ -21,6 +22,7 @@ export default function ViewTasksModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [editingTask, setEditingTask] = useState<MemberTask | null>(null);
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -60,28 +62,8 @@ export default function ViewTasksModal({
     fetchTasks();
   }, [fetchTasks]);
 
-  const handleEdit = async (task: MemberTask) => {
-    // TODO: Open edit modal (simplified for now - just show prompt)
-    const newTitle = prompt('Edit title:', task.title);
-    if (newTitle && newTitle !== task.title) {
-      try {
-        const response = await taskApi.update(task.id, { title: newTitle });
-        if (!response.ok) {
-          let errorMessage = 'Failed to update task';
-          try {
-            const data = await response.json();
-            errorMessage = data.message || errorMessage;
-          } catch {
-            // Use default message
-          }
-          throw new Error(errorMessage);
-        }
-        await fetchTasks();
-        onSuccess();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to update task');
-      }
-    }
+  const handleEdit = (task: MemberTask) => {
+    setEditingTask(task);
   };
 
   const handleDelete = async (task: MemberTask) => {
@@ -245,6 +227,18 @@ export default function ViewTasksModal({
           </button>
         </div>
       </div>
+
+      {editingTask && (
+        <EditTaskModal
+          open={!!editingTask}
+          onClose={() => setEditingTask(null)}
+          onSuccess={() => {
+            setEditingTask(null);
+            fetchTasks(); // Refresh the task list
+          }}
+          task={editingTask}
+        />
+      )}
     </div>
   );
 }
