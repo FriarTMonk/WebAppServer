@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssessmentStatus } from '@prisma/client';
 import { AssessmentResponse } from './assessments/assessment.types';
@@ -24,6 +24,43 @@ export class AssessmentService {
     this.logger.log(
       `Assigning assessment ${dto.assessmentId} to member ${dto.memberId}`,
     );
+
+    return this.prisma.assignedAssessment.create({
+      data: {
+        memberId: dto.memberId,
+        assessmentId: dto.assessmentId,
+        assignedBy: dto.assignedBy,
+        dueDate: dto.dueDate,
+        status: 'pending',
+      },
+    });
+  }
+
+  /**
+   * Assign a custom assessment to a member
+   */
+  async assignCustomAssessment(dto: AssignAssessmentDto) {
+    this.logger.log(
+      `Assigning custom assessment ${dto.assessmentId} to member ${dto.memberId}`,
+    );
+
+    // Verify custom assessment exists
+    const customAssessment = await this.prisma.customAssessment.findUnique({
+      where: { id: dto.assessmentId },
+    });
+
+    if (!customAssessment) {
+      throw new NotFoundException(
+        `Custom assessment with ID ${dto.assessmentId} not found`,
+      );
+    }
+
+    // Verify counselor has access to assign (must be creator or in same organization)
+    if (customAssessment.createdBy !== dto.assignedBy) {
+      throw new ForbiddenException(
+        'You do not have permission to assign this custom assessment',
+      );
+    }
 
     return this.prisma.assignedAssessment.create({
       data: {

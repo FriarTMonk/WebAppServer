@@ -12,6 +12,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AssessmentService } from './assessment.service';
 import { AssessmentScoringService } from './assessment-scoring.service';
 import { CLINICAL_ASSESSMENTS } from './assessments';
+import { AssignCustomAssessmentDto } from './dto/assign-custom-assessment.dto';
 
 @Controller('counsel/assessments')
 @UseGuards(JwtAuthGuard)
@@ -117,5 +118,23 @@ export class AssessmentController {
     @Query('type') type: string,
   ) {
     return this.assessmentService.getAssessmentHistory(memberId, type);
+  }
+
+  /**
+   * Assign a custom assessment to a member
+   */
+  @Post('custom/:assessmentId/assign')
+  async assignCustomAssessment(
+    @Param('assessmentId') assessmentId: string,
+    @Request() req: any,
+    @Body() dto: AssignCustomAssessmentDto,
+  ) {
+    return this.assessmentService.assignCustomAssessment({
+      assessmentId,
+      memberId: dto.memberId,
+      assignedBy: req.user.id,
+      dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+      notes: dto.notes,
+    });
   }
 }
