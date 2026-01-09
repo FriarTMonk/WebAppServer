@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { WorkflowRule, WorkflowRuleActivity, workflowRulesApi } from '@/lib/api';
+import { WorkflowRule, WorkflowRuleActivity, workflowRulesApi, apiDelete } from '@/lib/api';
+import { EditWorkflowRuleModal } from './EditWorkflowRuleModal';
 
 interface WorkflowRulesModalProps {
   memberName: string;
@@ -32,6 +33,7 @@ export default function WorkflowRulesModal({
   const [error, setError] = useState<string | null>(null);
   const [showMoreActivity, setShowMoreActivity] = useState(false);
   const [togglingRule, setTogglingRule] = useState<string | null>(null);
+  const [editingRule, setEditingRule] = useState<WorkflowRule | null>(null);
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -133,6 +135,34 @@ export default function WorkflowRulesModal({
     }
   };
 
+  const handleEdit = (rule: WorkflowRule) => {
+    setEditingRule(rule);
+  };
+
+  const handleDelete = async (rule: WorkflowRule) => {
+    if (!confirm(`Are you sure you want to delete the workflow rule "${rule.name}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await apiDelete(`/workflow/rules/${rule.id}`);
+      if (!response.ok) {
+        let errorMessage = 'Failed to delete workflow rule';
+        try {
+          const data = await response.json();
+          errorMessage = data.message || errorMessage;
+        } catch {
+          // Use default message
+        }
+        throw new Error(errorMessage);
+      }
+      await fetchData(); // Refresh the rules list
+      onSuccess(); // Notify parent
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete workflow rule');
+    }
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Never';
     const date = new Date(dateString);
@@ -221,20 +251,17 @@ export default function WorkflowRulesModal({
                 </div>
                 {isEditable && (
                   <div className="flex gap-2 ml-4">
-                    {/* TODO: Add edit and delete functionality in future update */}
                     <button
                       type="button"
-                      disabled
-                      className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Edit functionality coming soon"
+                      onClick={() => handleEdit(rule)}
+                      className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100"
                     >
                       Edit
                     </button>
                     <button
                       type="button"
-                      disabled
-                      className="px-3 py-1 text-sm border border-red-300 text-red-700 rounded hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Delete functionality coming soon"
+                      onClick={() => handleDelete(rule)}
+                      className="px-3 py-1 text-sm border border-red-300 text-red-700 rounded hover:bg-red-50"
                     >
                       Delete
                     </button>
@@ -377,6 +404,18 @@ export default function WorkflowRulesModal({
           </button>
         </div>
       </div>
+
+      {editingRule && (
+        <EditWorkflowRuleModal
+          open={!!editingRule}
+          onClose={() => setEditingRule(null)}
+          onSuccess={() => {
+            setEditingRule(null);
+            fetchData(); // Refresh the rules list
+          }}
+          rule={editingRule}
+        />
+      )}
     </div>
   );
 }
