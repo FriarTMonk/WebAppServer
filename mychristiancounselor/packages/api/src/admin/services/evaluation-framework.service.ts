@@ -1,12 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-
-export interface CreateFrameworkDto {
-  version: string;
-  criteria: any;
-  categoryWeights: any;
-  thresholds: { notAligned: number; globallyAligned: number };
-}
+import { CreateFrameworkDto } from '../dto/create-framework.dto';
 
 @Injectable()
 export class EvaluationFrameworkService {

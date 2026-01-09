@@ -12,7 +12,8 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { queueConfig } from '../config/queue.config';
-import { EvaluationFrameworkService, CreateFrameworkDto } from './services/evaluation-framework.service';
+import { CreateFrameworkDto } from './dto/create-framework.dto';
+import { EvaluationFrameworkService } from './services/evaluation-framework.service';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, IsPlatformAdminGuard)
