@@ -61,6 +61,7 @@ export default function EvaluationCostsPage() {
       const data = await response.json();
       setAnalytics(data);
     } catch (err) {
+      console.error('Error fetching cost analytics:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
