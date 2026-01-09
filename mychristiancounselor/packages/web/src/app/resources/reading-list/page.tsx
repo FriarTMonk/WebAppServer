@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
-import { useUserPermissions } from '../../../hooks/useUserPermissions';
 import { apiGet, apiPut, apiDelete } from '../../../lib/api';
 import { showToast } from '@/components/Toast';
 import { ReadingListCard } from '@/components/reading-list/ReadingListCard';
@@ -36,7 +35,6 @@ interface ReadingListItem {
 export default function ReadingListPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const permissions = useUserPermissions();
   const [activeTab, setActiveTab] = useState<ReadingListTab>('want_to_read');
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [accessChecked, setAccessChecked] = useState(false);
@@ -53,12 +51,15 @@ export default function ReadingListPage() {
       }
 
       try {
-        // Platform admins have access to everything
-        const isPlatformAdmin = permissions?.isPlatformAdmin || false;
-        if (isPlatformAdmin) {
-          setHasAccess(true);
-          setAccessChecked(true);
-          return;
+        // Check if user is platform admin
+        const adminCheck = await apiGet('/admin/health-check');
+        if (adminCheck.ok) {
+          const adminData = await adminCheck.json();
+          if (adminData.isPlatformAdmin) {
+            setHasAccess(true);
+            setAccessChecked(true);
+            return;
+          }
         }
 
         const hasActiveSubscription = user.subscriptionStatus === 'active';
@@ -81,7 +82,7 @@ export default function ReadingListPage() {
     };
 
     checkAccess();
-  }, [user, permissions]);
+  }, [user]);
 
   // Redirect if no access
   useEffect(() => {
