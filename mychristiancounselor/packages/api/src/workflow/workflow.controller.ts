@@ -81,7 +81,7 @@ export class WorkflowController {
   }
 
   @Delete(':id')
-  async deleteRule(@Param('id') id: string) {
-    return this.ruleService.deleteRule(id);
+  async deleteRule(@Param('id') id: string, @Request() req) {
+    return this.ruleService.deleteRule(id, req.user.id);
   }
 }

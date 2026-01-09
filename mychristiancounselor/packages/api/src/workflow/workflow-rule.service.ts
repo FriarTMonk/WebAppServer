@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkflowRuleLevel } from '@prisma/client';
 
@@ -72,18 +72,70 @@ export class WorkflowRuleService {
     });
   }
 
-  async updateRule(ruleId: string, updates: Partial<CreateRuleDto> & { isActive?: boolean }) {
+  async updateRule(
+    ruleId: string,
+    updates: Partial<CreateRuleDto> & { isActive?: boolean },
+    userId: string,
+  ) {
     this.logger.log(`Updating workflow rule: ${ruleId}`);
 
+    // Get the rule to check ownership
+    const rule = await this.prisma.workflowRule.findUnique({
+      where: { id: ruleId },
+    });
+
+    if (!rule) {
+      throw new NotFoundException('Workflow rule not found');
+    }
+
+    // Get user to check if platform admin
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isPlatformAdmin: true },
+    });
+
+    // Check authorization: owner OR platform admin
+    const isOwner = rule.ownerId === userId;
+    const isPlatformAdmin = user?.isPlatformAdmin || false;
+
+    if (!isOwner && !isPlatformAdmin) {
+      throw new ForbiddenException('Not authorized to update this workflow rule');
+    }
+
+    // Proceed with update
     return this.prisma.workflowRule.update({
       where: { id: ruleId },
       data: updates,
     });
   }
 
-  async deleteRule(ruleId: string) {
+  async deleteRule(ruleId: string, userId: string) {
     this.logger.log(`Deleting workflow rule: ${ruleId}`);
 
+    // Get the rule to check ownership
+    const rule = await this.prisma.workflowRule.findUnique({
+      where: { id: ruleId },
+    });
+
+    if (!rule) {
+      throw new NotFoundException('Workflow rule not found');
+    }
+
+    // Get user to check if platform admin
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isPlatformAdmin: true },
+    });
+
+    // Check authorization: owner OR platform admin
+    const isOwner = rule.ownerId === userId;
+    const isPlatformAdmin = user?.isPlatformAdmin || false;
+
+    if (!isOwner && !isPlatformAdmin) {
+      throw new ForbiddenException('Not authorized to delete this workflow rule');
+    }
+
+    // Proceed with delete
     return this.prisma.workflowRule.delete({
       where: { id: ruleId },
     });
