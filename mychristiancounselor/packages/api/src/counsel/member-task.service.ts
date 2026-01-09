@@ -143,13 +143,29 @@ export class MemberTaskService {
    * Update a task with partial data
    */
   async updateTask(id: string, updates: UpdateTaskDto) {
-    return this.prisma.memberTask.update({
-      where: { id },
-      data: {
-        ...updates,
-        ...(updates.dueDate && { dueDate: new Date(updates.dueDate) }),
-        updatedAt: new Date(),
-      },
-    });
+    this.logger.log(`Updating task ${id}`);
+
+    try {
+      return await this.prisma.memberTask.update({
+        where: { id },
+        data: {
+          ...updates,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('Task not found');
+      }
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        this.logger.error(
+          `Database error updating task: ${error.code} - ${error.message}`,
+        );
+        throw new InternalServerErrorException('Failed to update task');
+      }
+      throw error;
+    }
   }
 }

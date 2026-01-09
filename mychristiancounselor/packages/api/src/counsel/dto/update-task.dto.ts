@@ -1,5 +1,6 @@
-import { IsOptional, IsString, IsDateString, IsEnum, MaxLength } from 'class-validator';
+import { IsOptional, IsString, IsEnum, MaxLength } from 'class-validator';
 import { MemberTaskStatus } from '@prisma/client';
+import { Type } from 'class-transformer';
 
 export class UpdateTaskDto {
   @IsOptional()
@@ -13,8 +14,8 @@ export class UpdateTaskDto {
   description?: string;
 
   @IsOptional()
-  @IsDateString()
-  dueDate?: string;
+  @Type(() => Date)
+  dueDate?: Date;
 
   @IsOptional()
   @IsEnum(MemberTaskStatus)
