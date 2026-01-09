@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { showToast } from '../Toast';
+import { apiPost } from '@/lib/api';
 
 interface AddToReadingListButtonProps {
   bookId: string;
@@ -22,16 +23,9 @@ export function AddToReadingListButton({
   const handleAdd = async () => {
     setAdding(true);
     try {
-      const response = await fetch('/api/resources/reading-list', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          bookId,
-          status: 'want_to_read',
-        }),
+      const response = await apiPost('/resources/reading-list', {
+        bookId,
+        status: 'want_to_read',
       });
 
       if (!response.ok) {
