@@ -11,7 +11,7 @@ interface WorkflowRule {
   conditions?: any;
   actions: any[];
   priority?: number;
-  enabled: boolean;
+  isActive: boolean;
 }
 
 interface EditWorkflowRuleModalProps {
@@ -29,7 +29,7 @@ export function EditWorkflowRuleModal({ open, onClose, onSuccess, rule }: EditWo
   );
   const [actions, setActions] = useState(JSON.stringify(rule.actions, null, 2));
   const [priority, setPriority] = useState(rule.priority?.toString() || '');
-  const [enabled, setEnabled] = useState(rule.enabled);
+  const [isActive, setIsActive] = useState(rule.isActive);
   const [error, setError] = useState('');
   const [jsonErrors, setJsonErrors] = useState<{
     trigger?: string;
@@ -45,7 +45,7 @@ export function EditWorkflowRuleModal({ open, onClose, onSuccess, rule }: EditWo
     setConditions(rule.conditions ? JSON.stringify(rule.conditions, null, 2) : '');
     setActions(JSON.stringify(rule.actions, null, 2));
     setPriority(rule.priority?.toString() || '');
-    setEnabled(rule.enabled);
+    setIsActive(rule.isActive);
   }, [rule]);
 
   // Handle Escape key to close modal
@@ -140,7 +140,7 @@ export function EditWorkflowRuleModal({ open, onClose, onSuccess, rule }: EditWo
         name: name.trim(),
         trigger: parsedTrigger,
         actions: parsedActions,
-        enabled,
+        isActive,
       };
 
       if (parsedConditions) {
@@ -299,13 +299,13 @@ export function EditWorkflowRuleModal({ open, onClose, onSuccess, rule }: EditWo
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
-                id="enabled"
-                checked={enabled}
-                onChange={(e) => setEnabled(e.target.checked)}
+                id="isActive"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
                 disabled={isLoading}
                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               />
-              <label htmlFor="enabled" className="text-sm font-medium text-gray-700 cursor-pointer">
+              <label htmlFor="isActive" className="text-sm font-medium text-gray-700 cursor-pointer">
                 Enabled
               </label>
             </div>
