@@ -200,4 +200,26 @@ export class AssessmentService {
       severity: assignment.responses?.interpretation || 'unknown',
     }));
   }
+
+  /**
+   * Get assigned assessment with responses for form display
+   */
+  async getAssignmentWithForm(assignedAssessmentId: string) {
+    this.logger.log(
+      `Fetching assignment ${assignedAssessmentId} with form data`,
+    );
+
+    const assignment = await this.prisma.assignedAssessment.findUnique({
+      where: { id: assignedAssessmentId },
+      include: {
+        responses: true,
+      },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('Assessment assignment not found');
+    }
+
+    return assignment;
+  }
 }

@@ -7,6 +7,8 @@ import {
   Query,
   UseGuards,
   Request,
+  NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AssessmentService } from './assessment.service';
@@ -135,5 +137,46 @@ export class AssessmentController {
       assignedBy: req.user.id,
       dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
     });
+  }
+
+  /**
+   * Get assessment form with questions for a member to complete
+   */
+  @Get('assigned/:assignedId/form')
+  async getAssessmentForm(
+    @Param('assignedId') assignedId: string,
+    @Request() req: any,
+  ) {
+    // 1. Fetch assignment with assessment and responses
+    const assignment = await this.assessmentService.getAssignmentWithForm(
+      assignedId,
+    );
+
+    // 2. Verify ownership
+    if (assignment.memberId !== req.user.id) {
+      throw new ForbiddenException('Not your assessment');
+    }
+
+    // 3. Get assessment definition from CLINICAL_ASSESSMENTS
+    const assessmentDefinition = CLINICAL_ASSESSMENTS[assignment.assessmentId];
+
+    if (!assessmentDefinition) {
+      throw new NotFoundException('Assessment definition not found');
+    }
+
+    return {
+      assignment: {
+        id: assignment.id,
+        dueDate: assignment.dueDate,
+        status: assignment.status,
+      },
+      assessment: {
+        id: assessmentDefinition.id,
+        name: assessmentDefinition.name,
+        type: assessmentDefinition.type,
+        questions: assessmentDefinition.questions,
+      },
+      responses: assignment.responses?.answers || [],
+    };
   }
 }
