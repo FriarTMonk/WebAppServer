@@ -426,6 +426,12 @@ export const assessmentApi = {
   // Member endpoints
   getMyAssessments: () => apiGet('/counsel/assessments/assigned'),
 
+  getAssignedAssessmentForm: (assignedId: string) =>
+    apiGet(`/counsel/assessments/assigned/${assignedId}/form`),
+
+  submitAssignedAssessment: (assignedId: string, data: { responses: Record<string, any> }) =>
+    apiPost(`/counsel/assessments/assigned/${assignedId}/submit`, data),
+
   submit: (assessmentId: string, responses: any) =>
     apiPost(`/counsel/assessments/assigned/${assessmentId}/submit`, { responses }),
 };
