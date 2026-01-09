@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Logger, Query, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Logger, Query, Param, Body, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { IsPlatformAdminGuard } from './guards/is-platform-admin.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -14,6 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { queueConfig } from '../config/queue.config';
 import { CreateFrameworkDto } from './dto/create-framework.dto';
 import { EvaluationFrameworkService } from './services/evaluation-framework.service';
+import { QueueMonitoringService } from './services/queue-monitoring.service';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, IsPlatformAdminGuard)
@@ -27,6 +28,7 @@ export class AdminController {
     @InjectQueue(queueConfig.evaluationQueue.name)
     private readonly evaluationQueue: Queue,
     private evaluationFramework: EvaluationFrameworkService,
+    private queueMonitoring: QueueMonitoringService,
   ) {}
 
   @Get('audit-log')
@@ -468,5 +470,36 @@ export class AdminController {
     @Param('id') id: string,
   ) {
     return this.evaluationFramework.activate(userId, id);
+  }
+
+  // Queue Monitoring
+  @Get('evaluation/queue/status')
+  async getQueueStatus() {
+    return this.queueMonitoring.getQueueStatus();
+  }
+
+  @Get('evaluation/queue/jobs')
+  async getQueueJobs(@Query('status') status?: string) {
+    return this.queueMonitoring.getJobs(status);
+  }
+
+  @Post('evaluation/queue/jobs/:jobId/retry')
+  async retryJob(@Param('jobId') jobId: string) {
+    return this.queueMonitoring.retryJob(jobId);
+  }
+
+  @Delete('evaluation/queue/jobs/:jobId')
+  async removeJob(@Param('jobId') jobId: string) {
+    return this.queueMonitoring.removeJob(jobId);
+  }
+
+  @Post('evaluation/queue/pause')
+  async pauseQueue() {
+    return this.queueMonitoring.pauseQueue();
+  }
+
+  @Post('evaluation/queue/resume')
+  async resumeQueue() {
+    return this.queueMonitoring.resumeQueue();
   }
 }
