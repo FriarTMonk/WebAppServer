@@ -110,37 +110,43 @@ model RefreshToken {
 }
 
 model Organization {
-  id                                String                   @id @default(uuid())
+  id                                String    @id @default(uuid())
   name                              String
   description                       String?
   licenseType                       String?
-  licenseStatus                     String                   @default("trial")
+  licenseStatus                     String    @default("trial")
   licenseExpiresAt                  DateTime?
-  maxMembers                        Int                      @default(10)
-  createdAt                         DateTime                 @default(now())
-  updatedAt                         DateTime                 @updatedAt
-  isSystemOrganization              Boolean                  @default(false)
+  maxMembers                        Int       @default(10)
+  createdAt                         DateTime  @default(now())
+  updatedAt                         DateTime  @updatedAt
+  isSystemOrganization              Boolean   @default(false)
   archivedAt                        DateTime?
-  matureContentAccountTypeThreshold String?                  @default("teen")
-  offersVirtualServices             Boolean                  @default(false)
+  matureContentAccountTypeThreshold String?   @default("teen")
+  offersVirtualServices             Boolean   @default(false)
   organizationAddressId             String?
-  specialtyTags                     String[]                 @default([])
+  specialtyTags                     String[]  @default([])
   website                           String?
-  assessments                       Assessment[]
-  auditLogs                         AdminAuditLog[]
-  booksSubmitted                    Book[]                   @relation("BooksSubmittedByOrg")
-  bookEndorsements                  BookEndorsement[]
-  counselorAssignments              CounselorAssignment[]
-  externalOrgsRecommended           ExternalOrganization[]   @relation("ExternalOrgsRecommended")
-  metricSnapshots                   MetricSnapshot[]
-  organizationAddress               OrganizationAddress?     @relation(fields: [organizationAddressId], references: [id])
-  contract                          OrganizationContract?
-  invitations                       OrganizationInvitation[]
-  members                           OrganizationMember[]
-  roles                             OrganizationRole[]
-  prospectsConverted                Prospect[]               @relation("ProspectConversions")
-  salesOpportunities                SalesOpportunity[]
-  supportTickets                    SupportTicket[]
+
+  // Book filtering (Phase 4)
+  allowedVisibilityTiers String[] @default(["globally_aligned", "conceptually_aligned"])
+  customBookIds          String[] @default([])
+
+  // Relations
+  assessments             Assessment[]
+  auditLogs               AdminAuditLog[]
+  booksSubmitted          Book[]                   @relation("BooksSubmittedByOrg")
+  bookEndorsements        BookEndorsement[]
+  counselorAssignments    CounselorAssignment[]
+  externalOrgsRecommended ExternalOrganization[]   @relation("ExternalOrgsRecommended")
+  metricSnapshots         MetricSnapshot[]
+  organizationAddress     OrganizationAddress?     @relation(fields: [organizationAddressId], references: [id])
+  contract                OrganizationContract?
+  invitations             OrganizationInvitation[]
+  members                 OrganizationMember[]
+  roles                   OrganizationRole[]
+  prospectsConverted      Prospect[]               @relation("ProspectConversions")
+  salesOpportunities      SalesOpportunity[]
+  supportTickets          SupportTicket[]
 
   @@index([licenseStatus])
   @@index([licenseExpiresAt])
