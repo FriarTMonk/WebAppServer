@@ -898,6 +898,21 @@ model PurchaseLink {
   @@index([bookId])
 }
 
+model EvaluationFramework {
+  id              String    @id @default(uuid())
+  version         String    @unique
+  criteria        Json // Evaluation criteria with weights
+  categoryWeights Json // Category weights
+  thresholds      Json // { notAligned: 70, globallyAligned: 90 }
+  isActive        Boolean   @default(false)
+  createdBy       String
+  createdAt       DateTime  @default(now())
+  activatedAt     DateTime?
+
+  @@index([isActive])
+  @@index([version])
+}
+
 model SalesOpportunity {
   id                   String                  @id @default(uuid())
   title                String
