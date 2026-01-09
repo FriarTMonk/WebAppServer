@@ -12,6 +12,7 @@ import {
   OrganizationBrowseResponseDto,
   CreateExternalOrganizationDto,
 } from './dto';
+import { UserReadingList } from '@prisma/client';
 
 /**
  * Controller for resources endpoints (reading lists, organizations, recommendations).
@@ -63,7 +64,7 @@ export class ResourcesController {
   async addToReadingList(
     @CurrentUser('id') userId: string,
     @Body() dto: AddToReadingListDto,
-  ): Promise<any> {
+  ): Promise<UserReadingList> {
     return this.readingListService.addToReadingList(userId, dto);
   }
 
@@ -72,7 +73,7 @@ export class ResourcesController {
     @Param('itemId') itemId: string,
     @CurrentUser('id') userId: string,
     @Body() dto: UpdateReadingListDto,
-  ): Promise<any> {
+  ): Promise<UserReadingList> {
     return this.readingListService.updateReadingListItem(userId, itemId, dto);
   }
 
