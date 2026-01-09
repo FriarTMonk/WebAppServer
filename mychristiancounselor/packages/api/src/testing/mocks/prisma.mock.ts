@@ -17,6 +17,7 @@ function createModelMock(methods: string[] = []) {
     'deleteMany',
     'upsert',
     'count',
+    'groupBy',
     ...methods,
   ];
 
@@ -44,6 +45,8 @@ export function createPrismaMock(): any {
     counselorCoverageGrant: createModelMock(),
     counselorObservation: createModelMock(),
     memberWellbeingStatus: createModelMock(),
+    memberTask: createModelMock(),
+    assignedAssessment: createModelMock(),
     organization: createModelMock(),
     organizationMembership: createModelMock(),
     organizationMember: createModelMock(),

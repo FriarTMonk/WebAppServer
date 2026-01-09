@@ -2,11 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { SafetyService } from './safety.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { BedrockService } from '../ai/bedrock.service';
 
 describe('SafetyService', () => {
   let service: SafetyService;
   let configService: ConfigService;
   let prismaService: PrismaService;
+  let bedrockService: BedrockService;
 
   const mockConfigService = {
     get: jest.fn(),
@@ -22,8 +24,14 @@ describe('SafetyService', () => {
     },
   };
 
+  const mockBedrockService = {
+    chatCompletion: jest.fn(),
+    jsonCompletion: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
+    jest.restoreAllMocks();
 
     // Default: OpenAI not configured (pattern-only mode for most tests)
     mockConfigService.get.mockReturnValue(null);
@@ -33,12 +41,14 @@ describe('SafetyService', () => {
         SafetyService,
         { provide: ConfigService, useValue: mockConfigService },
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: BedrockService, useValue: mockBedrockService },
       ],
     }).compile();
 
     service = module.get<SafetyService>(SafetyService);
     configService = module.get<ConfigService>(ConfigService);
     prismaService = module.get<PrismaService>(PrismaService);
+    bedrockService = module.get<BedrockService>(BedrockService);
   });
 
   it('should be defined', () => {
@@ -106,7 +116,10 @@ describe('SafetyService', () => {
 
     describe('Medium-Confidence Pattern Detection (Needs AI Validation)', () => {
       it('should detect ambiguous abuse terms with medium confidence (pattern-only mode)', async () => {
-        // Without OpenAI configured, medium-confidence patterns still trigger detection
+        // Medium-confidence patterns require AI validation
+        // Mock AI to return "true" for crisis detection
+        jest.spyOn(bedrockService, 'chatCompletion').mockResolvedValue('true');
+
         const messages = [
           'experiencing abuse',
           'violence in my home',
@@ -117,14 +130,17 @@ describe('SafetyService', () => {
         for (const msg of messages) {
           const result = await service.detectCrisis(msg);
           expect(result.isDetected).toBe(true);
-          expect(result.detectionMethod).toBe('pattern');
-          expect(result.confidence).toBe('medium'); // Medium confidence without AI validation
+          expect(result.detectionMethod).toBe('both'); // Pattern + AI
+          expect(result.confidence).toBe('medium');
         }
       });
     });
 
     describe('False Positives - Should NOT Detect Crisis', () => {
       it('should not detect crisis in normal emotional messages', async () => {
+        // Mock AI to return "false" for non-crisis messages
+        jest.spyOn(bedrockService, 'chatCompletion').mockResolvedValue('false');
+
         const normalMessages = [
           'I am feeling sad today',
           'Need guidance on my marriage',
@@ -141,6 +157,9 @@ describe('SafetyService', () => {
       });
 
       it('should not detect crisis in metaphorical language', async () => {
+        // Mock AI to return "false" for non-crisis messages
+        jest.spyOn(bedrockService, 'chatCompletion').mockResolvedValue('false');
+
         const messages = [
           'This movie is killing me with laughter',
           'I am dying to see you',
@@ -156,6 +175,9 @@ describe('SafetyService', () => {
       });
 
       it('should not detect crisis in spiritual questions about death', async () => {
+        // Mock AI to return "false" for non-crisis messages
+        jest.spyOn(bedrockService, 'chatCompletion').mockResolvedValue('false');
+
         const messages = [
           'God, are you listening?',
           'Where are you God?',
@@ -214,6 +236,10 @@ describe('SafetyService', () => {
 
     describe('Medium-Confidence Pattern Detection', () => {
       it('should detect ambiguous grief terms with medium confidence', async () => {
+        // Medium-confidence patterns require AI validation
+        // Mock AI to return "true" for grief detection
+        jest.spyOn(bedrockService, 'chatCompletion').mockResolvedValue('true');
+
         const messages = [
           'dealing with death',
           'someone died',
@@ -225,7 +251,7 @@ describe('SafetyService', () => {
         for (const msg of messages) {
           const result = await service.detectGrief(msg);
           expect(result.isDetected).toBe(true);
-          expect(result.detectionMethod).toBe('pattern');
+          expect(result.detectionMethod).toBe('both'); // Pattern + AI
           expect(result.confidence).toBe('medium');
         }
       });
@@ -233,6 +259,9 @@ describe('SafetyService', () => {
 
     describe('False Positives - Should NOT Detect Grief', () => {
       it('should not detect grief in spiritual seeking', async () => {
+        // Mock AI to return "false" for non-grief messages
+        jest.spyOn(bedrockService, 'chatCompletion').mockResolvedValue('false');
+
         const messages = [
           'God, are you listening?',
           'I feel so alone',
@@ -248,6 +277,9 @@ describe('SafetyService', () => {
       });
 
       it('should not detect grief in general discussions', async () => {
+        // Mock AI to return "false" for non-grief messages
+        jest.spyOn(bedrockService, 'chatCompletion').mockResolvedValue('false');
+
         const messages = [
           'What happens after death?',
           'Will there be death in heaven?',

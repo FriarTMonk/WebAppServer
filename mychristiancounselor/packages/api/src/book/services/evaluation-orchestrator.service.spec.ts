@@ -27,7 +27,7 @@ describe('EvaluationOrchestratorService', () => {
               findUnique: jest.fn(),
               update: jest.fn(),
             },
-            evaluationRecord: {
+            bookEvaluation: {
               create: jest.fn(),
             },
             doctrineCategoryScore: {
@@ -77,7 +77,7 @@ describe('EvaluationOrchestratorService', () => {
     jest.spyOn(prisma.book, 'findUnique').mockResolvedValue(mockBook as any);
     jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
     jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
-    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.bookEvaluation, 'create').mockResolvedValue({} as any);
     jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
 
     await orchestrator.evaluateBook('book-id');
@@ -132,7 +132,7 @@ describe('EvaluationOrchestratorService', () => {
       .mockResolvedValueOnce(sonnetResult) // Sonnet evaluation
       .mockResolvedValueOnce(opusResult);  // Opus re-evaluation
     jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
-    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.bookEvaluation, 'create').mockResolvedValue({} as any);
     jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
 
     await orchestrator.evaluateBook('book-id');
@@ -180,7 +180,7 @@ describe('EvaluationOrchestratorService', () => {
       jest.spyOn(prisma.book, 'findUnique').mockResolvedValue(mockBook as any);
       jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
       jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
-      jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+      jest.spyOn(prisma.bookEvaluation, 'create').mockResolvedValue({} as any);
       jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
 
       await orchestrator.evaluateBook('book-id');
@@ -234,7 +234,7 @@ describe('EvaluationOrchestratorService', () => {
         .mockResolvedValueOnce(sonnetResult)
         .mockResolvedValueOnce(opusResult);
       jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
-      jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+      jest.spyOn(prisma.bookEvaluation, 'create').mockResolvedValue({} as any);
       jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
 
       await orchestrator.evaluateBook('book-id');
@@ -281,7 +281,7 @@ describe('EvaluationOrchestratorService', () => {
         .mockResolvedValueOnce(sonnetResult)
         .mockResolvedValueOnce(opusResult);
       jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
-      jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+      jest.spyOn(prisma.bookEvaluation, 'create').mockResolvedValue({} as any);
       jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
 
       await orchestrator.evaluateBook('book-id');
@@ -323,7 +323,7 @@ describe('EvaluationOrchestratorService', () => {
     jest.spyOn(prisma.book, 'findUnique').mockResolvedValue(mockBook as any);
     jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
     jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
-    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.bookEvaluation, 'create').mockResolvedValue({} as any);
     jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
 
     await orchestrator.evaluateBook('book-id');
@@ -366,7 +366,7 @@ describe('EvaluationOrchestratorService', () => {
     jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
     jest.spyOn(storageProvider, 'upload').mockResolvedValue('active/books/book-id.pdf');
     jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
-    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.bookEvaluation, 'create').mockResolvedValue({} as any);
     jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
 
     await orchestrator.evaluateBook('book-id', mockPdfBuffer);
@@ -411,7 +411,7 @@ describe('EvaluationOrchestratorService', () => {
     jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
     jest.spyOn(storageProvider, 'upload').mockResolvedValue('archived/books/book-id.pdf');
     jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
-    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.bookEvaluation, 'create').mockResolvedValue({} as any);
     jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
 
     await orchestrator.evaluateBook('book-id', mockPdfBuffer);
@@ -454,7 +454,7 @@ describe('EvaluationOrchestratorService', () => {
     jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
     jest.spyOn(storageProvider, 'upload').mockResolvedValue('active/books/book-id.pdf');
     jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
-    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.bookEvaluation, 'create').mockResolvedValue({} as any);
     jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
 
     await orchestrator.evaluateBook('book-id');
@@ -494,7 +494,7 @@ describe('EvaluationOrchestratorService', () => {
     jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
     jest.spyOn(storageProvider, 'move').mockResolvedValue();
     jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
-    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.bookEvaluation, 'create').mockResolvedValue({} as any);
     jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
 
     await orchestrator.evaluateBook('book-id');
@@ -541,7 +541,7 @@ describe('EvaluationOrchestratorService', () => {
     jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
     jest.spyOn(storageProvider, 'move').mockResolvedValue();
     jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
-    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.bookEvaluation, 'create').mockResolvedValue({} as any);
     jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
 
     await orchestrator.evaluateBook('book-id');
@@ -588,7 +588,7 @@ describe('EvaluationOrchestratorService', () => {
     jest.spyOn(scorer, 'evaluate').mockResolvedValue(mockEvalResult);
     jest.spyOn(storageProvider, 'move').mockResolvedValue();
     jest.spyOn(prisma.book, 'update').mockResolvedValue({} as any);
-    jest.spyOn(prisma.evaluationRecord, 'create').mockResolvedValue({} as any);
+    jest.spyOn(prisma.bookEvaluation, 'create').mockResolvedValue({} as any);
     jest.spyOn(prisma.doctrineCategoryScore, 'createMany').mockResolvedValue({} as any);
 
     await orchestrator.evaluateBook('book-id');

@@ -74,7 +74,7 @@ describe('VisibilityCheckerService', () => {
     jest.spyOn(prisma.user, 'findUnique').mockResolvedValue({
       id: 'user-id',
       accountType: 'adult',
-      organizationMembers: [{ organizationId: 'org-1' }],
+      organizationMemberships: [{ organizationId: 'org-1' }],
     } as any);
 
     const canAccess = await service.canAccess('user-id', 'book-id', 'book');

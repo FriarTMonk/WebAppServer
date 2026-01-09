@@ -65,6 +65,13 @@ describe('BedrockService', () => {
           accessKeyId: 'test-access-key',
           secretAccessKey: 'test-secret-key',
         },
+        maxAttempts: 1,
+        requestHandler: {
+          httpsAgent: {
+            timeout: 50000,
+          },
+          requestTimeout: 50000,
+        },
       });
     });
 

@@ -65,10 +65,28 @@ describe('AssignmentService', () => {
       };
 
       prismaMock.counselorAssignment!.findMany = jest.fn().mockResolvedValue([assignmentWithRelations]);
-      prismaMock.session!.findFirst = jest.fn().mockResolvedValue({ createdAt: new Date('2025-01-01') });
-      prismaMock.session!.count = jest.fn().mockResolvedValue(5);
-      prismaMock.counselorObservation!.count = jest.fn().mockResolvedValue(3);
-      prismaMock.memberWellbeingStatus!.findUnique = jest.fn().mockResolvedValue(wellbeingStatus);
+      // Mock groupBy for last login and conversation count (called twice)
+      prismaMock.session!.groupBy = jest.fn()
+        .mockResolvedValueOnce([{ userId: member.id, _max: { createdAt: new Date('2025-01-01') } }]) // last login
+        .mockResolvedValueOnce([{ userId: member.id, _count: { id: 5 } }]); // conversation count
+      // Mock $queryRaw for last active message
+      prismaMock.$queryRaw = jest.fn().mockResolvedValue([
+        { userId: member.id, maxTimestamp: new Date('2025-01-02') }
+      ]);
+      // Mock groupBy for observation count
+      prismaMock.counselorObservation!.groupBy = jest.fn().mockResolvedValue([
+        { memberId: member.id, _count: { id: 3 } }
+      ]);
+      // Mock groupBy for pending tasks
+      prismaMock.memberTask!.groupBy = jest.fn()
+        .mockResolvedValueOnce([{ memberId: member.id, _count: { id: 2 } }]) // pending tasks
+        .mockResolvedValueOnce([{ memberId: member.id, _count: { id: 1 } }]); // overdue tasks
+      // Mock groupBy for pending assessments
+      prismaMock.assignedAssessment!.groupBy = jest.fn().mockResolvedValue([
+        { memberId: member.id, _count: { id: 1 } }
+      ]);
+      // Mock findMany for wellbeing statuses
+      prismaMock.memberWellbeingStatus!.findMany = jest.fn().mockResolvedValue([wellbeingStatus]);
 
       const result = await service.getCounselorMembers(counselorId, organizationId);
 
@@ -106,28 +124,49 @@ describe('AssignmentService', () => {
       };
 
       prismaMock.counselorAssignment!.findMany = jest.fn().mockResolvedValue([assignmentWithRelations]);
-      prismaMock.session!.findFirst = jest.fn().mockResolvedValue(null);
-      prismaMock.session!.count = jest.fn().mockResolvedValue(0);
-      prismaMock.counselorObservation!.count = jest.fn().mockResolvedValue(0);
-      prismaMock.memberWellbeingStatus!.findUnique = jest.fn().mockResolvedValue(null);
-      prismaMock.memberWellbeingStatus!.create = jest.fn().mockResolvedValue(defaultWellbeingStatus);
+      // Mock groupBy calls with empty results
+      prismaMock.session!.groupBy = jest.fn()
+        .mockResolvedValueOnce([]) // last login (empty)
+        .mockResolvedValueOnce([{ userId: member.id, _count: { id: 0 } }]); // conversation count
+      prismaMock.$queryRaw = jest.fn().mockResolvedValue([]);
+      prismaMock.counselorObservation!.groupBy = jest.fn().mockResolvedValue([]);
+      prismaMock.memberTask!.groupBy = jest.fn()
+        .mockResolvedValueOnce([]) // pending tasks
+        .mockResolvedValueOnce([]); // overdue tasks
+      prismaMock.assignedAssessment!.groupBy = jest.fn().mockResolvedValue([]);
+      prismaMock.memberWellbeingStatus!.findMany = jest.fn().mockResolvedValue([]);
+      prismaMock.memberWellbeingStatus!.createMany = jest.fn().mockResolvedValue({ count: 1 });
+      prismaMock.memberWellbeingStatus!.findMany = jest.fn()
+        .mockResolvedValueOnce([]) // First call returns empty
+        .mockResolvedValueOnce([defaultWellbeingStatus]); // Second call after createMany
 
       const result = await service.getCounselorMembers(counselorId, organizationId);
 
       expect(result).toHaveLength(1);
-      expect(prismaMock.memberWellbeingStatus!.create).toHaveBeenCalledWith({
-        data: {
+      expect(prismaMock.memberWellbeingStatus!.createMany).toHaveBeenCalledWith({
+        data: [{
           memberId: member.id,
           status: 'green',
           aiSuggestedStatus: 'green',
           summary: 'Member profile created. AI analysis pending.',
           lastAnalyzedAt: expect.any(Date),
-        },
+        }],
       });
     });
 
     it('should return empty array when counselor has no assignments', async () => {
       prismaMock.counselorAssignment!.findMany = jest.fn().mockResolvedValue([]);
+      // Mock all groupBy calls with empty results
+      prismaMock.session!.groupBy = jest.fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      prismaMock.$queryRaw = jest.fn().mockResolvedValue([]);
+      prismaMock.counselorObservation!.groupBy = jest.fn().mockResolvedValue([]);
+      prismaMock.memberTask!.groupBy = jest.fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      prismaMock.assignedAssessment!.groupBy = jest.fn().mockResolvedValue([]);
+      prismaMock.memberWellbeingStatus!.findMany = jest.fn().mockResolvedValue([]);
 
       const result = await service.getCounselorMembers(counselorId, organizationId);
 
@@ -136,6 +175,17 @@ describe('AssignmentService', () => {
 
     it('should only return active assignments', async () => {
       prismaMock.counselorAssignment!.findMany = jest.fn().mockResolvedValue([]);
+      // Mock all groupBy calls with empty results
+      prismaMock.session!.groupBy = jest.fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      prismaMock.$queryRaw = jest.fn().mockResolvedValue([]);
+      prismaMock.counselorObservation!.groupBy = jest.fn().mockResolvedValue([]);
+      prismaMock.memberTask!.groupBy = jest.fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      prismaMock.assignedAssessment!.groupBy = jest.fn().mockResolvedValue([]);
+      prismaMock.memberWellbeingStatus!.findMany = jest.fn().mockResolvedValue([]);
 
       await service.getCounselorMembers(counselorId, organizationId);
 

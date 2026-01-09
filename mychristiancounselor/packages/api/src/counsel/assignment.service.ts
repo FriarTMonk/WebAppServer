@@ -52,6 +52,12 @@ export class AssignmentService {
 
     // Collect all member IDs for batch queries
     const memberIds = assignments.map(a => a.memberId);
+
+    // Early return if no assignments
+    if (memberIds.length === 0) {
+      return [];
+    }
+
     const now = new Date();
 
     // Execute batch queries in parallel
