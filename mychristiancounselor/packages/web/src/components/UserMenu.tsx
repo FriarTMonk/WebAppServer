@@ -212,8 +212,7 @@ export function UserMenu() {
               <button
                 onClick={() => {
                   setShowSubscriptionModal(false);
-                  // TODO: Navigate to subscription page when it's ready
-                  alert('Subscription feature coming soon!');
+                  router.push('/settings/subscription');
                 }}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
