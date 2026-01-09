@@ -44,6 +44,7 @@ export default function EditTaskModal({
       document.addEventListener('keydown', handleEscape);
       return () => document.removeEventListener('keydown', handleEscape);
     }
+    return undefined;
   }, [open, submitting, onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
