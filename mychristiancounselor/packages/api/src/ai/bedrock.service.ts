@@ -204,6 +204,7 @@ export class BedrockService {
   /**
    * JSON mode - forces model to return valid JSON
    * Useful for structured outputs
+   * Returns both the parsed JSON and usage metadata
    */
   async jsonCompletion(
     model: 'sonnet' | 'haiku' | 'opus',
@@ -212,7 +213,11 @@ export class BedrockService {
       max_tokens?: number;
       temperature?: number;
     } = {}
-  ): Promise<any> {
+  ): Promise<{
+    data: any;
+    usage: { input_tokens: number; output_tokens: number };
+    modelId: string;
+  }> {
     // Add JSON instruction to system message
     const systemMessage = messages.find(msg => msg.role === 'system');
     const enhancedSystem = systemMessage
@@ -245,7 +250,18 @@ export class BedrockService {
       const rawText = textContent.text.trim();
       let jsonText = this.extractJSON(rawText);
 
-      return JSON.parse(jsonText);
+      // Get the actual model ID used
+      const modelId = model === 'sonnet'
+        ? this.MODELS.SONNET
+        : model === 'haiku'
+        ? this.MODELS.HAIKU
+        : this.MODELS.OPUS;
+
+      return {
+        data: JSON.parse(jsonText),
+        usage: response.usage,
+        modelId,
+      };
     } catch (error) {
       this.logger.error(`Failed to parse JSON response. Raw response (first 1000 chars): ${textContent.text.substring(0, 1000)}`);
       this.logger.error(`Extracted text (first 1000 chars): ${this.extractJSON(textContent.text.trim()).substring(0, 1000)}`);

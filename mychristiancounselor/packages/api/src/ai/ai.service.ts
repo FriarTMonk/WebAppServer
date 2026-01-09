@@ -105,7 +105,7 @@ ${currentQuestionCount >= maxClarifyingQuestions
 
     const enhancedSystemPrompt = SYSTEM_PROMPT + questionLimitGuidance;
 
-    const parsed = await withRetry(
+    const response = await withRetry(
       () => this.bedrock.jsonCompletion('sonnet', [
         { role: 'system', content: enhancedSystemPrompt },
         { role: 'user', content: userPrompt },
@@ -116,6 +116,8 @@ ${currentQuestionCount >= maxClarifyingQuestions
       { maxAttempts: 3, initialDelayMs: 1000 },
       this.logger
     );
+
+    const parsed = response.data;
 
     // The JSON format uses 'guidance' or 'clarifyingQuestion', not 'content'
     const content = parsed.requiresClarification
@@ -406,18 +408,18 @@ Only include scores above 40. Return empty array [] if no matches.`;
         candidateCount: limitedCandidates.length,
       });
 
-      const results = await this.bedrock.jsonCompletion('sonnet', [
+      const response = await this.bedrock.jsonCompletion('sonnet', [
         { role: 'user', content: prompt }
       ], {
         max_tokens: 500,
       });
 
       // Validate and map results
-      if (!Array.isArray(results)) {
+      if (!Array.isArray(response.data)) {
         throw new Error('Invalid response format from Claude API');
       }
 
-      const mappedResults = results.map((r) => ({
+      const mappedResults = response.data.map((r) => ({
         similarTicketId: limitedCandidates[r.index].id,
         score: r.score,
       }));

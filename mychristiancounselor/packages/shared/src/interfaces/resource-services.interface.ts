@@ -49,6 +49,7 @@ export interface EvaluationInput {
   content: string; // Description or full text
   contentType: 'description' | 'summary' | 'full_text';
   genre?: string;
+  bookId?: string; // Optional bookId for cost tracking
 }
 
 export interface EvaluationResult {

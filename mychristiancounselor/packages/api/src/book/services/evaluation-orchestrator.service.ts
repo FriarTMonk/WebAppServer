@@ -42,6 +42,7 @@ export class EvaluationOrchestratorService {
       content: content.text,
       contentType: content.type,
       genre: book.genreTag, // Pass genre for fiction-aware evaluation
+      bookId, // Pass bookId for cost tracking
     });
 
     this.logger.log(`Sonnet evaluation: ${sonnetResult.score}%`);
@@ -63,6 +64,7 @@ export class EvaluationOrchestratorService {
         content: content.text,
         contentType: content.type,
         genre: book.genreTag, // Pass genre for fiction-aware evaluation
+        bookId, // Pass bookId for cost tracking
         useEscalationModel: true, // Signal to use Opus
       });
 

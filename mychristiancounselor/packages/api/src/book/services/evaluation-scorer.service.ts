@@ -2,12 +2,17 @@ import { Injectable, Logger } from '@nestjs/common';
 import { IEvaluationScorer, EvaluationInput, EvaluationResult } from '@mychristiancounselor/shared';
 import { resourcesConfig } from '../../config/resources.config';
 import { BedrockService } from '../../ai/bedrock.service';
+import { calculateCost } from '../../config/model-pricing.config';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class EvaluationScorerService implements IEvaluationScorer {
   private readonly logger = new Logger(EvaluationScorerService.name);
 
-  constructor(private readonly bedrock: BedrockService) {}
+  constructor(
+    private readonly bedrock: BedrockService,
+    private prisma: PrismaService,
+  ) {}
 
   async evaluate(input: EvaluationInput & { useEscalationModel?: boolean }): Promise<EvaluationResult> {
     this.logger.log(`Evaluating book: ${input.metadata.title}`);
@@ -23,7 +28,7 @@ export class EvaluationScorerService implements IEvaluationScorer {
 
     try {
       // Use Bedrock's jsonCompletion for structured output
-      const parsed = await this.bedrock.jsonCompletion(
+      const response = await this.bedrock.jsonCompletion(
         model,
         [{ role: 'user', content: prompt }],
         {
@@ -32,7 +37,32 @@ export class EvaluationScorerService implements IEvaluationScorer {
         }
       );
 
-      const result = this.parseJsonResult(parsed);
+      const result = this.parseJsonResult(response.data);
+
+      // Log evaluation cost if bookId is provided
+      if (input.bookId && response.usage) {
+        try {
+          const cost = calculateCost(
+            response.modelId,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
+          );
+
+          await this.prisma.evaluationCostLog.create({
+            data: {
+              bookId: input.bookId,
+              frameworkVersion: '1.0.0', // TODO: Get from active framework
+              inputTokens: response.usage.input_tokens,
+              outputTokens: response.usage.output_tokens,
+              totalCost: cost,
+              modelUsed: response.modelId,
+            },
+          });
+        } catch (error) {
+          this.logger.error('Failed to log evaluation cost:', error);
+          // Don't fail evaluation if cost logging fails
+        }
+      }
 
       return {
         ...result,

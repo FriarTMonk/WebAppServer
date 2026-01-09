@@ -33,7 +33,7 @@ export class QueueMonitoringService {
       jobs.push(...(await this.evaluationQueue.getDelayed(0, 99)));
     }
 
-    return jobs.map(job => ({
+    return Promise.all(jobs.map(async (job) => ({
       id: job.id,
       name: job.name,
       data: job.data,
@@ -42,7 +42,7 @@ export class QueueMonitoringService {
       attemptsMade: job.attemptsMade,
       failedReason: job.failedReason,
       timestamp: job.timestamp,
-    }));
+    })));
   }
 
   async retryJob(jobId: string) {

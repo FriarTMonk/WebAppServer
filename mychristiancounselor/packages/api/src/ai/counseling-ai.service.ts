@@ -168,7 +168,7 @@ You'll have opportunities for more specific questions after this.`;
       ? maxTokensComprehensive  // Generous space for comprehensive biblical guidance
       : maxTokensClarifying;     // Standard for clarifying questions
 
-    const parsed = await withRetry(
+    const response = await withRetry(
       () => this.bedrock.jsonCompletion('sonnet', [
         { role: 'system', content: enhancedSystemPrompt },
         { role: 'user', content: userPrompt },
@@ -179,6 +179,8 @@ You'll have opportunities for more specific questions after this.`;
       { maxAttempts: 3, initialDelayMs: 1000 },
       this.logger
     );
+
+    const parsed = response.data;
 
     // The JSON format uses 'guidance' or 'clarifyingQuestion', not 'content'
     const content = parsed.requiresClarification
