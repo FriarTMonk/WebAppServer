@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiGet, apiPost } from '@/lib/api';
 
 interface RecommendedBook {
   id: string;
@@ -29,21 +30,24 @@ export function RecommendedBooks() {
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
-      const response = await fetch(`${apiUrl}/resources/reading-list/recommendations?limit=5`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-      });
+      const response = await apiGet('/resources/reading-list/recommendations?limit=5');
 
       if (!response.ok) {
+        // If it's a 404 or similar, just treat as no recommendations
+        if (response.status === 404 || response.status === 204) {
+          setRecommendations([]);
+          return;
+        }
         throw new Error('Failed to fetch recommendations');
       }
 
       const data = await response.json();
-      setRecommendations(data);
+      // Handle both array and object responses
+      setRecommendations(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      // Don't show error for network issues - just show empty state
+      console.error('Failed to fetch recommendations:', err);
+      setRecommendations([]);
     } finally {
       setLoading(false);
     }
@@ -51,17 +55,9 @@ export function RecommendedBooks() {
 
   const handleAddToReadingList = async (bookId: string) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
-      const response = await fetch(`${apiUrl}/resources/reading-list`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          bookId,
-          status: 'want_to_read',
-        }),
+      const response = await apiPost('/resources/reading-list', {
+        bookId,
+        status: 'want_to_read',
       });
 
       if (!response.ok) {
