@@ -237,6 +237,32 @@ export default function ReadingListPage() {
           </p>
         </div>
 
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="text-2xl font-bold text-blue-900">
+              {readingListItems.length}
+            </div>
+            <div className="text-sm text-blue-700">Total Books</div>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="text-2xl font-bold text-green-900">
+              {readingListItems.filter(item =>
+                item.status === 'finished' &&
+                item.dateFinished &&
+                new Date(item.dateFinished).getFullYear() === new Date().getFullYear()
+              ).length}
+            </div>
+            <div className="text-sm text-green-700">Finished This Year</div>
+          </div>
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="text-2xl font-bold text-purple-900">
+              {readingListItems.filter(item => item.status === 'currently_reading').length}
+            </div>
+            <div className="text-sm text-purple-700">Currently Reading</div>
+          </div>
+        </div>
+
         {/* Tab Navigation */}
         <div className="flex gap-2 mb-6 border-b border-gray-200">
           <button
