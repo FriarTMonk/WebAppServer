@@ -12,6 +12,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { queueConfig } from '../config/queue.config';
+import { EvaluationFrameworkService, CreateFrameworkDto } from './services/evaluation-framework.service';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, IsPlatformAdminGuard)
@@ -24,6 +25,7 @@ export class AdminController {
     private prisma: PrismaService,
     @InjectQueue(queueConfig.evaluationQueue.name)
     private readonly evaluationQueue: Queue,
+    private evaluationFramework: EvaluationFrameworkService,
   ) {}
 
   @Get('audit-log')
@@ -438,5 +440,32 @@ export class AdminController {
         currentStatus: book.evaluationStatus,
       },
     };
+  }
+
+  // Evaluation Framework Management
+  @Get('evaluation/frameworks')
+  async getFrameworks() {
+    return this.evaluationFramework.getAll();
+  }
+
+  @Get('evaluation/frameworks/active')
+  async getActiveFramework() {
+    return this.evaluationFramework.getActive();
+  }
+
+  @Post('evaluation/frameworks')
+  async createFramework(
+    @CurrentUser('id') userId: string,
+    @Body() dto: CreateFrameworkDto,
+  ) {
+    return this.evaluationFramework.create(userId, dto);
+  }
+
+  @Patch('evaluation/frameworks/:id/activate')
+  async activateFramework(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+  ) {
+    return this.evaluationFramework.activate(userId, id);
   }
 }
