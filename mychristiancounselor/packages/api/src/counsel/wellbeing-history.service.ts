@@ -82,4 +82,36 @@ export class WellbeingHistoryService {
       take: count,
     });
   }
+
+  /**
+   * Convert wellbeing history to CSV format
+   * @param memberId - The member's ID
+   * @param options - Optional filters (startDate, endDate)
+   * @returns CSV string
+   */
+  async convertToCSV(
+    memberId: string,
+    options?: { startDate?: Date; endDate?: Date },
+  ): Promise<string> {
+    this.logger.log(`Converting wellbeing history to CSV for member ${memberId}`);
+
+    // Fetch history data
+    const history = await this.getHistory(memberId, options);
+
+    // CSV header
+    const header = 'Date,Overall Score,Anxiety,Depression,Stress,Notes\n';
+
+    // CSV rows
+    const rows = history.map((entry) => {
+      const date = new Date(entry.date).toISOString().split('T')[0]; // YYYY-MM-DD
+      const overallScore = entry.overallScore ?? '';
+      const anxiety = entry.anxietyScore ?? '';
+      const depression = entry.depressionScore ?? '';
+      const stress = entry.stressScore ?? '';
+      const notes = (entry.notes || '').replace(/"/g, '""'); // Escape quotes
+      return `${date},"${overallScore}","${anxiety}","${depression}","${stress}","${notes}"`;
+    }).join('\n');
+
+    return header + rows;
+  }
 }

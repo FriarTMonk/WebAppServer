@@ -71,4 +71,26 @@ export class WellbeingController {
   async getSummary(@Param('sessionId') sessionId: string) {
     return this.summaryService.getSummary(sessionId);
   }
+
+  /**
+   * Export wellbeing history as CSV for a member (counselor endpoint)
+   */
+  @Get('member/:memberId/history/export')
+  async exportHistory(
+    @Param('memberId') memberId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const options: any = {};
+    if (startDate) options.startDate = new Date(startDate);
+    if (endDate) options.endDate = new Date(endDate);
+
+    const csv = await this.historyService.convertToCSV(memberId, options);
+
+    return {
+      filename: `wellbeing-history-${memberId}-${new Date().toISOString().split('T')[0]}.csv`,
+      data: csv,
+      mimeType: 'text/csv',
+    };
+  }
 }
