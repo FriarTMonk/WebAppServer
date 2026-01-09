@@ -1,7 +1,8 @@
-import { IsString, IsOptional, IsDateString, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsDateString, MaxLength, IsUUID, IsNotEmpty } from 'class-validator';
 
 export class AssignCustomAssessmentDto {
-  @IsString({ message: 'Member ID must be a string' })
+  @IsUUID('4', { message: 'Member ID must be a valid UUID' })
+  @IsNotEmpty({ message: 'Member ID is required' })
   memberId: string;
 
   @IsOptional()
