@@ -59,9 +59,11 @@ export default function EvaluationQueuePage() {
       }
 
       const data = await response.json();
-      setJobs(data.jobs || data);
+      const jobsList = data.jobs || data;
+      setJobs(Array.isArray(jobsList) ? jobsList : []);
       setQueuePaused(data.queuePaused || false);
     } catch (err) {
+      console.error('Error fetching queue jobs:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
