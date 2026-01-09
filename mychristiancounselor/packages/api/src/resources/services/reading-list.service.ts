@@ -277,10 +277,36 @@ export class ReadingListService {
   }
 
   async removeFromReadingList(userId: string, itemId: string) {
-    // Stub for now - will implement in next task
     this.logger.log(
       `Removing reading list item ${itemId} for user ${userId}`,
     );
-    return null;
+
+    // 1. Fetch and validate ownership
+    const existingEntry = await this.prisma.userReadingList.findUnique({
+      where: { id: itemId },
+    });
+
+    if (!existingEntry) {
+      throw new NotFoundException(
+        `Reading list item with ID ${itemId} not found`,
+      );
+    }
+
+    if (existingEntry.userId !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to remove this reading list item',
+      );
+    }
+
+    // 2. Delete the entry
+    await this.prisma.userReadingList.delete({
+      where: { id: itemId },
+    });
+
+    this.logger.log(
+      `Successfully removed reading list item ${itemId} for user ${userId}`,
+    );
+
+    return { success: true, message: 'Reading list item removed' };
   }
 }

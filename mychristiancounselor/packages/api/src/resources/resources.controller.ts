@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Put, Query, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Query, Body, Param, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { OrganizationBrowseService } from './services/organization-browse.service';
 import { ExternalOrganizationService } from './services/external-organization.service';
 import { ReadingListService } from './services/reading-list.service';
 import { ReadingListQueryDto } from './dto/reading-list-query.dto';
+import { AddToReadingListDto } from './dto/add-to-reading-list.dto';
+import { UpdateReadingListDto } from './dto/update-reading-list.dto';
 import {
   OrganizationBrowseQueryDto,
   OrganizationBrowseResponseDto,
@@ -55,5 +57,30 @@ export class ResourcesController {
     @Query() query: ReadingListQueryDto,
   ): Promise<{ items: any[]; total: number }> {
     return this.readingListService.getReadingList(userId, query);
+  }
+
+  @Post('reading-list')
+  async addToReadingList(
+    @CurrentUser('id') userId: string,
+    @Body() dto: AddToReadingListDto,
+  ): Promise<any> {
+    return this.readingListService.addToReadingList(userId, dto);
+  }
+
+  @Put('reading-list/:itemId')
+  async updateReadingListItem(
+    @Param('itemId') itemId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdateReadingListDto,
+  ): Promise<any> {
+    return this.readingListService.updateReadingListItem(userId, itemId, dto);
+  }
+
+  @Delete('reading-list/:itemId')
+  async removeFromReadingList(
+    @Param('itemId') itemId: string,
+    @CurrentUser('id') userId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.readingListService.removeFromReadingList(userId, itemId);
   }
 }
