@@ -1,18 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiPatch } from '@/lib/api';
-
-interface WorkflowRule {
-  id: string;
-  name: string;
-  level: string;
-  trigger: any;
-  conditions?: any;
-  actions: any[];
-  priority?: number;
-  isActive: boolean;
-}
+import { apiPatch, WorkflowRule } from '@/lib/api';
 
 interface EditWorkflowRuleModalProps {
   open: boolean;
@@ -94,6 +83,9 @@ export function EditWorkflowRuleModal({ open, onClose, onSuccess, rule }: EditWo
       if (value.trim()) {
         validateJSON(value, 'trigger');
         setJsonErrors({ ...jsonErrors, trigger: undefined });
+      } else {
+        // Clear error when field is emptied (though trigger is required for submit)
+        setJsonErrors({ ...jsonErrors, trigger: undefined });
       }
     } catch (err: any) {
       setJsonErrors({ ...jsonErrors, trigger: err.message });
@@ -105,8 +97,11 @@ export function EditWorkflowRuleModal({ open, onClose, onSuccess, rule }: EditWo
     try {
       if (value.trim()) {
         validateJSON(value, 'conditions');
+        setJsonErrors({ ...jsonErrors, conditions: undefined });
+      } else {
+        // Clear error when field is emptied (conditions are optional)
+        setJsonErrors({ ...jsonErrors, conditions: undefined });
       }
-      setJsonErrors({ ...jsonErrors, conditions: undefined });
     } catch (err: any) {
       setJsonErrors({ ...jsonErrors, conditions: err.message });
     }
@@ -117,6 +112,9 @@ export function EditWorkflowRuleModal({ open, onClose, onSuccess, rule }: EditWo
     try {
       if (value.trim()) {
         validateJSON(value, 'actions');
+        setJsonErrors({ ...jsonErrors, actions: undefined });
+      } else {
+        // Clear error when field is emptied (though actions are required for submit)
         setJsonErrors({ ...jsonErrors, actions: undefined });
       }
     } catch (err: any) {
@@ -136,6 +134,7 @@ export function EditWorkflowRuleModal({ open, onClose, onSuccess, rule }: EditWo
 
       setIsLoading(true);
 
+      // Note: level is not included in update payload as it's immutable after rule creation
       const updateData: any = {
         name: name.trim(),
         trigger: parsedTrigger,

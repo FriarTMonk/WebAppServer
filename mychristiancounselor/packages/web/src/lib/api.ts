@@ -340,7 +340,7 @@ export interface WorkflowRule {
   trigger: string;
   conditions: any;
   actions: any;
-  enabled: boolean;
+  isActive: boolean;
   lastTriggered?: string;
   createdById?: string;
 }
