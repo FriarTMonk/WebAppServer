@@ -43,7 +43,8 @@ export class BedrockService {
     }
 
     // Initialize Bedrock client with timeout configuration
-    const bedrockTimeoutMs = this.configService.get<number>('BEDROCK_TIMEOUT_MS') || 50000;
+    // Environment variables are always strings, so parse to number
+    const bedrockTimeoutMs = parseInt(this.configService.get<string>('BEDROCK_TIMEOUT_MS') || '50000', 10);
     this.bedrockClient = new BedrockRuntimeClient({
       region: this.region,
       credentials: {
