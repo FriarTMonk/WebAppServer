@@ -12,6 +12,7 @@ import { MarketingModule } from '../marketing/marketing.module';
 import { MorphAuditMiddleware } from './middleware/morph-audit.middleware';
 import { queueConfig } from '../config/queue.config';
 import { EvaluationFrameworkService } from './services/evaluation-framework.service';
+import { QueueMonitoringService } from './services/queue-monitoring.service';
 
 @Module({
   imports: [
@@ -25,7 +26,7 @@ import { EvaluationFrameworkService } from './services/evaluation-framework.serv
       name: queueConfig.evaluationQueue.name,
     }),
   ],
-  providers: [AdminService, EvaluationFrameworkService, MorphAuditMiddleware],
+  providers: [AdminService, EvaluationFrameworkService, QueueMonitoringService, MorphAuditMiddleware],
   controllers: [AdminController, AdminStatusController],
   exports: [AdminService],
 })
