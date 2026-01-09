@@ -77,7 +77,7 @@ export class WorkflowController {
 
   @Patch(':id')
   async updateRule(@Param('id') id: string, @Body() dto: UpdateWorkflowRuleDto, @Request() req) {
-    return this.ruleService.updateRule(id, dto);
+    return this.ruleService.updateRule(id, dto, req.user.id);
   }
 
   @Delete(':id')
