@@ -171,6 +171,16 @@ export default function TakeAssessmentPage({ params }: { params: Promise<{ assig
         {/* Progress Bar */}
         <AssessmentProgress current={answeredCount} total={totalQuestions} />
 
+        {/* Draft Saved Indicator */}
+        {Object.keys(responses).length > 0 && (
+          <div className="flex items-center justify-center text-sm text-gray-500">
+            <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Draft saved automatically
+          </div>
+        )}
+
         {/* Assessment Header */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{assessment.assessmentName}</h1>
