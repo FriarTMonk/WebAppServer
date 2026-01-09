@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useUserPermissions } from '../../../hooks/useUserPermissions';
-import { apiGet } from '../../../lib/api';
+import { apiGet, apiPut, apiDelete } from '../../../lib/api';
 import { showToast } from '@/components/Toast';
+import { ReadingListCard } from '@/components/reading-list/ReadingListCard';
 
 type ReadingListTab = 'want_to_read' | 'currently_reading' | 'finished';
 
@@ -124,6 +125,44 @@ export default function ReadingListPage() {
 
   // Filter items by active tab
   const filteredItems = readingListItems.filter(item => item.status === activeTab);
+
+  const handleUpdateItem = async (itemId: string, updates: any) => {
+    try {
+      const response = await apiPut(`/resources/reading-list/${itemId}`, updates);
+
+      if (!response.ok) {
+        throw new Error('Update failed');
+      }
+
+      // Refresh list - optimistic update
+      setReadingListItems(items =>
+        items.map(item => item.id === itemId ? { ...item, ...updates } : item)
+      );
+
+      showToast('Reading list updated', 'success');
+    } catch (error) {
+      console.error('Failed to update reading list item:', error);
+      showToast('Failed to update reading list', 'error');
+      throw error;
+    }
+  };
+
+  const handleRemoveItem = async (itemId: string) => {
+    try {
+      const response = await apiDelete(`/resources/reading-list/${itemId}`);
+
+      if (!response.ok) {
+        throw new Error('Remove failed');
+      }
+
+      setReadingListItems(items => items.filter(item => item.id !== itemId));
+      showToast('Book removed from reading list', 'success');
+    } catch (error) {
+      console.error('Failed to remove reading list item:', error);
+      showToast('Failed to remove book', 'error');
+      throw error;
+    }
+  };
 
   const getEmptyStateMessage = () => {
     switch (activeTab) {
@@ -266,44 +305,12 @@ export default function ReadingListPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredItems.map((item) => (
-              <div key={item.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex gap-4">
-                  {item.book.coverImageUrl ? (
-                    <img
-                      src={item.book.coverImageUrl}
-                      alt={item.book.title}
-                      className="w-20 h-28 object-cover rounded"
-                    />
-                  ) : (
-                    <div className="w-20 h-28 bg-gray-200 rounded flex items-center justify-center">
-                      <span className="text-gray-400 text-2xl">📚</span>
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate">{item.book.title}</h3>
-                    <p className="text-sm text-gray-600 truncate">{item.book.author}</p>
-                    {item.book.biblicalAlignmentScore !== null && (
-                      <div className="mt-2">
-                        <span className="text-xs text-gray-500">Alignment: </span>
-                        <span className="text-xs font-medium text-blue-600">
-                          {item.book.biblicalAlignmentScore}%
-                        </span>
-                      </div>
-                    )}
-                    {item.progress !== null && item.progress > 0 && (
-                      <div className="mt-2">
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: `${item.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-500 mt-1">{item.progress}% complete</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <ReadingListCard
+                key={item.id}
+                item={item}
+                onUpdate={handleUpdateItem}
+                onRemove={handleRemoveItem}
+              />
             ))}
           </div>
         )}
