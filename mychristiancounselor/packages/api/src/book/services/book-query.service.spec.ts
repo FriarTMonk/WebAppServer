@@ -52,7 +52,7 @@ describe('BookQueryService', () => {
           id: userId,
           accountType: 'adult',
           birthDate: new Date('1990-01-01'),
-          organizationMembers: [
+          organizationMemberships: [
             {
               organizationId: 'org1',
               organization: {
@@ -133,7 +133,7 @@ describe('BookQueryService', () => {
           accountType: 'organization',
           birthDate: new Date('1990-01-01'),
           isPlatformAdmin: true,
-          organizationMembers: [],
+          organizationMemberships: [],
         };
         const mockBooks = [
           {
@@ -209,7 +209,7 @@ describe('BookQueryService', () => {
         const mockUser = {
           accountType: 'adult',
           birthDate: new Date('1990-01-01'),
-          organizationMembers: [],
+          organizationMemberships: [],
         };
         (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
         (prisma.book.findMany as jest.Mock).mockResolvedValue([]);
@@ -233,7 +233,7 @@ describe('BookQueryService', () => {
         const mockUser = {
           accountType: 'adult',
           birthDate: new Date('1990-01-01'),
-          organizationMembers: [],
+          organizationMemberships: [],
         };
         (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
         (prisma.book.findMany as jest.Mock).mockResolvedValue([]);
@@ -258,7 +258,7 @@ describe('BookQueryService', () => {
           const mockUser = {
             accountType: 'child',
             birthDate: new Date('2015-01-01'),
-            organizationMembers: [],
+            organizationMemberships: [],
           };
 
           (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
@@ -283,7 +283,7 @@ describe('BookQueryService', () => {
           const mockUser = {
             accountType: 'teen',
             birthDate: new Date('2010-01-01'),
-            organizationMembers: [],
+            organizationMemberships: [],
           };
 
           (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
@@ -308,7 +308,7 @@ describe('BookQueryService', () => {
           const mockUser = {
             accountType: 'adult',
             birthDate: new Date('1990-01-01'),
-            organizationMembers: [
+            organizationMemberships: [
               {
                 organization: {
                   matureContentAccountTypeThreshold: 'teen',
@@ -336,7 +336,7 @@ describe('BookQueryService', () => {
           const mockUser = {
             accountType: 'adult',
             birthDate: new Date('1990-01-01'),
-            organizationMembers: [],
+            organizationMemberships: [],
           };
 
           (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
@@ -361,7 +361,7 @@ describe('BookQueryService', () => {
           const mockUser = {
             accountType: 'adult',
             birthDate: new Date('1990-01-01'),
-            organizationMembers: [
+            organizationMemberships: [
               {
                 organization: {
                   matureContentAccountTypeThreshold: 'teen',
@@ -389,7 +389,7 @@ describe('BookQueryService', () => {
           const mockUser = {
             accountType: 'teen',
             birthDate: new Date('2010-01-01'),
-            organizationMembers: [
+            organizationMemberships: [
               {
                 organization: {
                   matureContentAccountTypeThreshold: 'adult',
@@ -423,7 +423,7 @@ describe('BookQueryService', () => {
         const mockUser = {
           accountType: 'adult',
           birthDate: new Date('1990-01-01'),
-          organizationMembers: [],
+          organizationMemberships: [],
         };
 
         (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
@@ -471,7 +471,7 @@ describe('BookQueryService', () => {
         const mockUser = {
           accountType: 'adult',
           birthDate: new Date('1990-01-01'),
-          organizationMembers: [],
+          organizationMemberships: [],
         };
         (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
         (prisma.book.findMany as jest.Mock).mockResolvedValue([]);
@@ -487,7 +487,7 @@ describe('BookQueryService', () => {
         const mockUser = {
           accountType: 'adult',
           birthDate: new Date('1990-01-01'),
-          organizationMembers: [],
+          organizationMemberships: [],
         };
         (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
         (prisma.book.findMany as jest.Mock).mockResolvedValue([]);
@@ -785,25 +785,51 @@ describe('BookQueryService', () => {
         expect(prisma.book.findUnique).toHaveBeenCalledWith({
           where: { id: 'book-123' },
           include: {
-            doctrineCategoryScores: expect.objectContaining({
-              select: expect.any(Object),
-              orderBy: { category: 'asc' },
-            }),
-            purchaseLinks: expect.objectContaining({
-              select: expect.any(Object),
-              orderBy: { isPrimary: 'desc' },
-            }),
-            endorsements: expect.objectContaining({
-              select: { organizationId: true },
-            }),
-            evaluationHistory: expect.objectContaining({
-              select: { evaluatedAt: true },
-              orderBy: { evaluatedAt: 'desc' },
+            doctrineCategoryScores: {
+              select: {
+                category: true,
+                score: true,
+                notes: true,
+              },
+              orderBy: {
+                category: 'asc',
+              },
+            },
+            purchaseLinks: {
+              select: {
+                retailer: true,
+                url: true,
+                isPrimary: true,
+                price: true,
+              },
+              orderBy: {
+                isPrimary: 'desc',
+              },
+            },
+            endorsements: {
+              select: {
+                organizationId: true,
+                organization: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+            evaluationHistory: {
+              select: {
+                evaluatedAt: true,
+              },
+              orderBy: {
+                evaluatedAt: 'desc',
+              },
               take: 1,
-            }),
-            _count: expect.objectContaining({
-              select: { endorsements: true },
-            }),
+            },
+            _count: {
+              select: {
+                endorsements: true,
+              },
+            },
           },
         });
       });
