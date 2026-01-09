@@ -15,6 +15,8 @@ import { queueConfig } from '../config/queue.config';
 import { CreateFrameworkDto } from './dto/create-framework.dto';
 import { EvaluationFrameworkService } from './services/evaluation-framework.service';
 import { QueueMonitoringService } from './services/queue-monitoring.service';
+import { CostAnalyticsService, CostAnalyticsQuery } from './services/cost-analytics.service';
+import { BulkReEvaluationService, BulkReEvaluationOptions } from './services/bulk-re-evaluation.service';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, IsPlatformAdminGuard)
@@ -29,6 +31,8 @@ export class AdminController {
     private readonly evaluationQueue: Queue,
     private evaluationFramework: EvaluationFrameworkService,
     private queueMonitoring: QueueMonitoringService,
+    private costAnalytics: CostAnalyticsService,
+    private bulkReEvaluation: BulkReEvaluationService,
   ) {}
 
   @Get('audit-log')
@@ -501,5 +505,32 @@ export class AdminController {
   @Post('evaluation/queue/resume')
   async resumeQueue() {
     return this.queueMonitoring.resumeQueue();
+  }
+
+  @Get('evaluation/analytics/costs')
+  async getCostAnalytics(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('frameworkVersion') frameworkVersion?: string,
+  ) {
+    const query: CostAnalyticsQuery = {
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      frameworkVersion,
+    };
+    return this.costAnalytics.getAnalytics(query);
+  }
+
+  @Post('evaluation/re-evaluate')
+  async triggerBulkReEvaluation(
+    @CurrentUser('id') userId: string,
+    @Body() dto: { scope: 'all' | 'pending' | 'failed' | 'completed'; frameworkId?: string },
+  ) {
+    const options: BulkReEvaluationOptions = {
+      scope: dto.scope,
+      frameworkId: dto.frameworkId,
+      triggeredBy: userId,
+    };
+    return this.bulkReEvaluation.triggerBulkReEvaluation(options);
   }
 }

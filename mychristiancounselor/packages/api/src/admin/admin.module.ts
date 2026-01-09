@@ -13,6 +13,8 @@ import { MorphAuditMiddleware } from './middleware/morph-audit.middleware';
 import { queueConfig } from '../config/queue.config';
 import { EvaluationFrameworkService } from './services/evaluation-framework.service';
 import { QueueMonitoringService } from './services/queue-monitoring.service';
+import { CostAnalyticsService } from './services/cost-analytics.service';
+import { BulkReEvaluationService } from './services/bulk-re-evaluation.service';
 
 @Module({
   imports: [
@@ -26,7 +28,7 @@ import { QueueMonitoringService } from './services/queue-monitoring.service';
       name: queueConfig.evaluationQueue.name,
     }),
   ],
-  providers: [AdminService, EvaluationFrameworkService, QueueMonitoringService, MorphAuditMiddleware],
+  providers: [AdminService, EvaluationFrameworkService, QueueMonitoringService, CostAnalyticsService, BulkReEvaluationService, MorphAuditMiddleware],
   controllers: [AdminController, AdminStatusController],
   exports: [AdminService],
 })
