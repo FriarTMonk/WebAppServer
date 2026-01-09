@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MemberTask, taskApi } from '@/lib/api';
 
 interface EditTaskModalProps {
@@ -21,8 +21,30 @@ export default function EditTaskModal({
   const [dueDate, setDueDate] = useState(
     task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ''
   );
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task.priority || 'medium');
+  const [counselorNotes, setCounselorNotes] = useState(task.counselorNotes || '');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Issue 1: Update form state when task prop changes
+  useEffect(() => {
+    setTitle(task.title);
+    setDescription(task.description || '');
+    setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '');
+    setPriority(task.priority || 'medium');
+    setCounselorNotes(task.counselorNotes || '');
+  }, [task.id]);
+
+  // Issue 3: Add escape key handler
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !submitting) onClose();
+    };
+    if (open) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+  }, [open, submitting, onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,10 +58,12 @@ export default function EditTaskModal({
     setError(null);
 
     try {
-      // Prepare update data
-      const updateData: any = {
+      // Issue 2: Fix type safety - use Partial<MemberTask> instead of any
+      const updateData: Partial<MemberTask> = {
         title: title.trim(),
-        description: description.trim(),
+        description: description.trim() || null,
+        priority,
+        counselorNotes: counselorNotes.trim() || null,
       };
 
       // Only include dueDate if it's set
@@ -74,7 +98,7 @@ export default function EditTaskModal({
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      onClick={onClose}
+      onClick={submitting ? undefined : onClose}
     >
       <div
         className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
@@ -132,13 +156,70 @@ export default function EditTaskModal({
               <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-2">
                 Due Date (Optional)
               </label>
-              <input
-                type="date"
-                id="dueDate"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  id="dueDate"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {dueDate && (
+                  <button
+                    type="button"
+                    onClick={() => setDueDate('')}
+                    disabled={submitting}
+                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Priority */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Priority
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="priority"
+                    value="low"
+                    checked={priority === 'low'}
+                    onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high')}
+                    disabled={submitting}
+                    className="mr-2"
+                  />
+                  Low
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="priority"
+                    value="medium"
+                    checked={priority === 'medium'}
+                    onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high')}
+                    disabled={submitting}
+                    className="mr-2"
+                  />
+                  Medium
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="priority"
+                    value="high"
+                    checked={priority === 'high'}
+                    onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high')}
+                    disabled={submitting}
+                    className="mr-2"
+                  />
+                  High
+                </label>
+              </div>
             </div>
 
             {/* Status Display (read-only) */}
@@ -154,6 +235,22 @@ export default function EditTaskModal({
               <p className="text-xs text-gray-500 mt-1">
                 Status is managed automatically based on completion and due date
               </p>
+            </div>
+
+            {/* Counselor Notes */}
+            <div>
+              <label htmlFor="counselorNotes" className="block text-sm font-medium text-gray-700 mb-2">
+                Private Counselor Notes (Optional)
+              </label>
+              <textarea
+                id="counselorNotes"
+                value={counselorNotes}
+                onChange={(e) => setCounselorNotes(e.target.value)}
+                rows={3}
+                disabled={submitting}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder="Internal notes for your reference (not visible to member)"
+              />
             </div>
 
             {/* Error Message */}
