@@ -473,7 +473,7 @@ export const workflowRulesApi = {
     targetId?: string;
   }) => apiPost('/workflow/rules', data),
 
-  update: (ruleId: string, data: { enabled?: boolean }) =>
+  update: (ruleId: string, data: { isActive?: boolean }) =>
     apiPatch(`/workflow/rules/${ruleId}`, data),
 
   delete: (ruleId: string) =>

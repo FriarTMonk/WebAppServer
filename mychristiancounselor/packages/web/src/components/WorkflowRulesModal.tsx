@@ -115,7 +115,7 @@ export default function WorkflowRulesModal({
   const handleToggleRule = async (rule: WorkflowRule) => {
     setTogglingRule(rule.id);
     try {
-      const response = await workflowRulesApi.update(rule.id, { enabled: !rule.enabled });
+      const response = await workflowRulesApi.update(rule.id, { isActive: !rule.isActive });
       if (!response.ok) {
         let errorMessage = 'Failed to update rule';
         try {
@@ -218,25 +218,25 @@ export default function WorkflowRulesModal({
                         <div className="relative">
                           <input
                             type="checkbox"
-                            checked={rule.enabled}
+                            checked={rule.isActive}
                             onChange={() => handleToggleRule(rule)}
                             disabled={togglingRule === rule.id}
                             className="sr-only"
                           />
-                          <div className={`block w-10 h-6 rounded-full ${rule.enabled ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                          <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition ${rule.enabled ? 'transform translate-x-4' : ''}`}></div>
+                          <div className={`block w-10 h-6 rounded-full ${rule.isActive ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                          <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition ${rule.isActive ? 'transform translate-x-4' : ''}`}></div>
                         </div>
-                        <span className="ml-2 text-sm text-gray-600">{rule.enabled ? 'ON' : 'OFF'}</span>
+                        <span className="ml-2 text-sm text-gray-600">{rule.isActive ? 'ON' : 'OFF'}</span>
                       </label>
                     ) : (
                       <span
                         className={`px-2 py-0.5 text-xs rounded-full ${
-                          rule.enabled
+                          rule.isActive
                             ? 'bg-green-100 text-green-800'
                             : 'bg-gray-100 text-gray-600'
                         }`}
                       >
-                        {rule.enabled ? 'ON' : 'OFF'}
+                        {rule.isActive ? 'ON' : 'OFF'}
                       </span>
                     )}
                   </div>
