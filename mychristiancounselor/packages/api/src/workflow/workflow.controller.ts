@@ -13,6 +13,8 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WorkflowRuleService } from './workflow-rule.service';
 import { WorkflowRuleLevel } from '@prisma/client';
+import { CreateWorkflowRuleDto } from './dto/create-workflow-rule.dto';
+import { UpdateWorkflowRuleDto } from './dto/update-workflow-rule.dto';
 
 @Controller('workflow/rules')
 @UseGuards(JwtAuthGuard)
@@ -67,18 +69,15 @@ export class WorkflowController {
   }
 
   @Post()
-  async createRule(@Body() dto: any, @Request() req) {
-    // If counselor-level rule, set ownerId to current user
-    if (dto.level === 'counselor') {
-      dto.ownerId = req.user.id;
-    }
-
+  async createRule(@Body() dto: CreateWorkflowRuleDto, @Request() req) {
+    // Set ownerId from authenticated user
+    dto.ownerId = req.user.id;
     return this.ruleService.createRule(dto);
   }
 
   @Patch(':id')
-  async updateRule(@Param('id') id: string, @Body() updates: any) {
-    return this.ruleService.updateRule(id, updates);
+  async updateRule(@Param('id') id: string, @Body() dto: UpdateWorkflowRuleDto, @Request() req) {
+    return this.ruleService.updateRule(id, dto);
   }
 
   @Delete(':id')
