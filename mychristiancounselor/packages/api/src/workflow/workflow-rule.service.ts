@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { WorkflowRuleLevel } from '@prisma/client';
+import { WorkflowRuleLevel, Prisma } from '@prisma/client';
 
 export interface CreateRuleDto {
   name: string;
@@ -79,66 +79,82 @@ export class WorkflowRuleService {
   ) {
     this.logger.log(`Updating workflow rule: ${ruleId}`);
 
-    // Get the rule to check ownership
-    const rule = await this.prisma.workflowRule.findUnique({
-      where: { id: ruleId },
-    });
-
-    if (!rule) {
-      throw new NotFoundException('Workflow rule not found');
-    }
-
     // Get user to check if platform admin
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { isPlatformAdmin: true },
     });
 
-    // Check authorization: owner OR platform admin
-    const isOwner = rule.ownerId === userId;
-    const isPlatformAdmin = user?.isPlatformAdmin || false;
-
-    if (!isOwner && !isPlatformAdmin) {
-      throw new ForbiddenException('Not authorized to update this workflow rule');
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
 
-    // Proceed with update
-    return this.prisma.workflowRule.update({
-      where: { id: ruleId },
-      data: updates,
-    });
+    const isPlatformAdmin = user.isPlatformAdmin;
+
+    // Filter out dangerous fields that shouldn't be modifiable
+    const { ownerId, level, ...safeUpdates } = updates as any;
+
+    try {
+      if (isPlatformAdmin) {
+        // Platform admins can update any rule
+        return await this.prisma.workflowRule.update({
+          where: { id: ruleId },
+          data: safeUpdates,
+        });
+      } else {
+        // Non-admins can only update rules they own (atomic check)
+        return await this.prisma.workflowRule.update({
+          where: {
+            id: ruleId,
+            ownerId: userId, // Atomic ownership check in WHERE clause
+          },
+          data: safeUpdates,
+        });
+      }
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new NotFoundException('Workflow rule not found or access denied');
+      }
+      throw error;
+    }
   }
 
   async deleteRule(ruleId: string, userId: string) {
     this.logger.log(`Deleting workflow rule: ${ruleId}`);
 
-    // Get the rule to check ownership
-    const rule = await this.prisma.workflowRule.findUnique({
-      where: { id: ruleId },
-    });
-
-    if (!rule) {
-      throw new NotFoundException('Workflow rule not found');
-    }
-
     // Get user to check if platform admin
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { isPlatformAdmin: true },
     });
 
-    // Check authorization: owner OR platform admin
-    const isOwner = rule.ownerId === userId;
-    const isPlatformAdmin = user?.isPlatformAdmin || false;
-
-    if (!isOwner && !isPlatformAdmin) {
-      throw new ForbiddenException('Not authorized to delete this workflow rule');
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
 
-    // Proceed with delete
-    return this.prisma.workflowRule.delete({
-      where: { id: ruleId },
-    });
+    const isPlatformAdmin = user.isPlatformAdmin;
+
+    try {
+      if (isPlatformAdmin) {
+        // Platform admins can delete any rule
+        return await this.prisma.workflowRule.delete({
+          where: { id: ruleId },
+        });
+      } else {
+        // Non-admins can only delete rules they own (atomic check)
+        return await this.prisma.workflowRule.delete({
+          where: {
+            id: ruleId,
+            ownerId: userId, // Atomic ownership check in WHERE clause
+          },
+        });
+      }
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new NotFoundException('Workflow rule not found or access denied');
+      }
+      throw error;
+    }
   }
 
   async getMemberRules(memberId: string, counselorId: string) {
