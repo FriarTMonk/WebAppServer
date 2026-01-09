@@ -152,34 +152,65 @@ export default function EvaluationManagementPage() {
           </div>
         </div>
 
-        {/* Coming Soon Notice */}
+        {/* Advanced Management Features */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-blue-900 mb-3">Advanced Management Features - Coming Soon</h2>
+          <h2 className="text-lg font-semibold text-blue-900 mb-3">Advanced Management Features</h2>
           <p className="text-sm text-blue-800 mb-4">
-            Future releases will include:
+            Access advanced evaluation management tools:
           </p>
-          <ul className="space-y-2 text-sm text-blue-800">
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span><strong>Framework Updates:</strong> Update evaluation criteria and category weights</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span><strong>Global Re-evaluation:</strong> Trigger re-evaluation of all books with updated framework</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span><strong>Queue Monitoring:</strong> Real-time status of evaluation jobs with retry controls</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span><strong>Cost Tracking:</strong> Detailed analytics on API costs by book, time period, and framework version</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">•</span>
-              <span><strong>Threshold Management:</strong> Adjust visibility tier thresholds with preview of impact</span>
-            </li>
-          </ul>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <button
+              onClick={() => router.push('/admin/evaluation/frameworks')}
+              className="flex items-center justify-between p-3 bg-white border border-blue-300 rounded-lg hover:border-blue-500 transition-colors text-left"
+            >
+              <div>
+                <div className="font-semibold text-blue-900 text-sm">Framework Management</div>
+                <div className="text-xs text-blue-700">Update evaluation criteria and thresholds</div>
+              </div>
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            <button
+              onClick={() => router.push('/admin/evaluation/bulk-re-evaluate')}
+              className="flex items-center justify-between p-3 bg-white border border-blue-300 rounded-lg hover:border-blue-500 transition-colors text-left"
+            >
+              <div>
+                <div className="font-semibold text-blue-900 text-sm">Bulk Re-evaluation</div>
+                <div className="text-xs text-blue-700">Trigger re-evaluation of all books</div>
+              </div>
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            <button
+              onClick={() => router.push('/admin/evaluation/queue')}
+              className="flex items-center justify-between p-3 bg-white border border-blue-300 rounded-lg hover:border-blue-500 transition-colors text-left"
+            >
+              <div>
+                <div className="font-semibold text-blue-900 text-sm">Queue Monitoring</div>
+                <div className="text-xs text-blue-700">Real-time evaluation job status</div>
+              </div>
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            <button
+              onClick={() => router.push('/admin/evaluation/costs')}
+              className="flex items-center justify-between p-3 bg-white border border-blue-300 rounded-lg hover:border-blue-500 transition-colors text-left"
+            >
+              <div>
+                <div className="font-semibold text-blue-900 text-sm">Cost Analytics</div>
+                <div className="text-xs text-blue-700">Detailed API cost tracking</div>
+              </div>
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
