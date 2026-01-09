@@ -5,16 +5,30 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useUserPermissions } from '../../../hooks/useUserPermissions';
 import { apiGet } from '../../../lib/api';
+import { showToast } from '@/components/Toast';
 
 type ReadingListTab = 'want_to_read' | 'currently_reading' | 'finished';
 
 interface ReadingListItem {
   id: string;
   bookId: string;
-  title: string;
-  author: string;
-  coverImageUrl?: string;
   status: ReadingListTab;
+  progress: number | null;
+  notes: string | null;
+  rating: number | null;
+  dateStarted: string | null;
+  dateFinished: string | null;
+  addedAt: string;
+  updatedAt: string;
+  book: {
+    id: string;
+    title: string;
+    author: string;
+    coverImageUrl: string | null;
+    biblicalAlignmentScore: number | null;
+    genreTag: string;
+    matureContent: boolean;
+  };
 }
 
 export default function ReadingListPage() {
@@ -24,6 +38,8 @@ export default function ReadingListPage() {
   const [activeTab, setActiveTab] = useState<ReadingListTab>('want_to_read');
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [accessChecked, setAccessChecked] = useState(false);
+  const [readingListItems, setReadingListItems] = useState<ReadingListItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Check access: platform admin OR active subscription OR organization membership
   useEffect(() => {
@@ -72,14 +88,42 @@ export default function ReadingListPage() {
     }
   }, [accessChecked, hasAccess, router]);
 
-  // Placeholder data - will be replaced with API calls in future phase
-  const readingListItems: ReadingListItem[] = [];
+  // Fetch reading list from API
+  useEffect(() => {
+    const fetchReadingList = async () => {
+      if (!user || !hasAccess) return;
 
+      try {
+        const response = await apiGet('/resources/reading-list');
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch reading list');
+        }
+
+        const data = await response.json();
+        setReadingListItems(data.items || []);
+      } catch (error) {
+        console.error('Error fetching reading list:', error);
+        showToast('Failed to load reading list', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (accessChecked && hasAccess) {
+      fetchReadingList();
+    }
+  }, [user, hasAccess, accessChecked]);
+
+  // Calculate tab counts from actual data
   const tabCounts = {
-    want_to_read: 0,
-    currently_reading: 0,
-    finished: 0,
+    want_to_read: readingListItems.filter(item => item.status === 'want_to_read').length,
+    currently_reading: readingListItems.filter(item => item.status === 'currently_reading').length,
+    finished: readingListItems.filter(item => item.status === 'finished').length,
   };
+
+  // Filter items by active tab
+  const filteredItems = readingListItems.filter(item => item.status === activeTab);
 
   const getEmptyStateMessage = () => {
     switch (activeTab) {
@@ -188,8 +232,20 @@ export default function ReadingListPage() {
           </button>
         </div>
 
-        {/* Empty State */}
-        {readingListItems.length === 0 && (
+        {/* Content */}
+        {loading ? (
+          <div className="space-y-4">
+            <div className="animate-pulse bg-white border border-gray-200 rounded-lg p-6">
+              <div className="h-24 bg-gray-200 rounded" />
+            </div>
+            <div className="animate-pulse bg-white border border-gray-200 rounded-lg p-6">
+              <div className="h-24 bg-gray-200 rounded" />
+            </div>
+            <div className="animate-pulse bg-white border border-gray-200 rounded-lg p-6">
+              <div className="h-24 bg-gray-200 rounded" />
+            </div>
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
             <div className="text-5xl mb-4">{getEmptyStateIcon()}</div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -207,14 +263,50 @@ export default function ReadingListPage() {
               Browse Books
             </button>
           </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredItems.map((item) => (
+              <div key={item.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="flex gap-4">
+                  {item.book.coverImageUrl ? (
+                    <img
+                      src={item.book.coverImageUrl}
+                      alt={item.book.title}
+                      className="w-20 h-28 object-cover rounded"
+                    />
+                  ) : (
+                    <div className="w-20 h-28 bg-gray-200 rounded flex items-center justify-center">
+                      <span className="text-gray-400 text-2xl">📚</span>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 truncate">{item.book.title}</h3>
+                    <p className="text-sm text-gray-600 truncate">{item.book.author}</p>
+                    {item.book.biblicalAlignmentScore !== null && (
+                      <div className="mt-2">
+                        <span className="text-xs text-gray-500">Alignment: </span>
+                        <span className="text-xs font-medium text-blue-600">
+                          {item.book.biblicalAlignmentScore}%
+                        </span>
+                      </div>
+                    )}
+                    {item.progress !== null && item.progress > 0 && (
+                      <div className="mt-2">
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full"
+                            style={{ width: `${item.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500 mt-1">{item.progress}% complete</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
-
-        {/* Coming Soon Notice */}
-        <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <p className="text-sm text-amber-800">
-            <span className="font-semibold">Coming Soon:</span> Full reading list functionality with progress tracking, notes, and AI-powered recommendations will be available in an upcoming release.
-          </p>
-        </div>
       </div>
     </div>
   );
