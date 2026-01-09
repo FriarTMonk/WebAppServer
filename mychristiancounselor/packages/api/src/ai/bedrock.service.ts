@@ -125,10 +125,25 @@ export class BedrockService {
       // Invoke the model
       const response = await this.bedrockClient.send(command);
 
+      // Validate response
+      if (!response || !response.body) {
+        throw new Error('Bedrock returned empty response');
+      }
+
       // Parse response
       const responseBody = JSON.parse(new TextDecoder().decode(response.body));
 
-      this.logger.debug(`Bedrock response received (tokens: ${responseBody.usage.input_tokens}/${responseBody.usage.output_tokens})`);
+      // Validate response structure
+      if (!responseBody || !responseBody.content) {
+        this.logger.error('Invalid Bedrock response structure:', JSON.stringify(responseBody));
+        throw new Error('Bedrock response missing content');
+      }
+
+      if (!responseBody.usage) {
+        this.logger.warn('Bedrock response missing usage data');
+      } else {
+        this.logger.debug(`Bedrock response received (tokens: ${responseBody.usage.input_tokens}/${responseBody.usage.output_tokens})`);
+      }
 
       return responseBody;
     } catch (error) {
@@ -169,9 +184,16 @@ export class BedrockService {
       }
     );
 
+    // Validate response has content
+    if (!response || !response.content || !Array.isArray(response.content)) {
+      this.logger.error('Invalid response structure from invokeModel:', JSON.stringify(response));
+      throw new Error('Invalid response structure from Bedrock');
+    }
+
     // Extract text from first content block
-    const textContent = response.content.find(c => c.type === 'text');
-    if (!textContent) {
+    const textContent = response.content.find(c => c && c.type === 'text' && c.text);
+    if (!textContent || !textContent.text) {
+      this.logger.error('No text content in response:', JSON.stringify(response.content));
       throw new Error('No text content in response');
     }
 
