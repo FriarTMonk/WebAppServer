@@ -48,8 +48,9 @@ export default function EvaluationFrameworksPage() {
       }
 
       const data = await response.json();
-      setFrameworks(data);
+      setFrameworks(Array.isArray(data) ? data : []);
     } catch (err) {
+      console.error('Error fetching frameworks:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
