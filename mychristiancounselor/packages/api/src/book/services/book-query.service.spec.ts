@@ -45,124 +45,6 @@ describe('BookQueryService', () => {
   });
 
   describe('findBooks', () => {
-    describe('anonymous users', () => {
-      it('should return only globally aligned books without mature content', async () => {
-        const mockBooks = [
-          {
-            id: '1',
-            title: 'Book 1',
-            author: 'Author 1',
-            publisher: 'Publisher 1',
-            publicationYear: 2023,
-            description: 'Description 1',
-            coverImageUrl: 'http://example.com/cover1.jpg',
-            biblicalAlignmentScore: 95,
-            visibilityTier: 'globally_aligned',
-            genreTag: 'theology',
-            matureContent: false,
-            _count: { endorsements: 5 },
-            endorsements: [],
-          },
-          {
-            id: '2',
-            title: 'Book 2',
-            author: 'Author 2',
-            publisher: null,
-            publicationYear: null,
-            description: null,
-            coverImageUrl: null,
-            biblicalAlignmentScore: 92,
-            visibilityTier: 'globally_aligned',
-            genreTag: null,
-            matureContent: true, // Should be filtered out
-            _count: { endorsements: 3 },
-            endorsements: [],
-          },
-          {
-            id: '3',
-            title: 'Book 3',
-            author: 'Author 3',
-            publisher: 'Publisher 3',
-            publicationYear: 2022,
-            description: 'Description 3',
-            coverImageUrl: 'http://example.com/cover3.jpg',
-            biblicalAlignmentScore: 85,
-            visibilityTier: 'conceptually_aligned', // Should be filtered out
-            genreTag: 'devotional',
-            matureContent: false,
-            _count: { endorsements: 2 },
-            endorsements: [{ organizationId: 'org1' }],
-          },
-        ];
-
-        (prisma.book.findMany as jest.Mock).mockResolvedValue(mockBooks);
-        (prisma.book.count as jest.Mock).mockResolvedValue(3);
-
-        const result = await service.findBooks({}, undefined);
-
-        expect(result.books).toHaveLength(1);
-        expect(result.books[0].id).toBe('1');
-        expect(result.books[0].visibilityTier).toBe('globally_aligned');
-        expect(result.books[0].matureContent).toBe(false);
-        expect(result.total).toBe(1); // Returns visible book count, not database count
-      });
-
-      it('should filter by search term', async () => {
-        const mockBooks = [
-          {
-            id: '1',
-            title: 'Mere Christianity',
-            author: 'C.S. Lewis',
-            publisher: 'HarperOne',
-            publicationYear: 1952,
-            description: 'Classic Christian apologetics',
-            coverImageUrl: 'http://example.com/mere.jpg',
-            biblicalAlignmentScore: 95,
-            visibilityTier: 'globally_aligned',
-            genreTag: 'apologetics',
-            matureContent: false,
-            _count: { endorsements: 10 },
-            endorsements: [],
-          },
-        ];
-
-        (prisma.book.findMany as jest.Mock).mockResolvedValue(mockBooks);
-        (prisma.book.count as jest.Mock).mockResolvedValue(1);
-
-        const result = await service.findBooks({ search: 'Lewis' }, undefined);
-
-        expect(prisma.book.findMany).toHaveBeenCalledWith(
-          expect.objectContaining({
-            where: expect.objectContaining({
-              AND: expect.arrayContaining([
-                expect.objectContaining({
-                  OR: [
-                    { title: { contains: 'Lewis', mode: 'insensitive' } },
-                    { author: { contains: 'Lewis', mode: 'insensitive' } },
-                  ],
-                }),
-              ]),
-            }),
-          }),
-        );
-        expect(result.books).toHaveLength(1);
-      });
-
-      it('should apply pagination', async () => {
-        (prisma.book.findMany as jest.Mock).mockResolvedValue([]);
-        (prisma.book.count as jest.Mock).mockResolvedValue(0);
-
-        await service.findBooks({ skip: 10, take: 5 }, undefined);
-
-        expect(prisma.book.findMany).toHaveBeenCalledWith(
-          expect.objectContaining({
-            skip: 10,
-            take: 5,
-          }),
-        );
-      });
-    });
-
     describe('authenticated users', () => {
       it('should return books user has access to via batch filtering', async () => {
         const userId = 'user-123';
@@ -324,6 +206,12 @@ describe('BookQueryService', () => {
 
       it('should respect visibilityTier filter', async () => {
         const userId = 'user-123';
+        const mockUser = {
+          accountType: 'adult',
+          birthDate: new Date('1990-01-01'),
+          organizationMembers: [],
+        };
+        (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
         (prisma.book.findMany as jest.Mock).mockResolvedValue([]);
         (prisma.book.count as jest.Mock).mockResolvedValue(0);
 
@@ -342,6 +230,12 @@ describe('BookQueryService', () => {
 
       it('should filter by genre', async () => {
         const userId = 'user-123';
+        const mockUser = {
+          accountType: 'adult',
+          birthDate: new Date('1990-01-01'),
+          organizationMembers: [],
+        };
+        (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
         (prisma.book.findMany as jest.Mock).mockResolvedValue([]);
         (prisma.book.count as jest.Mock).mockResolvedValue(0);
 
@@ -574,20 +468,32 @@ describe('BookQueryService', () => {
 
     describe('pagination', () => {
       it('should use default pagination values', async () => {
+        const mockUser = {
+          accountType: 'adult',
+          birthDate: new Date('1990-01-01'),
+          organizationMembers: [],
+        };
+        (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
         (prisma.book.findMany as jest.Mock).mockResolvedValue([]);
         (prisma.book.count as jest.Mock).mockResolvedValue(0);
 
-        const result = await service.findBooks({}, undefined);
+        const result = await service.findBooks({}, 'user-123');
 
         expect(result.skip).toBe(0);
         expect(result.take).toBe(20);
       });
 
       it('should return correct pagination metadata', async () => {
+        const mockUser = {
+          accountType: 'adult',
+          birthDate: new Date('1990-01-01'),
+          organizationMembers: [],
+        };
+        (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
         (prisma.book.findMany as jest.Mock).mockResolvedValue([]);
         (prisma.book.count as jest.Mock).mockResolvedValue(0);
 
-        const result = await service.findBooks({ skip: 10, take: 5 }, undefined);
+        const result = await service.findBooks({ skip: 10, take: 5 }, 'user-123');
 
         expect(result.skip).toBe(10);
         expect(result.take).toBe(5);
@@ -624,7 +530,10 @@ describe('BookQueryService', () => {
         { retailer: 'Amazon', url: 'https://amazon.com/book', isPrimary: true, price: null },
         { retailer: 'CBD', url: 'https://cbd.com/book', isPrimary: false, price: null },
       ],
-      endorsements: [{ organizationId: 'org1' }, { organizationId: 'org2' }],
+      endorsements: [
+        { organizationId: 'org1', organization: { name: 'Organization 1' } },
+        { organizationId: 'org2', organization: { name: 'Organization 2' } }
+      ],
       evaluationHistory: [{ evaluatedAt: new Date('2023-01-15') }],
       _count: { endorsements: 2 },
     };
@@ -633,10 +542,10 @@ describe('BookQueryService', () => {
       it('should throw NotFoundException when book does not exist', async () => {
         (prisma.book.findUnique as jest.Mock).mockResolvedValue(null);
 
-        await expect(service.findBookById('invalid-id', undefined)).rejects.toThrow(
+        await expect(service.findBookById('invalid-id', 'user-123')).rejects.toThrow(
           NotFoundException,
         );
-        await expect(service.findBookById('invalid-id', undefined)).rejects.toThrow(
+        await expect(service.findBookById('invalid-id', 'user-123')).rejects.toThrow(
           'Book not found',
         );
       });
@@ -644,72 +553,11 @@ describe('BookQueryService', () => {
       it('should throw NotFoundException for invalid UUID format', async () => {
         (prisma.book.findUnique as jest.Mock).mockResolvedValue(null);
 
-        await expect(service.findBookById('invalid-uuid-format', undefined)).rejects.toThrow(
+        await expect(service.findBookById('invalid-uuid-format', 'user-123')).rejects.toThrow(
           NotFoundException,
         );
-        await expect(service.findBookById('invalid-uuid-format', undefined)).rejects.toThrow(
+        await expect(service.findBookById('invalid-uuid-format', 'user-123')).rejects.toThrow(
           'Book not found',
-        );
-      });
-    });
-
-    describe('anonymous users', () => {
-      it('should return globally_aligned book without mature content', async () => {
-        (prisma.book.findUnique as jest.Mock).mockResolvedValue(mockBookWithDetails);
-
-        const result = await service.findBookById('book-123', undefined);
-
-        expect(result).toMatchObject({
-          id: 'book-123',
-          title: 'Test Book',
-          author: 'Test Author',
-          biblicalAlignmentScore: 95,
-          visibilityTier: 'globally_aligned',
-          matureContent: false,
-        });
-        expect(result.doctrineCategoryScores).toHaveLength(2);
-        expect(result.purchaseLinks).toHaveLength(2);
-        expect(result.endorsementCount).toBe(2);
-        expect(visibilityChecker.canAccess).not.toHaveBeenCalled();
-      });
-
-      it('should throw ForbiddenException for conceptually_aligned book', async () => {
-        const conceptuallyAlignedBook = {
-          ...mockBookWithDetails,
-          visibilityTier: 'conceptually_aligned',
-        };
-        (prisma.book.findUnique as jest.Mock).mockResolvedValue(conceptuallyAlignedBook);
-
-        await expect(service.findBookById('book-123', undefined)).rejects.toThrow(
-          ForbiddenException,
-        );
-        await expect(service.findBookById('book-123', undefined)).rejects.toThrow(
-          'You do not have access to this book',
-        );
-      });
-
-      it('should throw ForbiddenException for not_aligned book', async () => {
-        const notAlignedBook = {
-          ...mockBookWithDetails,
-          visibilityTier: 'not_aligned',
-          biblicalAlignmentScore: 65,
-        };
-        (prisma.book.findUnique as jest.Mock).mockResolvedValue(notAlignedBook);
-
-        await expect(service.findBookById('book-123', undefined)).rejects.toThrow(
-          ForbiddenException,
-        );
-      });
-
-      it('should throw ForbiddenException for globally_aligned book with mature content', async () => {
-        const matureBook = {
-          ...mockBookWithDetails,
-          matureContent: true,
-        };
-        (prisma.book.findUnique as jest.Mock).mockResolvedValue(matureBook);
-
-        await expect(service.findBookById('book-123', undefined)).rejects.toThrow(
-          ForbiddenException,
         );
       });
     });
@@ -836,9 +684,15 @@ describe('BookQueryService', () => {
 
     describe('DTO mapping', () => {
       it('should correctly map all fields to BookDetailDto', async () => {
+        const mockUser = {
+          id: 'user-123',
+          isPlatformAdmin: false,
+        };
+        (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
         (prisma.book.findUnique as jest.Mock).mockResolvedValue(mockBookWithDetails);
+        (visibilityChecker.canAccess as jest.Mock).mockResolvedValue(true);
 
-        const result = await service.findBookById('book-123', undefined);
+        const result = await service.findBookById('book-123', 'user-123');
 
         expect(result).toMatchObject({
           id: 'book-123',
@@ -892,9 +746,15 @@ describe('BookQueryService', () => {
           evaluationHistory: [],
         };
 
+        const mockUser = {
+          id: 'user-123',
+          isPlatformAdmin: false,
+        };
+        (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
         (prisma.book.findUnique as jest.Mock).mockResolvedValue(bookWithNulls);
+        (visibilityChecker.canAccess as jest.Mock).mockResolvedValue(true);
 
-        const result = await service.findBookById('book-123', undefined);
+        const result = await service.findBookById('book-123', 'user-123');
 
         expect(result.isbn).toBeUndefined();
         expect(result.publisher).toBeUndefined();
@@ -912,9 +772,15 @@ describe('BookQueryService', () => {
 
     describe('database queries', () => {
       it('should fetch book with all required relations', async () => {
+        const mockUser = {
+          id: 'user-123',
+          isPlatformAdmin: false,
+        };
+        (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
         (prisma.book.findUnique as jest.Mock).mockResolvedValue(mockBookWithDetails);
+        (visibilityChecker.canAccess as jest.Mock).mockResolvedValue(true);
 
-        await service.findBookById('book-123', undefined);
+        await service.findBookById('book-123', 'user-123');
 
         expect(prisma.book.findUnique).toHaveBeenCalledWith({
           where: { id: 'book-123' },

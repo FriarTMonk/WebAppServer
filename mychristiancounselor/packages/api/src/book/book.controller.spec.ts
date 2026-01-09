@@ -74,7 +74,7 @@ describe('BookController', () => {
   });
 
   describe('listBooks', () => {
-    it('should return paginated list of books for anonymous users', async () => {
+    it('should return paginated list of books for authenticated users', async () => {
       const mockResponse = {
         books: [
           {
@@ -99,13 +99,13 @@ describe('BookController', () => {
 
       mockQueryService.findBooks.mockResolvedValue(mockResponse);
 
-      const result = await controller.listBooks({}, undefined);
+      const result = await controller.listBooks({}, mockUser);
 
       expect(result).toEqual(mockResponse);
-      expect(queryService.findBooks).toHaveBeenCalledWith({}, undefined);
+      expect(queryService.findBooks).toHaveBeenCalledWith({}, 'user-123');
     });
 
-    it('should return paginated list of books for authenticated users', async () => {
+    it('should return conceptually_aligned books for authenticated users', async () => {
       const mockResponse = {
         books: [
           {
@@ -165,9 +165,9 @@ describe('BookController', () => {
         take: 20,
       });
 
-      await controller.listBooks(query, undefined);
+      await controller.listBooks(query, mockUser);
 
-      expect(queryService.findBooks).toHaveBeenCalledWith(query, undefined);
+      expect(queryService.findBooks).toHaveBeenCalledWith(query, 'user-123');
     });
 
     it('should handle pagination parameters', async () => {
@@ -450,15 +450,6 @@ describe('BookController', () => {
       updatedAt: new Date('2023-01-15'),
     };
 
-    it('should return book detail for globally_aligned book (anonymous user)', async () => {
-      mockQueryService.findBookById.mockResolvedValue(mockBookDetail);
-
-      const result = await controller.getBookById('book-123', undefined);
-
-      expect(result).toEqual(mockBookDetail);
-      expect(queryService.findBookById).toHaveBeenCalledWith('book-123', undefined);
-    });
-
     it('should return book detail for globally_aligned book (authenticated user)', async () => {
       mockQueryService.findBookById.mockResolvedValue(mockBookDetail);
 
@@ -474,7 +465,7 @@ describe('BookController', () => {
       );
 
       await expect(
-        controller.getBookById('invalid-id', undefined),
+        controller.getBookById('invalid-id', mockUser),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -484,7 +475,7 @@ describe('BookController', () => {
       );
 
       await expect(
-        controller.getBookById('invalid-uuid-format', undefined),
+        controller.getBookById('invalid-uuid-format', mockUser),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -494,7 +485,7 @@ describe('BookController', () => {
       );
 
       await expect(
-        controller.getBookById('book-123', undefined),
+        controller.getBookById('book-123', mockUser),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -539,14 +530,6 @@ describe('BookController', () => {
       await controller.getBookById('book-123', mockUser);
 
       expect(queryService.findBookById).toHaveBeenCalledWith('book-123', 'user-123');
-    });
-
-    it('should pass undefined userId for anonymous requests', async () => {
-      mockQueryService.findBookById.mockResolvedValue(mockBookDetail);
-
-      await controller.getBookById('book-123', undefined);
-
-      expect(queryService.findBookById).toHaveBeenCalledWith('book-123', undefined);
     });
   });
 

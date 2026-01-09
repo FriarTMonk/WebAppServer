@@ -33,14 +33,14 @@ describe('DuplicateDetectorService', () => {
       isbn: '9780060652920',
     };
 
-    jest.spyOn(prisma.book, 'findUnique').mockResolvedValue({
+    jest.spyOn(prisma.book, 'findFirst').mockResolvedValue({
       id: 'existing-book-id',
     } as any);
 
     const result = await service.findDuplicate(metadata);
 
     expect(result).toBe('existing-book-id');
-    expect(prisma.book.findUnique).toHaveBeenCalledWith({
+    expect(prisma.book.findFirst).toHaveBeenCalledWith({
       where: { isbn: '9780060652920' },
     });
   });

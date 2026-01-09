@@ -7,8 +7,11 @@ import { S3StorageProvider } from '../src/book/providers/storage/s3-storage.prov
 import { EvaluationOrchestratorService } from '../src/book/services/evaluation-orchestrator.service';
 import { StorageOrchestratorService } from '../src/book/services/storage-orchestrator.service';
 import { MetadataAggregatorService } from '../src/book/providers/metadata/metadata-aggregator.service';
+import { GoogleBooksProvider } from '../src/book/providers/metadata/google-books.provider';
+import { ChristianBookProvider } from '../src/book/providers/metadata/christianbook.provider';
 import { DuplicateDetectorService } from '../src/book/services/duplicate-detector.service';
 import { EvaluationScorerService } from '../src/book/services/evaluation-scorer.service';
+import { BedrockService } from '../src/ai/bedrock.service';
 import { getQueueToken } from '@nestjs/bullmq';
 import { queueConfig } from '../src/config/queue.config';
 import { resourcesConfig } from '../src/config/resources.config';
@@ -141,6 +144,31 @@ describe('Book PDF Lifecycle (Integration)', () => {
 
         // Prisma (uses real database connection from env)
         PrismaService,
+
+        // Mock BedrockService (required by EvaluationScorerService)
+        {
+          provide: BedrockService,
+          useValue: {
+            evaluateBook: jest.fn().mockResolvedValue({
+              score: 80,
+              reasoning: 'Mock evaluation',
+            }),
+          },
+        },
+
+        // Mock metadata providers (required by MetadataAggregatorService)
+        {
+          provide: GoogleBooksProvider,
+          useValue: {
+            fetchMetadata: jest.fn().mockResolvedValue(null),
+          },
+        },
+        {
+          provide: ChristianBookProvider,
+          useValue: {
+            fetchMetadata: jest.fn().mockResolvedValue(null),
+          },
+        },
 
         // Mock queues
         {
