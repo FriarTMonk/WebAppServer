@@ -95,18 +95,35 @@ export default function TakeAssessmentPage({ params }: { params: Promise<{ assig
     );
 
     if (unansweredRequired.length > 0) {
-      showToast('Please answer all required questions before submitting.', 'error');
+      showToast(`Please answer all required questions (${unansweredRequired.length} remaining)`, 'error');
+      // Jump to first unanswered required question
+      const firstUnansweredIndex = assessment.questions.findIndex(
+        q => q.id === unansweredRequired[0].id
+      );
+      setCurrentQuestionIndex(firstUnansweredIndex);
       return;
     }
 
     setSubmitting(true);
     try {
-      const result = await assessmentApi.submitAssignedAssessment(assignedId, responses);
-      setResults(result);
+      const response = await assessmentApi.submitAssignedAssessment(assignedId, { responses });
+      if (!response.ok) {
+        const errorMessage = await parseErrorMessage(response, 'Failed to submit assessment');
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      setResults({
+        score: result.score,
+        interpretation: result.interpretation,
+      });
+
+      // Clear localStorage draft
       localStorage.removeItem(`assessment_${assignedId}`);
+
       showToast('Assessment submitted successfully!', 'success');
     } catch (error) {
-      showToast(parseErrorMessage(error), 'error');
+      showToast(error instanceof Error ? error.message : 'Failed to submit assessment', 'error');
     } finally {
       setSubmitting(false);
     }
