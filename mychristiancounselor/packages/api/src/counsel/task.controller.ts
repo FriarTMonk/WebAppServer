@@ -16,6 +16,7 @@ import { MemberTaskService } from './member-task.service';
 import { TaskTemplateService } from './task-template.service';
 import { AssignmentService } from './assignment.service';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 import { MemberTaskStatus, MemberTaskType } from '@prisma/client';
 
 @Controller('counsel/tasks')
@@ -132,6 +133,30 @@ export class TaskController {
       ...dto,
       counselorId: req.user.id,
     });
+  }
+
+  /**
+   * PATCH /counsel/tasks/:id
+   * Update task (member or counselor only)
+   */
+  @Patch(':id')
+  async updateTask(
+    @Param('id') id: string,
+    @Body() dto: UpdateTaskDto,
+    @Request() req,
+  ) {
+    // Get the task to check authorization
+    const task = await this.memberTaskService.getTaskById(id);
+
+    // Check if user is the member or counselor
+    const isMember = task.memberId === req.user.id;
+    const isCounselor = task.counselorId === req.user.id;
+
+    if (!isMember && !isCounselor) {
+      throw new ForbiddenException('Not authorized to edit this task');
+    }
+
+    return this.memberTaskService.updateTask(id, dto);
   }
 
   /**

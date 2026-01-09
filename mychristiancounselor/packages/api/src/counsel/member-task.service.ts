@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MemberTaskStatus, Prisma } from '@prisma/client';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 
 @Injectable()
 export class MemberTaskService {
@@ -136,5 +137,19 @@ export class MemberTaskService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Update a task with partial data
+   */
+  async updateTask(id: string, updates: UpdateTaskDto) {
+    return this.prisma.memberTask.update({
+      where: { id },
+      data: {
+        ...updates,
+        ...(updates.dueDate && { dueDate: new Date(updates.dueDate) }),
+        updatedAt: new Date(),
+      },
+    });
   }
 }
