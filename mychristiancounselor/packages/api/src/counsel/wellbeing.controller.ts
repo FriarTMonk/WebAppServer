@@ -5,6 +5,7 @@ import {
   Param,
   UseGuards,
   Request,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WellbeingHistoryService } from './wellbeing-history.service';
@@ -80,7 +81,14 @@ export class WellbeingController {
     @Param('memberId') memberId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Request() req: any,
   ) {
+    // Authorization: Only allow if user is the member themselves
+    // TODO: Add counselor/platform admin check in future
+    if (req.user.id !== memberId) {
+      throw new ForbiddenException('You do not have access to this member\'s wellbeing history');
+    }
+
     const options: any = {};
     if (startDate) options.startDate = new Date(startDate);
     if (endDate) options.endDate = new Date(endDate);

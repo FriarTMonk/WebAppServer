@@ -99,17 +99,20 @@ export class WellbeingHistoryService {
     const history = await this.getHistory(memberId, options);
 
     // CSV header
-    const header = 'Date,Overall Score,Anxiety,Depression,Stress,Notes\n';
+    const header = 'Date,Status,Trajectory,Summary\n';
 
     // CSV rows
     const rows = history.map((entry) => {
-      const date = new Date(entry.date).toISOString().split('T')[0]; // YYYY-MM-DD
-      const overallScore = entry.overallScore ?? '';
-      const anxiety = entry.anxietyScore ?? '';
-      const depression = entry.depressionScore ?? '';
-      const stress = entry.stressScore ?? '';
-      const notes = (entry.notes || '').replace(/"/g, '""'); // Escape quotes
-      return `${date},"${overallScore}","${anxiety}","${depression}","${stress}","${notes}"`;
+      const date = new Date(entry.createdAt).toISOString().split('T')[0]; // YYYY-MM-DD
+      const status = entry.status ?? '';
+      const trajectory = entry.trajectory ?? '';
+      // Sanitize summary to prevent CSV injection
+      let summary = (entry.summary || '').replace(/"/g, '""'); // Escape quotes
+      // Prevent CSV injection by prefixing dangerous characters with single quote
+      if (summary.match(/^[=+\-@\t\r]/)) {
+        summary = "'" + summary;
+      }
+      return `${date},"${status}","${trajectory}","${summary}"`;
     }).join('\n');
 
     return header + rows;
