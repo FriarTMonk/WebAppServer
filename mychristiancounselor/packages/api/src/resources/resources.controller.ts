@@ -4,6 +4,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { OrganizationBrowseService } from './services/organization-browse.service';
 import { ExternalOrganizationService } from './services/external-organization.service';
 import { ReadingListService } from './services/reading-list.service';
+import { ReadingRecommendationsService } from './services/reading-recommendations.service';
 import { ReadingListQueryDto } from './dto/reading-list-query.dto';
 import { AddToReadingListDto } from './dto/add-to-reading-list.dto';
 import { UpdateReadingListDto } from './dto/update-reading-list.dto';
@@ -25,6 +26,7 @@ export class ResourcesController {
     private readonly organizationBrowseService: OrganizationBrowseService,
     private readonly externalOrganizationService: ExternalOrganizationService,
     private readonly readingListService: ReadingListService,
+    private readonly readingRecommendationsService: ReadingRecommendationsService,
   ) {}
 
   @Get('organizations')
@@ -83,5 +85,13 @@ export class ResourcesController {
     @CurrentUser('id') userId: string,
   ): Promise<{ success: boolean; message: string }> {
     return this.readingListService.removeFromReadingList(userId, itemId);
+  }
+
+  @Get('recommendations')
+  async getRecommendations(
+    @CurrentUser('id') userId: string,
+    @Query('limit') limit?: number,
+  ) {
+    return this.readingRecommendationsService.getRecommendations(userId, limit || 10);
   }
 }
