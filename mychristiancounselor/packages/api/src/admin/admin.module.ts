@@ -28,7 +28,14 @@ import { BulkReEvaluationService } from './services/bulk-re-evaluation.service';
       name: queueConfig.evaluationQueue.name,
     }),
   ],
-  providers: [AdminService, EvaluationFrameworkService, QueueMonitoringService, CostAnalyticsService, BulkReEvaluationService, MorphAuditMiddleware],
+  providers: [
+    AdminService,
+    EvaluationFrameworkService,
+    QueueMonitoringService,
+    CostAnalyticsService,
+    BulkReEvaluationService,
+    MorphAuditMiddleware,
+  ],
   controllers: [AdminController, AdminStatusController],
   exports: [AdminService],
 })
