@@ -22,6 +22,10 @@ COPY --chown=nestjs:nodejs packages/shared ./node_modules/@mychristiancounselor/
 # Copy content JSON files (required by content service)
 COPY --chown=nestjs:nodejs packages/api/src/content/*.json ./
 
+# Generate Prisma Client after copying schema
+# This ensures the Prisma client matches the current schema
+RUN npx prisma generate --schema=./prisma/schema.prisma
+
 # Create logs directory
 RUN mkdir -p /app/logs && chown -R nestjs:nodejs /app/logs
 
