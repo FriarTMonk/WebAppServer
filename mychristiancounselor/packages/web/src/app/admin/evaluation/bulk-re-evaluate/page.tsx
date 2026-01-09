@@ -44,14 +44,16 @@ export default function BulkReEvaluatePage() {
       }
 
       const data = await response.json();
-      setFrameworks(data);
+      const frameworksList = Array.isArray(data) ? data : [];
+      setFrameworks(frameworksList);
 
       // Auto-select active framework
-      const active = data.find((fw: Framework) => fw.isActive);
+      const active = frameworksList.find((fw: Framework) => fw.isActive);
       if (active) {
         setSelectedFramework(active.id);
       }
     } catch (err) {
+      console.error('Error fetching frameworks:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     }
   };
