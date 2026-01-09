@@ -33,7 +33,7 @@ export default function EditTaskModal({
     setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '');
     setPriority(task.priority || 'medium');
     setCounselorNotes(task.counselorNotes || '');
-  }, [task.id]);
+  }, [task]);
 
   // Issue 3: Add escape key handler
   useEffect(() => {
@@ -61,9 +61,9 @@ export default function EditTaskModal({
       // Issue 2: Fix type safety - use Partial<MemberTask> instead of any
       const updateData: Partial<MemberTask> = {
         title: title.trim(),
-        description: description.trim() || null,
+        description: description.trim(), // Always send string, even if empty
         priority,
-        counselorNotes: counselorNotes.trim() || null,
+        counselorNotes: counselorNotes.trim() || undefined, // undefined, not null
       };
 
       // Only include dueDate if it's set
