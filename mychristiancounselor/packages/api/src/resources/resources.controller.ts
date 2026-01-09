@@ -3,6 +3,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { OrganizationBrowseService } from './services/organization-browse.service';
 import { ExternalOrganizationService } from './services/external-organization.service';
+import { ReadingListService } from './services/reading-list.service';
+import { ReadingListQueryDto } from './dto/reading-list-query.dto';
 import {
   OrganizationBrowseQueryDto,
   OrganizationBrowseResponseDto,
@@ -19,6 +21,7 @@ export class ResourcesController {
   constructor(
     private readonly organizationBrowseService: OrganizationBrowseService,
     private readonly externalOrganizationService: ExternalOrganizationService,
+    private readonly readingListService: ReadingListService,
   ) {}
 
   @Get('organizations')
@@ -44,5 +47,13 @@ export class ResourcesController {
     @Body() dto: CreateExternalOrganizationDto,
   ) {
     return this.externalOrganizationService.updateExternalOrganization(id, userId, dto);
+  }
+
+  @Get('reading-list')
+  async getReadingList(
+    @CurrentUser('id') userId: string,
+    @Query() query: ReadingListQueryDto,
+  ) {
+    return this.readingListService.getReadingList(userId, query);
   }
 }
