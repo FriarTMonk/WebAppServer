@@ -830,6 +830,7 @@ model Book {
   doctrineCategoryScores    DoctrineCategoryScore[]
   purchaseLinks             PurchaseLink[]
   userReadingLists          UserReadingList[]             @relation("UserReadingLists")
+  evaluationCostLogs        EvaluationCostLog[]
 
   @@index([evaluationStatus])
   @@index([visibilityTier])
@@ -911,6 +912,22 @@ model EvaluationFramework {
 
   @@index([isActive])
   @@index([version])
+}
+
+model EvaluationCostLog {
+  id               String   @id @default(uuid())
+  bookId           String
+  frameworkVersion String
+  inputTokens      Int
+  outputTokens     Int
+  totalCost        Float // In USD
+  modelUsed        String // "claude-sonnet-4-5" or "claude-opus-4-5"
+  evaluatedAt      DateTime @default(now())
+  book             Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([bookId])
+  @@index([evaluatedAt])
+  @@index([frameworkVersion])
 }
 
 model SalesOpportunity {
