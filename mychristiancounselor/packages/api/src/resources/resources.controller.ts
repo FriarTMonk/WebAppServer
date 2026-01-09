@@ -53,7 +53,7 @@ export class ResourcesController {
   async getReadingList(
     @CurrentUser('id') userId: string,
     @Query() query: ReadingListQueryDto,
-  ) {
+  ): Promise<{ items: any[]; total: number }> {
     return this.readingListService.getReadingList(userId, query);
   }
 }
