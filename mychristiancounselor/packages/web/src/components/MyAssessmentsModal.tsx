@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { AssessedAssessment, assessmentApi } from '@/lib/api';
 import { AssessmentCard } from './shared/AssessmentCard';
 import { showToast } from './Toast';
@@ -12,6 +13,7 @@ interface MyAssessmentsModalProps {
 }
 
 export default function MyAssessmentsModal({ onClose, onAssessmentUpdate }: MyAssessmentsModalProps) {
+  const router = useRouter();
   const [assessments, setAssessments] = useState<AssessedAssessment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,11 +64,9 @@ export default function MyAssessmentsModal({ onClose, onAssessmentUpdate }: MyAs
     return () => abortController.abort();
   }, [fetchAssessments]);
 
-  const handleTakeAssessment = async (assessment: AssessedAssessment) => {
-    // TODO: Implement assessment form modal/page navigation
-    // For now, show a toast message
-    showToast('Assessment form will be implemented in a future task', 'info');
-    onAssessmentUpdate?.();
+  const handleTakeAssessment = (assessment: AssessedAssessment) => {
+    router.push(`/assessments/take/${assessment.id}`);
+    onClose();
   };
 
   const pendingAssessments = useMemo(() => assessments.filter((a) => a.status === 'pending'), [assessments]);

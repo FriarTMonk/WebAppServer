@@ -197,10 +197,36 @@ export default function HistoricalTrendsModal({
     return colors[type] || 'border-gray-500';
   };
 
-  const handleExportCSV = () => {
-    // TODO: Implement CSV export functionality
-    // This will be added in a future update
-    alert('CSV export functionality will be added in a future update');
+  const handleExportCSV = async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const token = localStorage.getItem('accessToken');
+
+      const response = await fetch(
+        `${apiUrl}/counsel/wellbeing/member/${memberId}/history/export`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) throw new Error('Export failed');
+
+      const { filename, data } = await response.json();
+
+      // Create download
+      const blob = new Blob([data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('CSV export failed:', error);
+      alert('Failed to export CSV');
+    }
   };
 
   // Filter events by type

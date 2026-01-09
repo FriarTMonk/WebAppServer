@@ -139,9 +139,20 @@ export default function AssignAssessmentModal({
           return;
         }
 
-        // TODO: API endpoint for assigning custom assessments
-        // For now, use a placeholder
-        throw new Error('Custom assessment assignment endpoint not yet implemented');
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+        const token = localStorage.getItem('accessToken');
+
+        response = await fetch(`${apiUrl}/counsel/assessments/custom/${selectedCustomId}/assign`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            memberId,
+            dueDate: dueDate || undefined,
+          }),
+        });
       }
 
       if (!response.ok) {
