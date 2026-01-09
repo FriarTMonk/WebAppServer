@@ -134,7 +134,6 @@ export class AssessmentController {
       memberId: dto.memberId,
       assignedBy: req.user.id,
       dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
-      notes: dto.notes,
     });
   }
 }

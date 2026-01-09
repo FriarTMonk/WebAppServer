@@ -55,7 +55,18 @@ export class AssessmentService {
       );
     }
 
-    // Verify counselor has access to assign (must be creator or in same organization)
+    // Verify member exists
+    const member = await this.prisma.user.findUnique({
+      where: { id: dto.memberId },
+    });
+
+    if (!member) {
+      throw new NotFoundException(
+        `Member with ID ${dto.memberId} not found`,
+      );
+    }
+
+    // Verify counselor has access to assign (must be creator)
     if (customAssessment.createdBy !== dto.assignedBy) {
       throw new ForbiddenException(
         'You do not have permission to assign this custom assessment',

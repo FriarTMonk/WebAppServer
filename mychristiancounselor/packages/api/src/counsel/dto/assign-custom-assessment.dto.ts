@@ -8,9 +8,4 @@ export class AssignCustomAssessmentDto {
   @IsOptional()
   @IsDateString({}, { message: 'Due date must be a valid ISO date string' })
   dueDate?: string;
-
-  @IsOptional()
-  @IsString({ message: 'Notes must be a string' })
-  @MaxLength(1000, { message: 'Notes must not exceed 1000 characters' })
-  notes?: string;
 }
