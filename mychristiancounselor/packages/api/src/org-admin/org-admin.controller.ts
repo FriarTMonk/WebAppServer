@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Logger, Param, Body, UseGuards, Request, ForbiddenException, Query, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Put, Delete, Logger, Param, Body, UseGuards, Request, ForbiddenException, Query, HttpCode } from '@nestjs/common';
 import { AdminService } from '../admin/admin.service';
 import { OrgAdminService } from './org-admin.service';
 import { IsOrgAdminGuard } from '../admin/guards/is-org-admin.guard';
@@ -7,6 +7,9 @@ import { User } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminResetPasswordDto, UpdateMemberRoleRequest, CreateCounselorAssignmentDto } from '@mychristiancounselor/shared';
 import { EmailMetricsService } from '../email/email-metrics.service';
+import { OrgBookSettingsService, UpdateOrgBookSettingsDto } from './services/org-book-settings.service';
+import { BookQueryService } from '../book/services/book-query.service';
+import { BookQueryDto } from '../book/dto';
 
 /**
  * Controller for organization admin operations.
@@ -21,6 +24,8 @@ export class OrgAdminController {
     private adminService: AdminService,
     private orgAdminService: OrgAdminService,
     private emailMetricsService: EmailMetricsService,
+    private orgBookSettingsService: OrgBookSettingsService,
+    private bookQueryService: BookQueryService,
   ) {}
 
   /**
@@ -328,5 +333,54 @@ export class OrgAdminController {
       emailType,
       status,
     });
+  }
+
+  /**
+   * Get organization book settings
+   * GET /org-admin/books/settings
+   */
+  @Get('books/settings')
+  async getOrgBookSettings(@Request() req: any) {
+    const organizationId = req.userOrganization.id;
+    return this.orgBookSettingsService.getOrgBookSettings(organizationId);
+  }
+
+  /**
+   * Update organization book settings
+   * PUT /org-admin/books/settings
+   */
+  @Put('books/settings')
+  async updateOrgBookSettings(
+    @Request() req: any,
+    @Body() dto: UpdateOrgBookSettingsDto,
+  ) {
+    const organizationId = req.userOrganization.id;
+    return this.orgBookSettingsService.updateOrgBookSettings(organizationId, dto);
+  }
+
+  /**
+   * Get books filtered for organization
+   * GET /org-admin/books
+   */
+  @Get('books')
+  async getOrganizationBooks(
+    @CurrentUser() user: User,
+    @Request() req: any,
+    @Query() query: BookQueryDto,
+  ) {
+    const organizationId = req.userOrganization.id;
+    return this.bookQueryService.findBooksForOrganization(query, user.id, organizationId);
+  }
+
+  /**
+   * Get all available books (for setting up filters)
+   * GET /org-admin/books/available
+   */
+  @Get('books/available')
+  async getAvailableBooks(
+    @CurrentUser() user: User,
+    @Query() query: BookQueryDto,
+  ) {
+    return this.bookQueryService.findBooks(query, user.id);
   }
 }

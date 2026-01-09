@@ -448,4 +448,125 @@ export class BookQueryService {
 
     return bookDto;
   }
+
+  /**
+   * Find books filtered for a specific organization
+   * Applies organization-specific hidden/allowed book lists
+   */
+  async findBooksForOrganization(
+    query: BookQueryDto,
+    userId: string,
+    organizationId: string,
+  ): Promise<BookListResponseDto> {
+    const {
+      search,
+      visibilityTier,
+      genre,
+      showMatureContent,
+      evaluationStatus,
+      skip = 0,
+      take = 20,
+    } = query;
+
+    this.logger.log(
+      `Finding books for organization ${organizationId} with query: ${JSON.stringify(query)}`,
+    );
+
+    // Get organization book settings
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: {
+        hiddenBookIds: true,
+        allowedBookIds: true,
+      },
+    });
+
+    // Check if user is platform admin
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isPlatformAdmin: true },
+    });
+    const isPlatformAdmin = user?.isPlatformAdmin ?? false;
+
+    // Build where clause
+    const where = await this.buildWhereClause(
+      search,
+      visibilityTier,
+      genre,
+      showMatureContent,
+      evaluationStatus,
+      userId,
+      isPlatformAdmin,
+    );
+
+    // Apply organization-specific filtering
+    if (org?.hiddenBookIds && org.hiddenBookIds.length > 0) {
+      // Exclude books hidden by the organization
+      where.AND.push({
+        id: { notIn: org.hiddenBookIds },
+      });
+    }
+
+    if (org?.allowedBookIds && org.allowedBookIds.length > 0) {
+      // Only show books explicitly allowed by the organization
+      where.AND.push({
+        id: { in: org.allowedBookIds },
+      });
+    }
+
+    // Execute queries in parallel
+    const [books, total] = await Promise.all([
+      this.prisma.book.findMany({
+        where,
+        skip,
+        take,
+        include: {
+          endorsements: {
+            select: { organizationId: true },
+          },
+          _count: {
+            select: { endorsements: true },
+          },
+          submittedByOrganization: {
+            select: { name: true },
+          },
+        },
+        orderBy: [
+          { biblicalAlignmentScore: 'desc' },
+          { createdAt: 'desc' },
+        ],
+      }),
+      this.prisma.book.count({ where }),
+    ]);
+
+    // Filter books based on visibility
+    const visibleBooks = await this.filterByVisibility(books, userId);
+
+    // Map to DTOs
+    const bookDtos: BookListItemDto[] = visibleBooks.map((book) => ({
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      publisher: book.publisher ?? undefined,
+      publicationYear: book.publicationYear ?? undefined,
+      description: book.description ?? undefined,
+      coverImageUrl: book.coverImageUrl ?? undefined,
+      biblicalAlignmentScore: book.biblicalAlignmentScore ?? undefined,
+      visibilityTier: book.visibilityTier ?? undefined,
+      genreTag: book.genreTag ?? undefined,
+      matureContent: book.matureContent,
+      endorsementCount: book._count.endorsements,
+      submittedByOrganization: book.submittedByOrganization
+        ? { name: book.submittedByOrganization.name }
+        : undefined,
+      createdAt: book.createdAt,
+    }));
+
+    return {
+      books: bookDtos,
+      total: visibleBooks.length,
+      skip,
+      take,
+    };
+  }
 }

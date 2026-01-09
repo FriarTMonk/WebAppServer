@@ -7,6 +7,8 @@ import { AuthModule } from '../auth/auth.module';
 import { OrganizationModule } from '../organization/organization.module';
 import { CounselModule } from '../counsel/counsel.module';
 import { EmailModule } from '../email/email.module';
+import { BookModule } from '../book/book.module';
+import { OrgBookSettingsService } from './services/org-book-settings.service';
 
 @Module({
   imports: [
@@ -16,9 +18,10 @@ import { EmailModule } from '../email/email.module';
     OrganizationModule,
     CounselModule,
     EmailModule,
+    BookModule,
   ],
   controllers: [OrgAdminController],
-  providers: [OrgAdminService],
+  providers: [OrgAdminService, OrgBookSettingsService],
   exports: [OrgAdminService],
 })
 export class OrgAdminModule {}
