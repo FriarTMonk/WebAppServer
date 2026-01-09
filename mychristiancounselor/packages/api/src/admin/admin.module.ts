@@ -8,6 +8,7 @@ import { AuthModule } from '../auth/auth.module';
 import { EmailModule } from '../email/email.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { SalesModule } from '../sales/sales.module';
+import { MarketingModule } from '../marketing/marketing.module';
 import { MorphAuditMiddleware } from './middleware/morph-audit.middleware';
 import { queueConfig } from '../config/queue.config';
 
@@ -18,6 +19,7 @@ import { queueConfig } from '../config/queue.config';
     EmailModule,
     SubscriptionModule,
     SalesModule,
+    MarketingModule,
     BullModule.registerQueue({
       name: queueConfig.evaluationQueue.name,
     }),

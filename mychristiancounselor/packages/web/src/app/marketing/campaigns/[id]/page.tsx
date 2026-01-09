@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { CampaignStatusBadge } from '../../../../components/marketing/CampaignStatusBadge';
 import { showToast } from '../../../../components/Toast';
@@ -70,7 +70,8 @@ interface Metrics {
   conversionRate: number;
 }
 
-export default function CampaignDetailPage({ params }: { params: { id: string } }) {
+export default function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,7 +84,7 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
       setError(null);
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
-      const response = await fetch(`${apiUrl}/marketing/campaigns/${params.id}`, {
+      const response = await fetch(`${apiUrl}/marketing/campaigns/${id}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -112,7 +113,7 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
 
   useEffect(() => {
     fetchCampaign();
-  }, [params.id]);
+  }, [id]);
 
   const calculateMetrics = (): Metrics => {
     if (!campaign) {

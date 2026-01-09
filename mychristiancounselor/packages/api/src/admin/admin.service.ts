@@ -5,6 +5,7 @@ import { SubscriptionService } from '../subscription/subscription.service';
 import { EmailService } from '../email/email.service';
 import { MetricsService } from '../metrics/metrics.service';
 import { SalesPerformanceService } from '../sales/sales-performance.service';
+import { CampaignsService } from '../marketing/campaigns.service';
 import { PlatformMetrics } from './types/platform-metrics.interface';
 import { GetOrganizationMembersResponse, MorphStartResponse, MorphEndResponse, AdminResetPasswordResponse, UpdateMemberRoleResponse, OrganizationMember, OrgMetrics } from '@mychristiancounselor/shared';
 import { randomBytes } from 'crypto';
@@ -21,6 +22,7 @@ export class AdminService {
     private emailService: EmailService,
     private metricsService: MetricsService,
     private salesPerformanceService: SalesPerformanceService,
+    private campaignsService: CampaignsService,
   ) {}
 
   async isPlatformAdmin(userId: string): Promise<boolean> {
@@ -189,6 +191,29 @@ export class AdminService {
         salesMetrics = undefined;
       }
 
+      // Marketing Metrics - wrapped in try-catch to prevent entire endpoint failure
+      let marketingMetrics;
+      try {
+        // Get metrics for all campaigns (platform admin view)
+        const rawMarketingMetrics = await this.campaignsService.getMetrics(null, true);
+
+        // Transform to match frontend expectations
+        marketingMetrics = {
+          totalProspects: rawMarketingMetrics.prospects.total,
+          totalCampaigns: rawMarketingMetrics.campaigns.total,
+          activeCampaigns: rawMarketingMetrics.campaigns.draft + rawMarketingMetrics.campaigns.scheduled,
+          avgOpenRate: rawMarketingMetrics.engagement.avgOpenRate,
+        };
+      } catch (error) {
+        this.logger.warn('Failed to retrieve marketing metrics, continuing without them', error);
+        marketingMetrics = {
+          totalProspects: 0,
+          totalCampaigns: 0,
+          activeCampaigns: 0,
+          avgOpenRate: 0,
+        };
+      }
+
       return {
         activeUsers: {
           total: activeUsers,
@@ -205,6 +230,7 @@ export class AdminService {
         slaHealth,
         performance,
         salesMetrics,
+        marketingMetrics,
         timestamp: new Date(),
       };
     } catch (error) {

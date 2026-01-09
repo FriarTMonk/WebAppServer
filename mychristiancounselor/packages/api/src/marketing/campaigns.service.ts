@@ -140,9 +140,20 @@ export class CampaignsService {
               select: {
                 id: true,
                 organizationName: true,
-                contactName: true,
-                contactEmail: true,
-                contactPhone: true,
+                website: true,
+                industry: true,
+                estimatedSize: true,
+                lastCampaignSentAt: true,
+              },
+            },
+            prospectContact: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                title: true,
+                isPrimary: true,
               },
             },
             emailLog: {
@@ -248,13 +259,13 @@ export class CampaignsService {
       throw new BadRequestException('Only draft campaigns can be updated');
     }
 
-    // If updating prospects, validate them
-    if (dto.prospectIds) {
-      const validation = await this.validateRecipients(dto.prospectIds);
+    // If updating prospect contacts, validate them
+    if (dto.prospectContactIds) {
+      const validation = await this.validateRecipients(dto.prospectContactIds);
 
       if (validation.ineligible.length > 0) {
         throw new BadRequestException({
-          message: 'Some prospects are not eligible due to 90-day cooldown',
+          message: 'Some prospect contacts are not eligible due to 90-day cooldown',
           ineligible: validation.ineligible,
         });
       }
@@ -265,9 +276,10 @@ export class CampaignsService {
       });
 
       await this.prisma.emailCampaignRecipient.createMany({
-        data: dto.prospectIds.map(prospectId => ({
+        data: dto.prospectContactIds.map(prospectContactId => ({
           campaignId,
-          prospectId,
+          prospectContactId,
+          prospectId: validation.contactToProspectMap[prospectContactId], // Link to parent prospect
           status: 'pending',
         })),
       });
@@ -280,6 +292,8 @@ export class CampaignsService {
         subject: dto.subject,
         htmlBody: dto.htmlBody,
         textBody: dto.textBody,
+        scheduledFor: dto.scheduledFor ? new Date(dto.scheduledFor) : null,
+        status: dto.scheduledFor ? 'scheduled' : 'draft',
       },
       include: {
         createdBy: {
@@ -291,8 +305,19 @@ export class CampaignsService {
               select: {
                 id: true,
                 organizationName: true,
-                contactName: true,
-                contactEmail: true,
+                website: true,
+                industry: true,
+                estimatedSize: true,
+              },
+            },
+            prospectContact: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                title: true,
+                isPrimary: true,
               },
             },
           },
@@ -458,5 +483,95 @@ export class CampaignsService {
     }
 
     return { eligible, ineligible, contactToProspectMap };
+  }
+
+  /**
+   * Get marketing dashboard metrics
+   */
+  async getMetrics(userId: string, isPlatformAdmin: boolean) {
+    const where: any = isPlatformAdmin ? {} : { createdById: userId };
+
+    // Prospect stats
+    const [
+      totalProspects,
+      activeProspects,
+      convertedProspects,
+      archivedProspects,
+    ] = await Promise.all([
+      this.prisma.prospect.count({ where }),
+      this.prisma.prospect.count({ where: { ...where, archivedAt: null, convertedAt: null } }),
+      this.prisma.prospect.count({ where: { ...where, convertedAt: { not: null } } }),
+      this.prisma.prospect.count({ where: { ...where, archivedAt: { not: null } } }),
+    ]);
+
+    // Campaign stats
+    const [
+      totalCampaigns,
+      draftCampaigns,
+      scheduledCampaigns,
+      sentCampaigns,
+    ] = await Promise.all([
+      this.prisma.emailCampaign.count({ where }),
+      this.prisma.emailCampaign.count({ where: { ...where, status: 'draft' } }),
+      this.prisma.emailCampaign.count({ where: { ...where, status: 'scheduled' } }),
+      this.prisma.emailCampaign.count({ where: { ...where, status: 'sent' } }),
+    ]);
+
+    // Engagement stats - only from sent campaigns
+    const sentCampaignIds = await this.prisma.emailCampaign.findMany({
+      where: { ...where, status: 'sent' },
+      select: { id: true },
+    });
+
+    let avgOpenRate = 0;
+    let avgClickRate = 0;
+    let avgReplyRate = 0;
+    let totalRecipients = 0;
+
+    if (sentCampaignIds.length > 0) {
+      const recipients = await this.prisma.emailCampaignRecipient.findMany({
+        where: {
+          campaignId: { in: sentCampaignIds.map(c => c.id) },
+        },
+        select: {
+          openedAt: true,
+          clickedAt: true,
+          repliedAt: true,
+        },
+      });
+
+      totalRecipients = recipients.length;
+
+      if (totalRecipients > 0) {
+        const openCount = recipients.filter(r => r.openedAt !== null).length;
+        const clickCount = recipients.filter(r => r.clickedAt !== null).length;
+        const replyCount = recipients.filter(r => r.repliedAt !== null).length;
+
+        avgOpenRate = (openCount / totalRecipients) * 100;
+        avgClickRate = (clickCount / totalRecipients) * 100;
+        avgReplyRate = (replyCount / totalRecipients) * 100;
+      }
+    }
+
+    return {
+      prospects: {
+        total: totalProspects,
+        active: activeProspects,
+        converted: convertedProspects,
+        archived: archivedProspects,
+      },
+      campaigns: {
+        total: totalCampaigns,
+        draft: draftCampaigns,
+        scheduled: scheduledCampaigns,
+        sent: sentCampaigns,
+      },
+      engagement: {
+        avgOpenRate,
+        avgClickRate,
+        avgReplyRate,
+        totalRecipients,
+      },
+    };
   }
 }

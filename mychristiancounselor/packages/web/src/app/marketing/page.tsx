@@ -41,29 +41,23 @@ export default function MarketingDashboardPage() {
       setLoading(true);
       setError(null);
 
-      // For now, we'll use placeholder metrics until the backend endpoint is created
-      // TODO: Replace with actual API call to /marketing/metrics
-      // const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
-      setMetrics({
-        prospects: {
-          total: 0,
-          active: 0,
-          converted: 0,
-          archived: 0,
-        },
-        campaigns: {
-          total: 0,
-          draft: 0,
-          scheduled: 0,
-          sent: 0,
-        },
-        engagement: {
-          avgOpenRate: 0,
-          avgClickRate: 0,
-          avgReplyRate: 0,
-          totalRecipients: 0,
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const response = await fetch(`${apiUrl}/marketing/campaigns/metrics`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          router.push('/login?redirect=/marketing');
+          return;
+        }
+        throw new Error('Failed to fetch metrics');
+      }
+
+      const data = await response.json();
+      setMetrics(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {

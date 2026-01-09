@@ -1,4 +1,4 @@
-import { IsString, IsArray, IsOptional } from 'class-validator';
+import { IsString, IsArray, IsOptional, IsDateString } from 'class-validator';
 
 export class UpdateCampaignDto {
   @IsString()
@@ -20,5 +20,9 @@ export class UpdateCampaignDto {
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
-  prospectIds?: string[];
+  prospectContactIds?: string[];
+
+  @IsDateString()
+  @IsOptional()
+  scheduledFor?: string;
 }

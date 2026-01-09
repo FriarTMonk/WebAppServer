@@ -25,6 +25,13 @@ export class CampaignsController {
     return this.campaignsService.createCampaign(req.user.id, dto);
   }
 
+  @Get('metrics')
+  async getMetrics(
+    @Req() req: any,
+  ) {
+    return this.campaignsService.getMetrics(req.user.id, req.user.isPlatformAdmin || false);
+  }
+
   @Get()
   async listCampaigns(
     @Req() req: any,
