@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation';
 import { assessmentApi } from '@/lib/api';
 import { showToast } from '@/components/Toast';
 import { parseErrorMessage } from '@/lib/error-utils';
-import MultipleChoiceQuestion from '@/components/assessments/MultipleChoiceQuestion';
-import ScaleQuestion from '@/components/assessments/ScaleQuestion';
-import TextQuestion from '@/components/assessments/TextQuestion';
-import AssessmentProgress from '@/components/assessments/AssessmentProgress';
+import { MultipleChoiceQuestion } from '@/components/assessments/MultipleChoiceQuestion';
+import { ScaleQuestion } from '@/components/assessments/ScaleQuestion';
+import { TextQuestion } from '@/components/assessments/TextQuestion';
+import { AssessmentProgress } from '@/components/assessments/AssessmentProgress';
 
 interface AssessmentQuestion {
   id: string;
@@ -48,7 +48,11 @@ export default function TakeAssessmentPage({ params }: { params: Promise<{ assig
   useEffect(() => {
     async function fetchAssessment() {
       try {
-        const data = await assessmentApi.getAssignedAssessmentForm(assignedId);
+        const response = await assessmentApi.getAssignedAssessmentForm(assignedId);
+        if (!response.ok) {
+          throw new Error('Failed to fetch assessment');
+        }
+        const data = await response.json();
         setAssessment(data);
 
         // If assessment is already completed, show results
@@ -62,7 +66,7 @@ export default function TakeAssessmentPage({ params }: { params: Promise<{ assig
           setResponses(JSON.parse(savedResponses));
         }
       } catch (error) {
-        showToast(parseErrorMessage(error), 'error');
+        showToast(error instanceof Error ? error.message : 'Failed to load assessment', 'error');
         router.push('/counsel');
       } finally {
         setLoading(false);
@@ -186,7 +190,11 @@ export default function TakeAssessmentPage({ params }: { params: Promise<{ assig
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-3xl mx-auto px-4">
         {/* Progress Bar */}
-        <AssessmentProgress current={answeredCount} total={totalQuestions} />
+        <AssessmentProgress
+          currentQuestion={currentQuestionIndex}
+          totalQuestions={totalQuestions}
+          answeredCount={answeredCount}
+        />
 
         {/* Draft Saved Indicator */}
         {Object.keys(responses).length > 0 && (
@@ -215,33 +223,42 @@ export default function TakeAssessmentPage({ params }: { params: Promise<{ assig
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           {currentQuestion.type === 'multiple_choice' && (
             <MultipleChoiceQuestion
-              question={currentQuestion.text}
-              options={currentQuestion.options || []}
+              question={{
+                id: currentQuestion.id,
+                text: currentQuestion.text,
+                options: currentQuestion.options || [],
+                required: currentQuestion.required
+              }}
               value={responses[currentQuestion.id]}
               onChange={(value) => handleResponseChange(currentQuestion.id, value)}
-              required={currentQuestion.required}
             />
           )}
 
           {currentQuestion.type === 'scale' && (
             <ScaleQuestion
-              question={currentQuestion.text}
-              min={currentQuestion.scaleMin || 1}
-              max={currentQuestion.scaleMax || 10}
-              minLabel={currentQuestion.scaleMinLabel}
-              maxLabel={currentQuestion.scaleMaxLabel}
+              question={{
+                id: currentQuestion.id,
+                text: currentQuestion.text,
+                scaleMin: currentQuestion.scaleMin || 1,
+                scaleMax: currentQuestion.scaleMax || 10,
+                scaleMinLabel: currentQuestion.scaleMinLabel,
+                scaleMaxLabel: currentQuestion.scaleMaxLabel,
+                required: currentQuestion.required
+              }}
               value={responses[currentQuestion.id]}
               onChange={(value) => handleResponseChange(currentQuestion.id, value)}
-              required={currentQuestion.required}
             />
           )}
 
           {currentQuestion.type === 'text' && (
             <TextQuestion
-              question={currentQuestion.text}
+              question={{
+                id: currentQuestion.id,
+                text: currentQuestion.text,
+                required: currentQuestion.required
+              }}
               value={responses[currentQuestion.id] || ''}
               onChange={(value) => handleResponseChange(currentQuestion.id, value)}
-              required={currentQuestion.required}
             />
           )}
         </div>

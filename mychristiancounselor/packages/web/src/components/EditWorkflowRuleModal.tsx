@@ -17,7 +17,7 @@ export function EditWorkflowRuleModal({ open, onClose, onSuccess, rule }: EditWo
     rule.conditions ? JSON.stringify(rule.conditions, null, 2) : ''
   );
   const [actions, setActions] = useState(JSON.stringify(rule.actions, null, 2));
-  const [priority, setPriority] = useState(rule.priority?.toString() || '');
+  const [priority, setPriority] = useState('');
   const [isActive, setIsActive] = useState(rule.isActive);
   const [error, setError] = useState('');
   const [jsonErrors, setJsonErrors] = useState<{
@@ -33,7 +33,7 @@ export function EditWorkflowRuleModal({ open, onClose, onSuccess, rule }: EditWo
     setTrigger(JSON.stringify(rule.trigger, null, 2));
     setConditions(rule.conditions ? JSON.stringify(rule.conditions, null, 2) : '');
     setActions(JSON.stringify(rule.actions, null, 2));
-    setPriority(rule.priority?.toString() || '');
+    setPriority('');
     setIsActive(rule.isActive);
   }, [rule]);
 

@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { AssessedAssessment, assessmentApi } from '@/lib/api';
 import { AssessmentCard } from './shared/AssessmentCard';
-import { showToast } from './Toast';
 import { parseErrorMessage } from '@/lib/error-utils';
 
 interface MyAssessmentsModalProps {
