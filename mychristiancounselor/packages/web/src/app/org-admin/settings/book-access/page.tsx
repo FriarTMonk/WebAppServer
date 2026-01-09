@@ -1,0 +1,355 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { OrgAdminLayout } from '../../../../components/OrgAdminLayout';
+
+interface Organization {
+  id: string;
+  name: string;
+  allowedVisibilityTiers: string[];
+  customBookIds: string[];
+}
+
+interface Book {
+  id: string;
+  title: string;
+  author: string;
+  visibilityTier: string;
+}
+
+export default function BookAccessSettingsPage() {
+  const router = useRouter();
+  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [availableTiers] = useState(['highly_aligned', 'aligned', 'somewhat_aligned', 'not_aligned']);
+  const [selectedTiers, setSelectedTiers] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Book[]>([]);
+  const [customBooks, setCustomBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [bookCount, setBookCount] = useState(0);
+
+  useEffect(() => {
+    fetchOrganizationSettings();
+  }, []);
+
+  useEffect(() => {
+    if (organization) {
+      setSelectedTiers(organization.allowedVisibilityTiers);
+      if (organization.customBookIds.length > 0) {
+        fetchCustomBooks(organization.customBookIds);
+      }
+    }
+  }, [organization]);
+
+  useEffect(() => {
+    if (selectedTiers.length > 0) {
+      fetchBookCount();
+    }
+  }, [selectedTiers]);
+
+  const fetchOrganizationSettings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const currentOrgId = localStorage.getItem('currentOrganizationId');
+
+      if (!currentOrgId) {
+        throw new Error('No organization selected');
+      }
+
+      const response = await fetch(`${apiUrl}/org-admin/organizations/${currentOrgId}/book-access`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          router.push('/login?redirect=/org-admin/settings/book-access');
+          return;
+        }
+        throw new Error('Failed to fetch organization settings');
+      }
+
+      const data = await response.json();
+      setOrganization(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCustomBooks = async (bookIds: string[]) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const response = await fetch(`${apiUrl}/resources/books/by-ids`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ bookIds }),
+      });
+
+      if (response.ok) {
+        const books = await response.json();
+        setCustomBooks(books);
+      }
+    } catch (err) {
+      console.error('Failed to fetch custom books:', err);
+    }
+  };
+
+  const fetchBookCount = async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const response = await fetch(`${apiUrl}/resources/books/count?tiers=${selectedTiers.join(',')}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBookCount(data.count);
+      }
+    } catch (err) {
+      console.error('Failed to fetch book count:', err);
+    }
+  };
+
+  const handleSearchBooks = async () => {
+    if (!searchQuery.trim()) return;
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const response = await fetch(`${apiUrl}/resources/books/search?q=${encodeURIComponent(searchQuery)}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+
+      if (response.ok) {
+        const books = await response.json();
+        setSearchResults(books);
+      }
+    } catch (err) {
+      console.error('Failed to search books:', err);
+    }
+  };
+
+  const handleToggleTier = (tier: string) => {
+    setSelectedTiers((prev) =>
+      prev.includes(tier) ? prev.filter((t) => t !== tier) : [...prev, tier]
+    );
+  };
+
+  const handleAddCustomBook = (book: Book) => {
+    if (!organization) return;
+
+    if (!organization.customBookIds.includes(book.id)) {
+      setOrganization({
+        ...organization,
+        customBookIds: [...organization.customBookIds, book.id],
+      });
+      setCustomBooks([...customBooks, book]);
+    }
+
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const handleRemoveCustomBook = (bookId: string) => {
+    if (!organization) return;
+
+    setOrganization({
+      ...organization,
+      customBookIds: organization.customBookIds.filter((id) => id !== bookId),
+    });
+    setCustomBooks(customBooks.filter((book) => book.id !== bookId));
+  };
+
+  const handleSave = async () => {
+    if (!organization) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const response = await fetch(`${apiUrl}/org-admin/organizations/${organization.id}/book-access`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          allowedVisibilityTiers: selectedTiers,
+          customBookIds: organization.customBookIds,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save settings');
+      }
+
+      alert('Book access settings saved successfully!');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      alert(`Failed to save settings: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getTierLabel = (tier: string) => {
+    return tier
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  return (
+    <OrgAdminLayout>
+      <div>
+        <h2 className="text-3xl font-bold text-gray-900 mb-6">Book Access Settings</h2>
+
+        {loading && (
+          <div className="text-center py-12">
+            <p className="text-gray-500">Loading settings...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-800">Error: {error}</p>
+          </div>
+        )}
+
+        {!loading && organization && (
+          <>
+            {/* Visibility Tiers Section */}
+            <div className="bg-white rounded-lg shadow p-6 mb-6">
+              <h3 className="text-xl font-semibold mb-4">Allowed Visibility Tiers</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Select which visibility tiers members can access. Books matching these tiers will be visible to organization members.
+              </p>
+
+              <div className="space-y-3">
+                {availableTiers.map((tier) => (
+                  <label key={tier} className="flex items-center p-3 border rounded hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedTiers.includes(tier)}
+                      onChange={() => handleToggleTier(tier)}
+                      className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                    />
+                    <span className="ml-3 text-sm font-medium text-gray-900">{getTierLabel(tier)}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="mt-4 bg-blue-50 border border-blue-200 rounded p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Preview:</strong> {bookCount} books will be accessible based on selected tiers
+                  {customBooks.length > 0 && ` + ${customBooks.length} custom books`}.
+                </p>
+              </div>
+            </div>
+
+            {/* Custom Books Section */}
+            <div className="bg-white rounded-lg shadow p-6 mb-6">
+              <h3 className="text-xl font-semibold mb-4">Custom Book Access</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Add specific books that should be accessible regardless of their visibility tier.
+              </p>
+
+              {/* Search */}
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearchBooks()}
+                  placeholder="Search for books to add..."
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded"
+                />
+                <button
+                  onClick={handleSearchBooks}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Search
+                </button>
+              </div>
+
+              {/* Search Results */}
+              {searchResults.length > 0 && (
+                <div className="mb-4 border rounded max-h-60 overflow-y-auto">
+                  {searchResults.map((book) => (
+                    <div key={book.id} className="flex justify-between items-center p-3 border-b last:border-b-0 hover:bg-gray-50">
+                      <div>
+                        <p className="font-medium text-gray-900">{book.title}</p>
+                        <p className="text-sm text-gray-500">{book.author}</p>
+                      </div>
+                      <button
+                        onClick={() => handleAddCustomBook(book)}
+                        className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                        disabled={organization.customBookIds.includes(book.id)}
+                      >
+                        {organization.customBookIds.includes(book.id) ? 'Added' : 'Add'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Custom Books List */}
+              {customBooks.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Custom Books ({customBooks.length})</p>
+                  {customBooks.map((book) => (
+                    <div key={book.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <div>
+                        <p className="font-medium text-gray-900">{book.title}</p>
+                        <p className="text-sm text-gray-500">{book.author}</p>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveCustomBook(book.id)}
+                        className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-4">No custom books added yet</p>
+              )}
+            </div>
+
+            {/* Save Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className={`px-6 py-2 rounded-lg font-medium ${
+                  saving
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                {saving ? 'Saving...' : 'Save Settings'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </OrgAdminLayout>
+  );
+}

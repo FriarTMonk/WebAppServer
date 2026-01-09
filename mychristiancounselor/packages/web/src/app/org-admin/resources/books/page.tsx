@@ -32,8 +32,31 @@ export default function OrgAdminEndorsedBooksPage() {
     setError(null);
 
     try {
-      // Use bookApi service to fetch books
-      const response = await bookApi.list(filtersToUse as BookFiltersType);
+      // Get current organization ID for filtering
+      const currentOrgId = localStorage.getItem('currentOrganizationId');
+
+      // Use organization-specific endpoint if available
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const token = localStorage.getItem('accessToken');
+
+      let response;
+      if (currentOrgId) {
+        // Use org-specific endpoint that filters by organization's allowed tiers
+        const params = new URLSearchParams();
+        if (filtersToUse.search) params.append('search', filtersToUse.search);
+        if (filtersToUse.genre && filtersToUse.genre !== 'all') params.append('genre', filtersToUse.genre);
+        if (filtersToUse.sort) params.append('sort', filtersToUse.sort);
+        if (filtersToUse.showMatureContent) params.append('showMatureContent', 'true');
+
+        response = await fetch(`${apiUrl}/org-admin/books?organizationId=${currentOrgId}&${params}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+      } else {
+        // Fallback to regular bookApi
+        response = await bookApi.list(filtersToUse as BookFiltersType);
+      }
 
       // Ignore response if this is not the latest request or component unmounted
       if (requestId !== requestIdRef.current || !mountedRef.current) {
@@ -58,10 +81,10 @@ export default function OrgAdminEndorsedBooksPage() {
         return;
       }
 
-      setBooks(data.books || []);
-      setTotalCount(data.total || 0);
+      setBooks(data.books || data || []);
+      setTotalCount(data.total || data.length || 0);
       // Calculate total pages from total count
-      setTotalPages(Math.ceil((data.total || 0) / 12));
+      setTotalPages(Math.ceil((data.total || data.length || 0) / 12));
     } catch (err) {
       // Ignore errors from stale requests or unmounted component
       if (requestId !== requestIdRef.current || !mountedRef.current) {
@@ -155,12 +178,9 @@ export default function OrgAdminEndorsedBooksPage() {
       />
 
       {/* Results Count */}
-      <div className="mb-4 flex justify-between items-center">
+      <div className="mb-4">
         <p className="text-sm text-gray-600">
-          Showing {books.length} of {totalCount} books
-        </p>
-        <p className="text-xs text-gray-500 italic">
-          Note: Organization-specific filtering coming soon
+          Showing {books.length} of {totalCount} books (filtered by organization settings)
         </p>
       </div>
 

@@ -1,0 +1,351 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { AdminLayout } from '../../../../components/AdminLayout';
+
+interface QueueJob {
+  id: string;
+  bookId: string;
+  bookTitle: string;
+  status: 'pending' | 'active' | 'completed' | 'failed';
+  frameworkId: string;
+  frameworkVersion: string;
+  triggeredBy: string;
+  isReEvaluation: boolean;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  error: string | null;
+  attempts: number;
+}
+
+export default function EvaluationQueuePage() {
+  const router = useRouter();
+  const [jobs, setJobs] = useState<QueueJob[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'completed' | 'failed'>('all');
+  const [selectedJob, setSelectedJob] = useState<QueueJob | null>(null);
+  const [queuePaused, setQueuePaused] = useState(false);
+
+  useEffect(() => {
+    fetchJobs();
+    const interval = setInterval(fetchJobs, 5000); // Poll every 5 seconds
+    return () => clearInterval(interval);
+  }, [filter]);
+
+  const fetchJobs = async () => {
+    try {
+      setError(null);
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const url = filter !== 'all'
+        ? `${apiUrl}/admin/evaluation/queue/jobs?status=${filter}`
+        : `${apiUrl}/admin/evaluation/queue/jobs`;
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          router.push('/login?redirect=/admin/evaluation/queue');
+          return;
+        }
+        throw new Error('Failed to fetch queue jobs');
+      }
+
+      const data = await response.json();
+      setJobs(data.jobs || data);
+      setQueuePaused(data.queuePaused || false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRetryJob = async (jobId: string) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const response = await fetch(`${apiUrl}/admin/evaluation/queue/jobs/${jobId}/retry`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to retry job');
+      }
+
+      await fetchJobs();
+      alert('Job queued for retry');
+    } catch (err) {
+      alert(`Failed to retry job: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleRemoveJob = async (jobId: string) => {
+    if (!confirm('Are you sure you want to remove this job from the queue?')) {
+      return;
+    }
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const response = await fetch(`${apiUrl}/admin/evaluation/queue/jobs/${jobId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to remove job');
+      }
+
+      await fetchJobs();
+      alert('Job removed from queue');
+    } catch (err) {
+      alert(`Failed to remove job: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleToggleQueue = async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const endpoint = queuePaused ? 'resume' : 'pause';
+      const response = await fetch(`${apiUrl}/admin/evaluation/queue/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${endpoint} queue`);
+      }
+
+      setQueuePaused(!queuePaused);
+      alert(`Queue ${queuePaused ? 'resumed' : 'paused'} successfully`);
+    } catch (err) {
+      alert(`Failed to toggle queue: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'active': return 'bg-blue-100 text-blue-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'failed': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const stats = {
+    pending: jobs.filter(j => j.status === 'pending').length,
+    active: jobs.filter(j => j.status === 'active').length,
+    completed: jobs.filter(j => j.status === 'completed').length,
+    failed: jobs.filter(j => j.status === 'failed').length,
+  };
+
+  return (
+    <AdminLayout>
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-3xl font-bold text-gray-900">Evaluation Queue</h2>
+          <button
+            onClick={handleToggleQueue}
+            className={`px-4 py-2 rounded-lg text-white ${
+              queuePaused ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'
+            }`}
+          >
+            {queuePaused ? 'Resume Queue' : 'Pause Queue'}
+          </button>
+        </div>
+
+        {/* Status Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p className="text-sm text-gray-600">Pending</p>
+            <p className="text-3xl font-bold text-yellow-800">{stats.pending}</p>
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-gray-600">Active</p>
+            <p className="text-3xl font-bold text-blue-800">{stats.active}</p>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <p className="text-sm text-gray-600">Completed</p>
+            <p className="text-3xl font-bold text-green-800">{stats.completed}</p>
+          </div>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm text-gray-600">Failed</p>
+            <p className="text-3xl font-bold text-red-800">{stats.failed}</p>
+          </div>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="mb-4 flex gap-2">
+          {(['all', 'pending', 'active', 'completed', 'failed'] as const).map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilter(status)}
+              className={`px-4 py-2 rounded ${
+                filter === status
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-800">Error: {error}</p>
+            <button
+              onClick={fetchJobs}
+              className="mt-2 text-sm text-red-600 hover:underline"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Jobs Table */}
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Book</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Framework</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attempts</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {jobs.map((job) => (
+                <tr key={job.id}>
+                  <td className="px-6 py-4">
+                    <div className="text-sm font-medium text-gray-900">{job.bookTitle}</div>
+                    <div className="text-sm text-gray-500">{job.bookId.substring(0, 8)}...</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(job.status)}`}>
+                      {job.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">{job.frameworkVersion}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {job.isReEvaluation ? 'Re-evaluation' : 'New'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {new Date(job.createdAt).toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">{job.attempts}</td>
+                  <td className="px-6 py-4 text-right text-sm font-medium">
+                    {job.status === 'failed' && (
+                      <>
+                        <button
+                          onClick={() => setSelectedJob(job)}
+                          className="text-blue-600 hover:text-blue-900 mr-4"
+                        >
+                          View Error
+                        </button>
+                        <button
+                          onClick={() => handleRetryJob(job.id)}
+                          className="text-green-600 hover:text-green-900 mr-4"
+                        >
+                          Retry
+                        </button>
+                      </>
+                    )}
+                    {(job.status === 'pending' || job.status === 'failed') && (
+                      <button
+                        onClick={() => handleRemoveJob(job.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {jobs.length === 0 && !loading && (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No jobs in queue</p>
+            </div>
+          )}
+        </div>
+
+        {/* Error Details Modal */}
+        {selectedJob && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-2xl w-full">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold">Job Error Details</h3>
+                  <button
+                    onClick={() => setSelectedJob(null)}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <span className="text-2xl">&times;</span>
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700">Book:</p>
+                    <p className="text-sm text-gray-900">{selectedJob.bookTitle}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700">Job ID:</p>
+                    <p className="text-sm text-gray-900">{selectedJob.id}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700">Attempts:</p>
+                    <p className="text-sm text-gray-900">{selectedJob.attempts}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700">Error:</p>
+                    <div className="bg-red-50 p-4 rounded border border-red-200">
+                      <pre className="text-sm text-red-900 whitespace-pre-wrap">
+                        {selectedJob.error || 'No error message available'}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex justify-end gap-2">
+                  <button
+                    onClick={() => handleRetryJob(selectedJob.id)}
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  >
+                    Retry Job
+                  </button>
+                  <button
+                    onClick={() => setSelectedJob(null)}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </AdminLayout>
+  );
+}
