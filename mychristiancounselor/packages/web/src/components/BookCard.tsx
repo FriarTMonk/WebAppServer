@@ -2,16 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu } from '@headlessui/react';
 import clsx from 'clsx';
 import { AlignmentScoreBadge } from './AlignmentScoreBadge';
-
-// Reading list status constants
-const READING_LIST_STATUS = {
-  WANT_TO_READ: 'want_to_read',
-  CURRENTLY_READING: 'currently_reading',
-  FINISHED: 'finished',
-} as const;
+import { AddToReadingListButton } from './reading-list/AddToReadingListButton';
 
 interface Book {
   id: string;
@@ -51,10 +44,6 @@ export function BookCard({ book, showActions = true, compact = false, onClick }:
     } else {
       router.push(`/resources/books/${book.id}`);
     }
-  };
-
-  const handleSaveToList = (status: string) => {
-    // TODO: Implement reading list functionality in Phase 2
   };
 
   // Validate image URL for security
@@ -126,59 +115,15 @@ export function BookCard({ book, showActions = true, compact = false, onClick }:
 
           {/* Actions */}
           {showActions && (
-            <div className="flex gap-2 mt-3">
-              {/* Reading List Dropdown - Accessible with Headless UI */}
-              <Menu as="div" className="relative">
-                <Menu.Button className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors">
-                  Save to List ▼
-                </Menu.Button>
-
-                <Menu.Items className="absolute left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-200 focus:outline-none">
-                  <Menu.Item>
-                    {({ active }) => (
-                      <button
-                        onClick={() => handleSaveToList(READING_LIST_STATUS.WANT_TO_READ)}
-                        className={clsx(
-                          'block w-full text-left px-4 py-2 text-sm text-gray-700',
-                          active && 'bg-gray-100'
-                        )}
-                      >
-                        Want to Read
-                      </button>
-                    )}
-                  </Menu.Item>
-                  <Menu.Item>
-                    {({ active }) => (
-                      <button
-                        onClick={() => handleSaveToList(READING_LIST_STATUS.CURRENTLY_READING)}
-                        className={clsx(
-                          'block w-full text-left px-4 py-2 text-sm text-gray-700',
-                          active && 'bg-gray-100'
-                        )}
-                      >
-                        Currently Reading
-                      </button>
-                    )}
-                  </Menu.Item>
-                  <Menu.Item>
-                    {({ active }) => (
-                      <button
-                        onClick={() => handleSaveToList(READING_LIST_STATUS.FINISHED)}
-                        className={clsx(
-                          'block w-full text-left px-4 py-2 text-sm text-gray-700',
-                          active && 'bg-gray-100'
-                        )}
-                      >
-                        Finished
-                      </button>
-                    )}
-                  </Menu.Item>
-                </Menu.Items>
-              </Menu>
-
+            <div className="flex items-center space-x-2 mt-3">
+              <AddToReadingListButton
+                bookId={book.id}
+                bookTitle={book.title}
+                size="sm"
+              />
               <button
                 onClick={handleViewDetails}
-                className="text-xs bg-gray-200 text-gray-800 px-3 py-1 rounded hover:bg-gray-300 transition-colors"
+                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors"
               >
                 View Details
               </button>
