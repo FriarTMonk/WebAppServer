@@ -9,7 +9,7 @@ const RESOURCES_PATHS = {
   books: '/resources/books',
   readingList: '/resources/reading-list',
   organizations: '/resources/organizations',
-  recommended: '/resources/recommended',
+  recommended: '/resources/reading-list', // Recommendations are shown on reading list page
 } as const;
 
 /**
