@@ -6,18 +6,20 @@ import { AdminLayout } from '../../../../components/AdminLayout';
 
 interface QueueJob {
   id: string;
-  bookId: string;
-  bookTitle: string;
-  status: 'pending' | 'active' | 'completed' | 'failed';
-  frameworkId: string;
-  frameworkVersion: string;
-  triggeredBy: string;
-  isReEvaluation: boolean;
-  createdAt: string;
-  startedAt: string | null;
-  completedAt: string | null;
-  error: string | null;
-  attempts: number;
+  name: string;
+  data?: {
+    bookId?: string;
+    bookTitle?: string;
+    frameworkId?: string;
+    frameworkVersion?: string;
+    triggeredBy?: string;
+    isReEvaluation?: boolean;
+  };
+  state: 'waiting' | 'active' | 'completed' | 'failed' | 'delayed';
+  progress: number;
+  attemptsMade: number;
+  failedReason?: string;
+  timestamp: number;
 }
 
 export default function EvaluationQueuePage() {
@@ -25,7 +27,7 @@ export default function EvaluationQueuePage() {
   const [jobs, setJobs] = useState<QueueJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'completed' | 'failed'>('all');
+  const [filter, setFilter] = useState<'all' | 'waiting' | 'active' | 'completed' | 'failed'>('all');
   const [selectedJob, setSelectedJob] = useState<QueueJob | null>(null);
   const [queuePaused, setQueuePaused] = useState(false);
 
@@ -140,10 +142,11 @@ export default function EvaluationQueuePage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'waiting': return 'bg-yellow-100 text-yellow-800';
       case 'active': return 'bg-blue-100 text-blue-800';
       case 'completed': return 'bg-green-100 text-green-800';
       case 'failed': return 'bg-red-100 text-red-800';
+      case 'delayed': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -192,7 +195,7 @@ export default function EvaluationQueuePage() {
 
         {/* Filter Tabs */}
         <div className="mb-4 flex gap-2">
-          {(['all', 'pending', 'active', 'completed', 'failed'] as const).map((status) => (
+          {(['all', 'waiting', 'active', 'completed', 'failed'] as const).map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status)}
@@ -202,7 +205,7 @@ export default function EvaluationQueuePage() {
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              {status.charAt(0).toUpperCase() + status.slice(1)}
+              {status === 'waiting' ? 'Pending' : status.charAt(0).toUpperCase() + status.slice(1)}
             </button>
           ))}
         </div>
@@ -242,7 +245,7 @@ export default function EvaluationQueuePage() {
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(job.state)}`}>
-                      {job.state}
+                      {job.state === 'waiting' ? 'Pending' : job.state.charAt(0).toUpperCase() + job.state.slice(1)}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">{job.data?.frameworkVersion || 'N/A'}</td>
@@ -270,7 +273,7 @@ export default function EvaluationQueuePage() {
                         </button>
                       </>
                     )}
-                    {(job.status === 'pending' || job.status === 'failed') && (
+                    {(job.state === 'waiting' || job.state === 'failed') && (
                       <button
                         onClick={() => handleRemoveJob(job.id)}
                         className="text-red-600 hover:text-red-900"
