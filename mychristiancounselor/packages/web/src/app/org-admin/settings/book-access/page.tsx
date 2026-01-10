@@ -56,28 +56,44 @@ export default function BookAccessSettingsPage() {
       setError(null);
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
-      const currentOrgId = localStorage.getItem('currentOrganizationId');
 
-      if (!currentOrgId) {
-        throw new Error('No organization selected');
-      }
-
-      const response = await fetch(`${apiUrl}/org-admin/organizations/${currentOrgId}/book-access`, {
+      // Get organization info
+      const orgResponse = await fetch(`${apiUrl}/org-admin/organization`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
+      if (!orgResponse.ok) {
+        if (orgResponse.status === 401 || orgResponse.status === 403) {
           router.push('/login?redirect=/org-admin/settings/book-access');
           return;
         }
-        throw new Error('Failed to fetch organization settings');
+        throw new Error('Failed to fetch organization info');
       }
 
-      const data = await response.json();
-      setOrganization(data);
+      const orgData = await orgResponse.json();
+
+      // Get book settings
+      const settingsResponse = await fetch(`${apiUrl}/org-admin/books/settings`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      });
+
+      if (!settingsResponse.ok) {
+        throw new Error('Failed to fetch book settings');
+      }
+
+      const settings = await settingsResponse.json();
+
+      // Combine organization info with settings
+      setOrganization({
+        id: orgData.id,
+        name: orgData.name,
+        allowedVisibilityTiers: settings.allowedVisibilityTiers || [],
+        customBookIds: settings.customBookIds || [],
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -183,8 +199,8 @@ export default function BookAccessSettingsPage() {
       setError(null);
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
-      const response = await fetch(`${apiUrl}/org-admin/organizations/${organization.id}/book-access`, {
-        method: 'PATCH',
+      const response = await fetch(`${apiUrl}/org-admin/books/settings`, {
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
           'Content-Type': 'application/json',
