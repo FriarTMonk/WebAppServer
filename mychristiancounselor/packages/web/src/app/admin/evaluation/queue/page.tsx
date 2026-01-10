@@ -149,10 +149,10 @@ export default function EvaluationQueuePage() {
   };
 
   const stats = {
-    pending: jobs.filter(j => j.status === 'pending').length,
-    active: jobs.filter(j => j.status === 'active').length,
-    completed: jobs.filter(j => j.status === 'completed').length,
-    failed: jobs.filter(j => j.status === 'failed').length,
+    pending: jobs.filter(j => j.state === 'waiting').length,
+    active: jobs.filter(j => j.state === 'active').length,
+    completed: jobs.filter(j => j.state === 'completed').length,
+    failed: jobs.filter(j => j.state === 'failed').length,
   };
 
   return (
