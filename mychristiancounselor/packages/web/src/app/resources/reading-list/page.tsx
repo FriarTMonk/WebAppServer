@@ -6,7 +6,6 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { apiGet, apiPut, apiDelete } from '../../../lib/api';
 import { showToast } from '@/components/Toast';
 import { ReadingListCard } from '@/components/reading-list/ReadingListCard';
-import { RecommendedBooks } from '@/components/reading-list/RecommendedBooks';
 
 type ReadingListTab = 'want_to_read' | 'currently_reading' | 'finished';
 
@@ -263,11 +262,6 @@ export default function ReadingListPage() {
             </div>
             <div className="text-sm text-purple-700">Currently Reading</div>
           </div>
-        </div>
-
-        {/* Recommended Books */}
-        <div className="mb-6">
-          <RecommendedBooks />
         </div>
 
         {/* Tab Navigation */}
