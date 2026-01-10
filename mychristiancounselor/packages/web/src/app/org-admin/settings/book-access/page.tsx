@@ -28,7 +28,7 @@ export default function BookAccessSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [bookCount, setBookCount] = useState(0);
+  const [_bookCount, setBookCount] = useState(0);
 
   useEffect(() => {
     fetchOrganizationSettings();
