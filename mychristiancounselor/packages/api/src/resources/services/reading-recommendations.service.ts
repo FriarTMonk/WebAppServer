@@ -208,26 +208,15 @@ export class ReadingRecommendationsService {
       .then((items) => items.map((item) => item.bookId));
 
     // Build visibility filter based on alignment rules:
-    // - globally_aligned & conceptually_aligned = Everyone sees
-    // - somewhat_aligned = Only if submitted by user's org
+    // - globally_aligned = Everyone sees (most aligned)
+    // - conceptually_aligned = Everyone sees (conceptually aligned)
     // - not_aligned = Nobody sees
     const visibilityFilter: any = {
       OR: [
-        // Everyone sees these
+        // Everyone sees globally and conceptually aligned books
         { visibilityTier: { in: ['globally_aligned', 'conceptually_aligned'] } },
       ],
     };
-
-    // If user is in an organization, also include books submitted by their org
-    const orgIds = user?.organizationMemberships?.map(m => m.organization.id) || [];
-    if (orgIds.length > 0) {
-      visibilityFilter.OR.push({
-        AND: [
-          { visibilityTier: 'somewhat_aligned' },
-          { submittedByOrganizationId: { in: orgIds } },
-        ],
-      });
-    }
 
     // Build mature content filter
     const matureContentFilter: any = {};
