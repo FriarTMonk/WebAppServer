@@ -121,6 +121,8 @@ export class CostAnalyticsService {
         title: log.book?.title,
         author: log.book?.author,
         totalCost: log.totalCost,
+        inputTokens: log.inputTokens,
+        outputTokens: log.outputTokens,
         evaluatedAt: log.evaluatedAt,
       }));
 
@@ -143,15 +145,43 @@ export class CostAnalyticsService {
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
+    // Calculate cost this month
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const costThisMonth = costLogs
+      .filter(log => log.evaluatedAt >= startOfMonth)
+      .reduce((sum, log) => sum + log.totalCost, 0);
+
+    // Calculate average tokens per book
+    const avgInputPerBook = totalEvaluations > 0 ? Math.round(totalInputTokens / totalEvaluations) : 0;
+    const avgOutputPerBook = totalEvaluations > 0 ? Math.round(totalOutputTokens / totalEvaluations) : 0;
+
     return {
       totalCost,
       totalEvaluations,
-      averageCostPerBook,
-      totalInputTokens,
-      totalOutputTokens,
+      avgCostPerBook: averageCostPerBook,
+      costThisMonth,
+      tokenUsage: {
+        totalInput: totalInputTokens,
+        totalOutput: totalOutputTokens,
+        avgInputPerBook,
+        avgOutputPerBook,
+      },
       costByModel,
-      costByFramework,
-      mostExpensiveBooks,
+      costByFramework: costByFramework.map(fw => ({
+        version: fw.frameworkVersion,
+        count: fw.count,
+        cost: fw.totalCost,
+        avgCost: fw.averageCost,
+      })),
+      expensiveBooks: mostExpensiveBooks.map((log) => ({
+        bookId: log.bookId,
+        title: log.title || 'Unknown',
+        author: log.author,
+        cost: log.totalCost,
+        tokens: (log.inputTokens || 0) + (log.outputTokens || 0),
+        evaluatedAt: log.evaluatedAt,
+      })),
       dailyCostTrend,
     };
   }

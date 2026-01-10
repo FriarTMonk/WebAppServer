@@ -33,7 +33,10 @@ export class QueueMonitoringService {
       jobs.push(...(await this.evaluationQueue.getDelayed(0, 99)));
     }
 
-    return Promise.all(jobs.map(async (job) => ({
+    // Filter out null/undefined jobs
+    const validJobs = jobs.filter(job => job != null);
+
+    return Promise.all(validJobs.map(async (job) => ({
       id: job.id,
       name: job.name,
       data: job.data,
