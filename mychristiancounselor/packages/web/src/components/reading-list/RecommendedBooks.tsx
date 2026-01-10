@@ -30,7 +30,7 @@ export function RecommendedBooks() {
       setLoading(true);
       setError(null);
 
-      const response = await apiGet('/resources/reading-list/recommendations?limit=5');
+      const response = await apiGet('/resources/recommendations?limit=5');
 
       if (!response.ok) {
         // If it's a 404 or similar, just treat as no recommendations
