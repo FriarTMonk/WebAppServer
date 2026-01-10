@@ -312,7 +312,7 @@ export default function EvaluationQueuePage() {
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm font-semibold text-gray-700">Book:</p>
-                    <p className="text-sm text-gray-900">{selectedJob.bookTitle}</p>
+                    <p className="text-sm text-gray-900">{selectedJob.data?.bookTitle || selectedJob.name || 'Unknown'}</p>
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-gray-700">Job ID:</p>
@@ -320,13 +320,13 @@ export default function EvaluationQueuePage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-gray-700">Attempts:</p>
-                    <p className="text-sm text-gray-900">{selectedJob.attempts}</p>
+                    <p className="text-sm text-gray-900">{selectedJob.attemptsMade}</p>
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-gray-700">Error:</p>
                     <div className="bg-red-50 p-4 rounded border border-red-200">
                       <pre className="text-sm text-red-900 whitespace-pre-wrap">
-                        {selectedJob.error || 'No error message available'}
+                        {selectedJob.failedReason || 'No error message available'}
                       </pre>
                     </div>
                   </div>
