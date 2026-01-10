@@ -12,6 +12,7 @@ interface BookCandidate {
   denominationalTags: string[];
   coverImageUrl: string | null;
   visibilityTier: string;
+  submittedByOrganizationId: string;
 }
 
 interface UserProfile {
@@ -177,9 +178,27 @@ export class ReadingRecommendationsService {
 
   /**
    * Get candidate books user hasn't read yet
-   * Filters by alignment score and excludes books already in reading list
+   * Filters by alignment rules, mature content rules, and excludes books already in reading list
    */
   private async getCandidateBooks(userId: string): Promise<BookCandidate[]> {
+    // Get user info (accountType and organization membership)
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        accountType: true,
+        organizationMemberships: {
+          select: {
+            organization: {
+              select: {
+                id: true,
+                matureContentAccountTypeThreshold: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
     // Get IDs of books already in user's reading list
     const readingListBookIds = await this.prisma.userReadingList
       .findMany({
@@ -188,13 +207,67 @@ export class ReadingRecommendationsService {
       })
       .then((items) => items.map((item) => item.bookId));
 
-    // Find books not in reading list with good alignment scores
+    // Build visibility filter based on alignment rules:
+    // - globally_aligned & conceptually_aligned = Everyone sees
+    // - somewhat_aligned = Only if submitted by user's org
+    // - not_aligned = Nobody sees
+    const visibilityFilter: any = {
+      OR: [
+        // Everyone sees these
+        { visibilityTier: { in: ['globally_aligned', 'conceptually_aligned'] } },
+      ],
+    };
+
+    // If user is in an organization, also include books submitted by their org
+    const orgIds = user?.organizationMemberships?.map(m => m.organization.id) || [];
+    if (orgIds.length > 0) {
+      visibilityFilter.OR.push({
+        AND: [
+          { visibilityTier: 'somewhat_aligned' },
+          { submittedByOrganizationId: { in: orgIds } },
+        ],
+      });
+    }
+
+    // Build mature content filter
+    const matureContentFilter: any = {};
+
+    // Determine mature content threshold
+    let threshold = user?.accountType || 'teen'; // Default to teen
+
+    // If user is in an org, use the org's threshold if more restrictive
+    if (user?.organizationMemberships && user.organizationMemberships.length > 0) {
+      const orgThreshold = user.organizationMemberships[0].organization.matureContentAccountTypeThreshold;
+      if (orgThreshold) {
+        threshold = orgThreshold;
+      }
+    }
+
+    // Apply mature content filter
+    // adult = can see all
+    // teen = only if matureContent is false OR accountType is adult/teen
+    // child = only if matureContent is false
+    if (threshold === 'child') {
+      matureContentFilter.matureContent = false;
+    } else if (threshold === 'teen') {
+      // Teen users can see non-mature or books intended for teen+
+      matureContentFilter.OR = [
+        { matureContent: false },
+        { matureContent: true }, // Teen can see mature content
+      ];
+    }
+    // adult = no filter on matureContent (can see all)
+
+    // Find books not in reading list with proper filtering
     const candidates = await this.prisma.book.findMany({
       where: {
-        id: { notIn: readingListBookIds },
-        biblicalAlignmentScore: { gte: 70 },
-        evaluationStatus: 'completed',
-        visibilityTier: { notIn: ['not_aligned'] },
+        AND: [
+          { id: { notIn: readingListBookIds } },
+          { biblicalAlignmentScore: { gte: 70 } },
+          { evaluationStatus: 'completed' },
+          visibilityFilter,
+          matureContentFilter,
+        ],
       },
       select: {
         id: true,
@@ -206,6 +279,7 @@ export class ReadingRecommendationsService {
         denominationalTags: true,
         coverImageUrl: true,
         visibilityTier: true,
+        submittedByOrganizationId: true,
       },
       take: 50, // Limit candidates to avoid excessive AI costs
       orderBy: {
