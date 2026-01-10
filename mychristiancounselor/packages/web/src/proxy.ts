@@ -5,9 +5,12 @@ export function proxy(request: NextRequest) {
   // Redirect non-www to www domain
   const host = request.headers.get('host');
   if (host === 'mychristiancounselor.online') {
-    const url = request.nextUrl.clone();
-    url.host = 'www.mychristiancounselor.online';
-    return NextResponse.redirect(url, 301);
+    // Construct redirect URL without internal port
+    const protocol = request.nextUrl.protocol;
+    const pathname = request.nextUrl.pathname;
+    const search = request.nextUrl.search;
+    const redirectUrl = `${protocol}//www.mychristiancounselor.online${pathname}${search}`;
+    return NextResponse.redirect(redirectUrl, 301);
   }
 
   // For all routes, let the API handle authentication
