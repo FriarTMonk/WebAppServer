@@ -120,6 +120,23 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
                   </li>
                 </ul>
               </li>
+
+              {/* Settings Section */}
+              <li className="mt-6">
+                <div className="px-4 py-2 text-xs font-semibold text-green-300 uppercase tracking-wider">
+                  Settings
+                </div>
+                <ul className="mt-2 space-y-1" aria-label="Settings navigation">
+                  <li>
+                    <Link
+                      href="/org-admin/settings/book-access"
+                      className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/settings/book-access')}`}
+                    >
+                      Book Access
+                    </Link>
+                  </li>
+                </ul>
+              </li>
             </ul>
           </nav>
         </aside>
