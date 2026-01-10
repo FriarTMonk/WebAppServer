@@ -2,8 +2,8 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface UpdateOrgBookSettingsDto {
-  hiddenBookIds?: string[];
-  allowedBookIds?: string[];
+  allowedVisibilityTiers?: string[];
+  customBookIds?: string[];
 }
 
 @Injectable()
@@ -13,7 +13,7 @@ export class OrgBookSettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Get organization book settings (hidden/allowed book IDs)
+   * Get organization book settings (visibility tiers and custom book IDs)
    */
   async getOrgBookSettings(organizationId: string) {
     this.logger.log(`Getting book settings for organization ${organizationId}`);
@@ -23,8 +23,8 @@ export class OrgBookSettingsService {
       select: {
         id: true,
         name: true,
-        hiddenBookIds: true,
-        allowedBookIds: true,
+        allowedVisibilityTiers: true,
+        customBookIds: true,
       },
     });
 
@@ -35,8 +35,8 @@ export class OrgBookSettingsService {
     return {
       organizationId: org.id,
       organizationName: org.name,
-      hiddenBookIds: org.hiddenBookIds || [],
-      allowedBookIds: org.allowedBookIds || [],
+      allowedVisibilityTiers: org.allowedVisibilityTiers || [],
+      customBookIds: org.customBookIds || [],
     };
   }
 
@@ -60,22 +60,22 @@ export class OrgBookSettingsService {
     const updated = await this.prisma.organization.update({
       where: { id: organizationId },
       data: {
-        hiddenBookIds: dto.hiddenBookIds,
-        allowedBookIds: dto.allowedBookIds,
+        allowedVisibilityTiers: dto.allowedVisibilityTiers,
+        customBookIds: dto.customBookIds,
       },
       select: {
         id: true,
         name: true,
-        hiddenBookIds: true,
-        allowedBookIds: true,
+        allowedVisibilityTiers: true,
+        customBookIds: true,
       },
     });
 
     return {
       organizationId: updated.id,
       organizationName: updated.name,
-      hiddenBookIds: updated.hiddenBookIds || [],
-      allowedBookIds: updated.allowedBookIds || [],
+      allowedVisibilityTiers: updated.allowedVisibilityTiers || [],
+      customBookIds: updated.customBookIds || [],
     };
   }
 }
