@@ -560,6 +560,19 @@ export default function CounselorDashboard() {
             </button>
             <button
               onClick={() => {
+                const memberId = openDropdown;
+                if (memberId) {
+                  window.location.href = `/counsel/member/${memberId}/journal`;
+                }
+                setOpenDropdown(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              View Journal
+            </button>
+            <button
+              onClick={() => {
                 const memberSummary = members.find(m => m.member.id === openDropdown);
                 if (memberSummary) {
                   setWorkflowRulesModal({
