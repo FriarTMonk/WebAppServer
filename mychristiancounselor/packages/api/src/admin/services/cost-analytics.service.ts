@@ -182,7 +182,7 @@ export class CostAnalyticsService {
         tokens: (log.inputTokens || 0) + (log.outputTokens || 0),
         evaluatedAt: log.evaluatedAt,
       })),
-      dailyCostTrend,
+      costTrend: dailyCostTrend,
     };
   }
 }

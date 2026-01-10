@@ -237,24 +237,24 @@ export default function EvaluationQueuePage() {
               {jobs.map((job) => (
                 <tr key={job.id}>
                   <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">{job.bookTitle}</div>
-                    <div className="text-sm text-gray-500">{job.bookId.substring(0, 8)}...</div>
+                    <div className="text-sm font-medium text-gray-900">{job.data?.bookTitle || job.name || 'Unknown'}</div>
+                    <div className="text-sm text-gray-500">{job.data?.bookId ? `${job.data.bookId.substring(0, 8)}...` : 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(job.status)}`}>
-                      {job.status}
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(job.state)}`}>
+                      {job.state}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{job.frameworkVersion}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">{job.data?.frameworkVersion || 'N/A'}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    {job.isReEvaluation ? 'Re-evaluation' : 'New'}
+                    {job.data?.isReEvaluation ? 'Re-evaluation' : 'New'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    {new Date(job.createdAt).toLocaleString()}
+                    {job.timestamp ? new Date(job.timestamp).toLocaleString() : 'N/A'}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{job.attempts}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">{job.attemptsMade || 0}</td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
-                    {job.status === 'failed' && (
+                    {job.state === 'failed' && (
                       <>
                         <button
                           onClick={() => setSelectedJob(job)}
