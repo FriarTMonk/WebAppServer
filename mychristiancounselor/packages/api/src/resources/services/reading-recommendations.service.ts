@@ -10,6 +10,8 @@ interface BookCandidate {
   biblicalAlignmentScore: number;
   genreTag: string;
   denominationalTags: string[];
+  coverImageUrl: string | null;
+  visibilityTier: string;
 }
 
 interface UserProfile {
@@ -84,7 +86,11 @@ export class ReadingRecommendationsService {
           id: book.id,
           title: book.title,
           author: book.author,
-          description: book.description,
+          category: book.genreTag,
+          description: book.description || '',
+          coverImageUrl: book.coverImageUrl,
+          visibilityTier: book.visibilityTier,
+          alignmentScore: book.biblicalAlignmentScore || 0,
           biblicalAlignmentScore: book.biblicalAlignmentScore,
           genreTag: book.genreTag,
           recommendationScore: ranked.score,
@@ -187,7 +193,7 @@ export class ReadingRecommendationsService {
       where: {
         id: { notIn: readingListBookIds },
         biblicalAlignmentScore: { gte: 70 },
-        evaluationStatus: 'approved',
+        evaluationStatus: 'completed',
         visibilityTier: { notIn: ['not_aligned'] },
       },
       select: {
@@ -198,6 +204,8 @@ export class ReadingRecommendationsService {
         biblicalAlignmentScore: true,
         genreTag: true,
         denominationalTags: true,
+        coverImageUrl: true,
+        visibilityTier: true,
       },
       take: 50, // Limit candidates to avoid excessive AI costs
       orderBy: {

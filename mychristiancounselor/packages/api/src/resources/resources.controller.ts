@@ -92,6 +92,8 @@ export class ResourcesController {
     @CurrentUser('id') userId: string,
     @Query('limit') limit?: number,
   ) {
-    return this.readingRecommendationsService.getRecommendations(userId, limit || 10);
+    const result = await this.readingRecommendationsService.getRecommendations(userId, limit || 10);
+    // Return just the recommendations array to match frontend expectations
+    return result.recommendations;
   }
 }
