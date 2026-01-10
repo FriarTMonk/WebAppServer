@@ -128,7 +128,6 @@ model Organization {
   website                           String?
 
   // Book filtering (Phase 4)
-  allowedVisibilityTiers String[] @default(["globally_aligned", "conceptually_aligned"])
   customBookIds          String[] @default([])
 
   // Relations

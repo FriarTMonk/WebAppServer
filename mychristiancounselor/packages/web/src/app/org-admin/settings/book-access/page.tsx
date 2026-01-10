@@ -7,7 +7,7 @@ import { OrgAdminLayout } from '../../../../components/OrgAdminLayout';
 interface Organization {
   id: string;
   name: string;
-  allowedVisibilityTiers: string[];
+  matureContentThreshold: string;
   customBookIds: string[];
 }
 
@@ -21,8 +21,7 @@ interface Book {
 export default function BookAccessSettingsPage() {
   const router = useRouter();
   const [organization, setOrganization] = useState<Organization | null>(null);
-  const [availableTiers] = useState(['highly_aligned', 'aligned', 'somewhat_aligned', 'not_aligned']);
-  const [selectedTiers, setSelectedTiers] = useState<string[]>([]);
+  const [matureContentThreshold, setMatureContentThreshold] = useState<string>('teen');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Book[]>([]);
   const [customBooks, setCustomBooks] = useState<Book[]>([]);
@@ -37,7 +36,7 @@ export default function BookAccessSettingsPage() {
 
   useEffect(() => {
     if (organization) {
-      setSelectedTiers(organization.allowedVisibilityTiers);
+      setMatureContentThreshold(organization.matureContentThreshold);
       if (organization.customBookIds.length > 0) {
         fetchCustomBooks(organization.customBookIds);
       }
@@ -45,10 +44,10 @@ export default function BookAccessSettingsPage() {
   }, [organization]);
 
   useEffect(() => {
-    if (selectedTiers.length > 0) {
+    if (matureContentThreshold) {
       fetchBookCount();
     }
-  }, [selectedTiers]);
+  }, [matureContentThreshold]);
 
   const fetchOrganizationSettings = async () => {
     try {
@@ -91,7 +90,7 @@ export default function BookAccessSettingsPage() {
       setOrganization({
         id: orgData.id,
         name: orgData.name,
-        allowedVisibilityTiers: settings.allowedVisibilityTiers || [],
+        matureContentThreshold: settings.matureContentThreshold || 'teen',
         customBookIds: settings.customBookIds || [],
       });
     } catch (err) {
@@ -125,7 +124,7 @@ export default function BookAccessSettingsPage() {
   const fetchBookCount = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
-      const response = await fetch(`${apiUrl}/resources/books/count?tiers=${selectedTiers.join(',')}`, {
+      const response = await fetch(`${apiUrl}/resources/books/count?matureThreshold=${matureContentThreshold}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -158,12 +157,6 @@ export default function BookAccessSettingsPage() {
     } catch (err) {
       console.error('Failed to search books:', err);
     }
-  };
-
-  const handleToggleTier = (tier: string) => {
-    setSelectedTiers((prev) =>
-      prev.includes(tier) ? prev.filter((t) => t !== tier) : [...prev, tier]
-    );
   };
 
   const handleAddCustomBook = (book: Book) => {
@@ -206,7 +199,7 @@ export default function BookAccessSettingsPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          allowedVisibilityTiers: selectedTiers,
+          matureContentThreshold: matureContentThreshold,
           customBookIds: organization.customBookIds,
         }),
       });
@@ -222,13 +215,6 @@ export default function BookAccessSettingsPage() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const getTierLabel = (tier: string) => {
-    return tier
-      .split('_')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
   };
 
   return (
@@ -250,31 +236,67 @@ export default function BookAccessSettingsPage() {
 
         {!loading && organization && (
           <>
-            {/* Visibility Tiers Section */}
+            {/* Mature Content Visibility Section */}
             <div className="bg-white rounded-lg shadow p-6 mb-6">
-              <h3 className="text-xl font-semibold mb-4">Allowed Visibility Tiers</h3>
+              <h3 className="text-xl font-semibold mb-4">Mature Content Visibility</h3>
               <p className="text-sm text-gray-600 mb-4">
-                Select which visibility tiers members can access. Books matching these tiers will be visible to organization members.
+                Select the minimum account type required to view books with mature content. This setting determines which members can see books flagged as mature content.
+              </p>
+              <p className="text-sm text-gray-500 mb-4 italic">
+                Note: Book alignment (Aligned, Somewhat Aligned, Not Aligned) is automatically managed and not configurable here.
               </p>
 
               <div className="space-y-3">
-                {availableTiers.map((tier) => (
-                  <label key={tier} className="flex items-center p-3 border rounded hover:bg-gray-50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedTiers.includes(tier)}
-                      onChange={() => handleToggleTier(tier)}
-                      className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                    />
-                    <span className="ml-3 text-sm font-medium text-gray-900">{getTierLabel(tier)}</span>
-                  </label>
-                ))}
+                <label className="flex items-center p-3 border rounded hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="matureContentThreshold"
+                    value="child"
+                    checked={matureContentThreshold === 'child'}
+                    onChange={(e) => setMatureContentThreshold(e.target.value)}
+                    className="h-4 w-4 text-blue-600 border-gray-300"
+                  />
+                  <div className="ml-3">
+                    <div className="text-sm font-medium text-gray-900">Child (Most Permissive)</div>
+                    <div className="text-xs text-gray-500">All members including children can see mature content books</div>
+                  </div>
+                </label>
+
+                <label className="flex items-center p-3 border rounded hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="matureContentThreshold"
+                    value="teen"
+                    checked={matureContentThreshold === 'teen'}
+                    onChange={(e) => setMatureContentThreshold(e.target.value)}
+                    className="h-4 w-4 text-blue-600 border-gray-300"
+                  />
+                  <div className="ml-3">
+                    <div className="text-sm font-medium text-gray-900">Teen (Recommended)</div>
+                    <div className="text-xs text-gray-500">Only teen and adult members can see mature content books</div>
+                  </div>
+                </label>
+
+                <label className="flex items-center p-3 border rounded hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="matureContentThreshold"
+                    value="adult"
+                    checked={matureContentThreshold === 'adult'}
+                    onChange={(e) => setMatureContentThreshold(e.target.value)}
+                    className="h-4 w-4 text-blue-600 border-gray-300"
+                  />
+                  <div className="ml-3">
+                    <div className="text-sm font-medium text-gray-900">Adult (Most Restrictive)</div>
+                    <div className="text-xs text-gray-500">Only adult members can see mature content books</div>
+                  </div>
+                </label>
               </div>
 
               <div className="mt-4 bg-blue-50 border border-blue-200 rounded p-3">
                 <p className="text-sm text-blue-800">
-                  <strong>Preview:</strong> {bookCount} books will be accessible based on selected tiers
-                  {customBooks.length > 0 && ` + ${customBooks.length} custom books`}.
+                  <strong>Current Setting:</strong> Books with mature content will be visible to <strong>{matureContentThreshold}</strong> level members and above
+                  {customBooks.length > 0 && `, plus ${customBooks.length} custom books that bypass this filter`}.
                 </p>
               </div>
             </div>
@@ -283,7 +305,7 @@ export default function BookAccessSettingsPage() {
             <div className="bg-white rounded-lg shadow p-6 mb-6">
               <h3 className="text-xl font-semibold mb-4">Custom Book Access</h3>
               <p className="text-sm text-gray-600 mb-4">
-                Add specific books that should be accessible regardless of their visibility tier.
+                Add specific books that should be accessible to all members regardless of the mature content threshold setting above.
               </p>
 
               {/* Search */}

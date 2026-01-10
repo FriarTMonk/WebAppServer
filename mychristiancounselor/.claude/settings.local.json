@@ -4,7 +4,9 @@
       "Bash(npx nx reset)",
       "Bash(rm:*)",
       "Bash(npx prisma migrate:*)",
-      "Skill(superpowers:subagent-driven-development)"
+      "Skill(superpowers:subagent-driven-development)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface UpdateOrgBookSettingsDto {
-  allowedVisibilityTiers?: string[];
+  matureContentThreshold?: string; // 'adult', 'teen', or 'child'
   customBookIds?: string[];
 }
 
@@ -13,7 +13,7 @@ export class OrgBookSettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Get organization book settings (visibility tiers and custom book IDs)
+   * Get organization book settings (mature content threshold and custom book IDs)
    */
   async getOrgBookSettings(organizationId: string) {
     this.logger.log(`Getting book settings for organization ${organizationId}`);
@@ -23,7 +23,7 @@ export class OrgBookSettingsService {
       select: {
         id: true,
         name: true,
-        allowedVisibilityTiers: true,
+        matureContentAccountTypeThreshold: true,
         customBookIds: true,
       },
     });
@@ -35,7 +35,7 @@ export class OrgBookSettingsService {
     return {
       organizationId: org.id,
       organizationName: org.name,
-      allowedVisibilityTiers: org.allowedVisibilityTiers || [],
+      matureContentThreshold: org.matureContentAccountTypeThreshold || 'teen',
       customBookIds: org.customBookIds || [],
     };
   }
@@ -60,13 +60,13 @@ export class OrgBookSettingsService {
     const updated = await this.prisma.organization.update({
       where: { id: organizationId },
       data: {
-        allowedVisibilityTiers: dto.allowedVisibilityTiers,
+        matureContentAccountTypeThreshold: dto.matureContentThreshold,
         customBookIds: dto.customBookIds,
       },
       select: {
         id: true,
         name: true,
-        allowedVisibilityTiers: true,
+        matureContentAccountTypeThreshold: true,
         customBookIds: true,
       },
     });
@@ -74,7 +74,7 @@ export class OrgBookSettingsService {
     return {
       organizationId: updated.id,
       organizationName: updated.name,
-      allowedVisibilityTiers: updated.allowedVisibilityTiers || [],
+      matureContentThreshold: updated.matureContentAccountTypeThreshold || 'teen',
       customBookIds: updated.customBookIds || [],
     };
   }
