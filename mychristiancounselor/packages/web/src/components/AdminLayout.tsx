@@ -1,17 +1,20 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { TourButton } from './TourButton';
-import { buildLinkWithReferrer } from '@/lib/navigation-utils';
+import { buildLinkWithTrail, parseTrail } from '@/lib/navigation-utils';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-export function AdminLayout({ children }: AdminLayoutProps) {
+function AdminLayoutContent({ children }: AdminLayoutProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const trailParam = searchParams.get('trail');
+  const trail = parseTrail(trailParam);
 
   const isActive = (path: string) => {
     return pathname === path ? 'bg-blue-700' : 'hover:bg-blue-600';
@@ -27,7 +30,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             <div className="flex items-center gap-4">
               <TourButton />
               <Link
-                href={buildLinkWithReferrer('/home', pathname)}
+                href={buildLinkWithTrail('/home', pathname, trail)}
                 className="text-sm hover:underline"
               >
                 Back to App
@@ -45,7 +48,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               {/* Overview */}
               <li>
                 <Link
-                  href={buildLinkWithReferrer('/admin', pathname)}
+                  href={buildLinkWithTrail('/admin', pathname, trail)}
                   className={`block px-4 py-2 rounded transition-colors ${isActive('/admin')}`}
                 >
                   Overview
@@ -60,7 +63,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 <ul className="mt-2 space-y-1">
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/admin/organizations', pathname)}
+                      href={buildLinkWithTrail('/admin/organizations', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/organizations')}`}
                     >
                       Customers
@@ -68,7 +71,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   </li>
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/admin/users', pathname)}
+                      href={buildLinkWithTrail('/admin/users', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/users')}`}
                     >
                       Users
@@ -85,7 +88,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 <ul className="mt-2 space-y-1">
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/admin/sales', pathname)}
+                      href={buildLinkWithTrail('/admin/sales', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/sales')}`}
                     >
                       Sales Queue
@@ -93,7 +96,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   </li>
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/marketing', pathname)}
+                      href={buildLinkWithTrail('/marketing', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${pathname?.startsWith('/marketing') ? 'bg-blue-700' : 'hover:bg-blue-600'}`}
                     >
                       Marketing
@@ -101,7 +104,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   </li>
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/admin/support', pathname)}
+                      href={buildLinkWithTrail('/admin/support', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/support')}`}
                     >
                       Support
@@ -109,7 +112,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   </li>
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/admin/holidays', pathname)}
+                      href={buildLinkWithTrail('/admin/holidays', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/holidays')}`}
                     >
                       Holidays
@@ -126,7 +129,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 <ul className="mt-2 space-y-1">
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/admin/audit-log', pathname)}
+                      href={buildLinkWithTrail('/admin/audit-log', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/audit-log')}`}
                     >
                       Audit Log
@@ -143,7 +146,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 <ul className="mt-2 space-y-1">
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/admin/resources/books', pathname)}
+                      href={buildLinkWithTrail('/admin/resources/books', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/resources/books')}`}
                     >
                       All Books
@@ -151,7 +154,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   </li>
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/admin/resources/evaluation', pathname)}
+                      href={buildLinkWithTrail('/admin/resources/evaluation', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/resources/evaluation')}`}
                     >
                       Evaluation Management
@@ -159,7 +162,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   </li>
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/admin/resources/organizations', pathname)}
+                      href={buildLinkWithTrail('/admin/resources/organizations', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/resources/organizations')}`}
                     >
                       Organizations
@@ -177,5 +180,26 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </main>
       </div>
     </div>
+  );
+}
+
+/**
+ * Platform Administration Layout
+ *
+ * Wraps platform admin pages with header, sidebar navigation, and trail-based breadcrumb support.
+ */
+export function AdminLayout(props: AdminLayoutProps) {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-blue-800 text-white shadow-lg">
+          <div className="container mx-auto px-4 py-4">
+            <h1 className="text-2xl font-bold">Platform Administration</h1>
+          </div>
+        </div>
+      </div>
+    }>
+      <AdminLayoutContent {...props} />
+    </Suspense>
   );
 }
