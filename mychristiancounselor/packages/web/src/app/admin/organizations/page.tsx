@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminLayout } from '../../../components/AdminLayout';
+import { BackButton } from '@/components/BackButton';
 import { AddRegisteredOrganizationForm } from '../../../components/AddRegisteredOrganizationForm';
 
 interface Organization {
@@ -168,6 +169,7 @@ export default function OrganizationsListPage() {
   return (
     <AdminLayout>
       <div>
+        <BackButton />
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-3xl font-bold text-gray-900">Organizations</h2>
           <button

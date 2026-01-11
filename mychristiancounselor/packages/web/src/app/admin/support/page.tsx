@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AdminLayout } from '../../../components/AdminLayout';
+import { BackButton } from '@/components/BackButton';
 import { SLABadge, type SLAStatus } from '@/components/support/SLABadge';
 import { SLATooltip } from '@/components/support/SLATooltip';
 
@@ -217,6 +218,7 @@ export default function AdminSupportPage() {
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto p-6">
+        <BackButton />
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Support Tickets</h1>
           <p className="text-gray-600 mt-2">Manage user support requests</p>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { BackButton } from '@/components/BackButton';
 import { BookCard } from '@/components/BookCard';
 import { BookFilters } from '@/components/BookFilters';
 import { bookApi, BookFilters as BookFiltersType } from '@/lib/api';
@@ -183,15 +184,7 @@ export default function PlatformAdminAllBooksPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-6">
-          <button
-            onClick={() => router.push('/admin')}
-            className="mb-4 flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Admin
-          </button>
+          <BackButton />
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">All Books</h1>

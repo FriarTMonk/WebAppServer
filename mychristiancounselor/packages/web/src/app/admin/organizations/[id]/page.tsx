@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { AdminLayout } from '../../../../components/AdminLayout';
+import { BackButton } from '@/components/BackButton';
 import { OrganizationMembersView } from '../../../../components/OrganizationMembersView';
 import { UserManagementModal } from '../../../../components/UserManagementModal';
 import { OrganizationSubscriptionModal } from '../../../../components/OrganizationSubscriptionModal';
@@ -244,14 +245,9 @@ export default function OrganizationDetailPage() {
   return (
     <AdminLayout>
       <div>
+        <BackButton />
         <div className="flex items-center justify-between mb-6">
           <div>
-            <button
-              onClick={() => router.push('/admin/organizations')}
-              className="text-blue-600 hover:underline mb-2 text-sm"
-            >
-              ← Back to Organizations
-            </button>
             <h2 className="text-3xl font-bold text-gray-900">
               {organization?.name || 'Organization Details'}
             </h2>

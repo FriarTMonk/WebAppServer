@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminLayout } from '../../../components/AdminLayout';
+import { BackButton } from '@/components/BackButton';
 
 interface AuditLogEntry {
   id: string;
@@ -86,6 +87,7 @@ export default function AdminAuditLogPage() {
   return (
     <AdminLayout>
       <div>
+        <BackButton />
         <h2 className="text-3xl font-bold text-gray-900 mb-6">Platform Audit Log</h2>
 
         {loading && (
