@@ -26,8 +26,9 @@ export function BackButton() {
 
   return (
     <button
+      type="button"
       onClick={() => router.push(from)}
-      className="flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-4"
+      className="flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
       aria-label={`Navigate back to ${label}`}
     >
       <svg
