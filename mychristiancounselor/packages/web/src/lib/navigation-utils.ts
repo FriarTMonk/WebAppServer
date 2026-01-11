@@ -216,7 +216,7 @@ export function parseTrail(trailParam: string | null): string[] {
  * @returns Comma-separated, URL-encoded string
  *
  * @example
- * encodeTrail(['/home', '/org-admin']) → '/home,/org-admin'
+ * encodeTrail(['/home', '/org-admin']) → '%2Fhome%2C%2Forg-admin'
  * encodeTrail([]) → ''
  */
 export function encodeTrail(trail: string[]): string {
@@ -224,6 +224,23 @@ export function encodeTrail(trail: string[]): string {
     return '';
   }
 
+  // Trim whitespace and validate paths
+  const validPaths = trail
+    .map(p => typeof p === 'string' ? p.trim() : '')
+    .filter(p => {
+      if (!p.startsWith('/')) {
+        if (p.length > 0) {
+          console.warn('Invalid trail path - must start with /:', p);
+        }
+        return false;
+      }
+      return true;
+    });
+
+  if (validPaths.length === 0) {
+    return '';
+  }
+
   // Join with comma and encode for URL safety
-  return encodeURIComponent(trail.join(','));
+  return encodeURIComponent(validPaths.join(','));
 }
