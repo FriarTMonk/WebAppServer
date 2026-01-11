@@ -1,5 +1,3 @@
-import pageLabels from '@/config/page-labels.json';
-
 /**
  * Check if a path is a sub-page (detail, new, edit)
  * Sub-pages are identified by:
@@ -91,7 +89,7 @@ export function buildLinkWithReferrer(targetPath: string, currentPath: string): 
 
 /**
  * Get human-readable label for a page path
- * Looks up the label in page-labels.json configuration
+ * Currently uses temporary hardcoded labels - will be replaced with config in Task 2
  *
  * @param path - The page path to get label for
  * @returns The human-readable page label, or 'Previous Page' as fallback
@@ -100,9 +98,11 @@ export function getPageLabel(path: string): string {
   // Strip query parameters from path before lookup
   const pathWithoutQuery = path.split('?')[0];
 
-  // Type assertion for the imported JSON
-  const labels = pageLabels as Record<string, string>;
+  // Temporary hardcoded labels - will be replaced with config in Task 2
+  const tempLabels: Record<string, string> = {
+    '/home': 'Home',
+  };
 
-  // Return label from config or fallback
-  return labels[pathWithoutQuery] || 'Previous Page';
+  // Return label from temp labels or fallback
+  return tempLabels[pathWithoutQuery] || 'Previous Page';
 }
