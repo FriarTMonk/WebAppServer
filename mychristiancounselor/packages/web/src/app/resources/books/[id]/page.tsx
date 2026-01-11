@@ -6,6 +6,7 @@ import { bookApi } from '@/lib/api';
 import { AlignmentScoreBadge } from '@/components/AlignmentScoreBadge';
 import { BookDetailTabs } from '@/components/books/BookDetailTabs';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 interface DoctrineCategoryScore {
   category: string;
@@ -167,6 +168,7 @@ export default function BookDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
+        <Breadcrumbs />
         <BackButton />
 
         {/* Book Header Section */}

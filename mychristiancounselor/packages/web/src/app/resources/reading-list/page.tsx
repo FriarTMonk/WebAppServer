@@ -8,6 +8,7 @@ import { apiGet, apiPut, apiDelete } from '../../../lib/api';
 import { showToast } from '@/components/Toast';
 import { ReadingListCard } from '@/components/reading-list/ReadingListCard';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 type ReadingListTab = 'want_to_read' | 'currently_reading' | 'finished';
 
@@ -215,6 +216,7 @@ function ReadingListPageContent() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-6">
+          <Breadcrumbs />
           <BackButton />
           <h1 className="text-3xl font-bold text-gray-900">My Reading List</h1>
           <p className="text-sm text-gray-600 mt-1">

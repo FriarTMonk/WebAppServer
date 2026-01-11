@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useUserPermissions } from '../../../../hooks/useUserPermissions';
 import { bookApi, CreateBookData } from '../../../../lib/api';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import clsx from 'clsx';
 
 type WizardStep = 'metadata' | 'pdf';
@@ -168,6 +169,7 @@ export default function AddNewBookPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-6">
+          <Breadcrumbs />
           <div className="flex items-center justify-between">
             <div>
               <BackButton />

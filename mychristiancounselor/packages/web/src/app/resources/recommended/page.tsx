@@ -6,6 +6,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../../lib/api';
 import { showToast } from '@/components/Toast';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 interface RecommendedBook {
   id: string;
@@ -147,6 +148,7 @@ export default function RecommendedForMePage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-6">
+          <Breadcrumbs />
           <BackButton />
           <h1 className="text-2xl font-bold text-gray-900">📖 Recommended for You</h1>
           <p className="text-sm text-gray-600 mt-1">
