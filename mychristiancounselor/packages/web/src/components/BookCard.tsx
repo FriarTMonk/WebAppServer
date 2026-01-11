@@ -52,7 +52,10 @@ export function BookCard({ book, showActions = true, compact = false, onClick }:
     : null;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+    <div
+      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+      onClick={handleViewDetails}
+    >
       <div className="flex gap-4">
         {/* Cover Image */}
         <div className="flex-shrink-0">
@@ -115,7 +118,7 @@ export function BookCard({ book, showActions = true, compact = false, onClick }:
 
           {/* Actions */}
           {showActions && (
-            <div className="flex items-center space-x-2 mt-3">
+            <div className="flex items-center space-x-2 mt-3" onClick={(e) => e.stopPropagation()}>
               <AddToReadingListButton
                 bookId={book.id}
                 bookTitle={book.title}
