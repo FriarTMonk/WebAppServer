@@ -244,3 +244,23 @@ export function encodeTrail(trail: string[]): string {
   // Join with comma and encode for URL safety
   return encodeURIComponent(validPaths.join(','));
 }
+
+/**
+ * Check if a path should be added to the breadcrumb trail
+ * Sub-pages (detail pages, /new, /edit) should NOT be added
+ *
+ * @param path - Path to check (without query parameters)
+ * @returns true if should add to trail, false otherwise
+ *
+ * @example
+ * shouldAddToTrail('/resources/books') → true
+ * shouldAddToTrail('/resources/books/abc-123') → false (detail page)
+ * shouldAddToTrail('/resources/books/new') → false (new page)
+ */
+export function shouldAddToTrail(path: string): boolean {
+  // Strip query parameters
+  const pathWithoutQuery = path.split('?')[0];
+
+  // Sub-pages should not be added to trail
+  return !isSubPage(pathWithoutQuery);
+}
