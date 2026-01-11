@@ -208,3 +208,22 @@ export function parseTrail(trailParam: string | null): string[] {
     return [];
   }
 }
+
+/**
+ * Encode trail array to URL parameter string
+ *
+ * @param trail - Array of paths
+ * @returns Comma-separated, URL-encoded string
+ *
+ * @example
+ * encodeTrail(['/home', '/org-admin']) → '/home,/org-admin'
+ * encodeTrail([]) → ''
+ */
+export function encodeTrail(trail: string[]): string {
+  if (!trail || trail.length === 0) {
+    return '';
+  }
+
+  // Join with comma and encode for URL safety
+  return encodeURIComponent(trail.join(','));
+}
