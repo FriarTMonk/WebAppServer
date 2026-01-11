@@ -21,8 +21,8 @@ NC='\033[0m' # No Color
 REGION="us-east-2"
 API_SERVICE="api"
 WEB_SERVICE="web"
-API_VERSION="landing-auth-fix-40"
-WEB_VERSION="landing-auth-fix-40"
+API_VERSION="breadcrumb-navigation-1"
+WEB_VERSION="breadcrumb-navigation-1"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}  MyChristianCounselor Soft Launch${NC}"
