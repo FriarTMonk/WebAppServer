@@ -316,3 +316,35 @@ export function buildTrail(
 
   return newTrail;
 }
+
+/**
+ * Get navigation info for back button
+ * Returns path to navigate to and updated trail
+ *
+ * @param currentTrail - Current trail array
+ * @returns {path, trail} for back navigation, or null if trail is empty
+ *
+ * @example
+ * getTrailForBack(['/home', '/org-admin']) → { path: '/org-admin', trail: '/home' }
+ * getTrailForBack(['/home']) → { path: '/home', trail: '' }
+ * getTrailForBack([]) → null
+ */
+export function getTrailForBack(currentTrail: string[]): {
+  path: string;
+  trail: string;
+} | null {
+  if (!currentTrail || currentTrail.length === 0) {
+    return null;
+  }
+
+  // Last item in trail is where we go back to
+  const backPath = currentTrail[currentTrail.length - 1];
+
+  // New trail excludes the last item
+  const newTrail = currentTrail.slice(0, -1);
+
+  return {
+    path: backPath,
+    trail: encodeTrail(newTrail),
+  };
+}
