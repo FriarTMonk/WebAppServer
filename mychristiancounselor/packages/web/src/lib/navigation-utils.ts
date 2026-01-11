@@ -170,3 +170,41 @@ export function getPageLabel(path: string): string {
   // Return label from config or fallback
   return labels[pathWithoutQuery] || 'Previous Page';
 }
+
+/**
+ * Parse trail query parameter into array of paths
+ * Handles malformed input gracefully
+ *
+ * @param trailParam - Raw trail string from URL (comma-separated paths)
+ * @returns Array of paths, empty array if invalid
+ *
+ * @example
+ * parseTrail('/home,/org-admin') → ['/home', '/org-admin']
+ * parseTrail('invalid') → []
+ * parseTrail(null) → []
+ */
+export function parseTrail(trailParam: string | null): string[] {
+  if (!trailParam || typeof trailParam !== 'string') {
+    return [];
+  }
+
+  try {
+    // Decode URI component in case paths are encoded
+    const decoded = decodeURIComponent(trailParam);
+
+    // Split by comma and filter out empty strings
+    const paths = decoded.split(',').filter(p => p.trim().length > 0);
+
+    // Validate that each path starts with /
+    const validPaths = paths.filter(p => p.startsWith('/'));
+
+    if (validPaths.length !== paths.length) {
+      console.warn('Invalid trail parameter - some paths do not start with /:', trailParam);
+    }
+
+    return validPaths;
+  } catch (error) {
+    console.warn('Failed to parse trail parameter:', trailParam, error);
+    return [];
+  }
+}
