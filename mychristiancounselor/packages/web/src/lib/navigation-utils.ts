@@ -106,54 +106,6 @@ export function getParentPath(path: string): string {
 }
 
 /**
- * Get valid referrer for navigation links
- * If current path is a sub-page, returns its parent path
- * If current path is NOT a sub-page, returns the current path itself
- * This prevents sub-pages from becoming referrers (loop prevention)
- *
- * Preserves the 'from' query parameter to maintain navigation chain
- *
- * @param currentPath - The current page path (with or without query params)
- * @returns The valid referrer path to use (may include from parameter)
- */
-export function getValidReferrer(currentPath: string): string {
-  // Split path and query string
-  const [pathOnly, queryString] = currentPath.split('?');
-
-  // Determine the referrer path
-  const referrerPath = isSubPage(pathOnly) ? getParentPath(pathOnly) : pathOnly;
-
-  // If there's a 'from' parameter in the current URL, preserve it
-  if (queryString) {
-    const params = new URLSearchParams(queryString);
-    const fromParam = params.get('from');
-    if (fromParam) {
-      return `${referrerPath}?from=${encodeURIComponent(fromParam)}`;
-    }
-  }
-
-  return referrerPath;
-}
-
-/**
- * Build link with from query parameter
- * Gets valid referrer from current path and appends it to target path
- *
- * @param targetPath - The target path to link to
- * @param currentPath - The current page path
- * @returns The target path with from parameter appended
- */
-export function buildLinkWithReferrer(targetPath: string, currentPath: string): string {
-  const referrer = getValidReferrer(currentPath);
-  const encodedReferrer = encodeURIComponent(referrer);
-
-  // Check if target already has query parameters
-  const separator = targetPath.includes('?') ? '&' : '?';
-
-  return `${targetPath}${separator}from=${encodedReferrer}`;
-}
-
-/**
  * Get human-readable label for a page path
  * Uses imported page labels configuration from @/config/page-labels.json
  *
