@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { BookFilters } from '@/components/BookFilters';
 import { BookCard } from '@/components/BookCard';
@@ -9,7 +9,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { bookApi, BookFilters as BookFiltersType } from '@/lib/api';
 import { buildLinkWithTrail, parseTrail } from '@/lib/navigation-utils';
 
-export default function OrgAdminEndorsedBooksPage() {
+function OrgAdminEndorsedBooksPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -261,5 +261,13 @@ export default function OrgAdminEndorsedBooksPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function OrgAdminEndorsedBooksPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading...</div>}>
+      <OrgAdminEndorsedBooksPageContent />
+    </Suspense>
   );
 }
