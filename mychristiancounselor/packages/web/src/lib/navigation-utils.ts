@@ -6,6 +6,7 @@ import pageLabels from '@/config/page-labels.json';
  * - Dynamic route segments containing [ and ] (e.g., /resources/books/[id])
  * - Paths ending with /new
  * - Paths ending with /edit
+ * - Paths that appear to be detail pages (e.g., /resources/books/some-uuid)
  *
  * @param path - The path to check (with or without query parameters)
  * @returns true if the path is a sub-page, false otherwise
@@ -14,7 +15,7 @@ export function isSubPage(path: string): boolean {
   // Strip query parameters
   const pathWithoutQuery = path.split('?')[0];
 
-  // Check for dynamic route segments [id], [slug], etc.
+  // Check for dynamic route segments [id], [slug], etc. (filesystem paths)
   if (pathWithoutQuery.includes('[') && pathWithoutQuery.includes(']')) {
     return true;
   }
@@ -22,6 +23,47 @@ export function isSubPage(path: string): boolean {
   // Check if path ends with /new or /edit
   if (pathWithoutQuery.endsWith('/new') || pathWithoutQuery.endsWith('/edit')) {
     return true;
+  }
+
+  // Detect runtime dynamic routes (detail pages)
+  // These are paths with an extra segment after a known parent path
+  // Examples:
+  // - /resources/books/uuid → sub-page
+  // - /admin/users/uuid → sub-page
+  // - /org-admin/members/uuid → sub-page
+  const segments = pathWithoutQuery.split('/').filter(s => s.length > 0);
+
+  // Check known patterns for detail pages
+  if (segments.length >= 3) {
+    // Pattern: /resources/books/{id}
+    if (segments[0] === 'resources' && segments[1] === 'books' && segments.length === 3) {
+      return true;
+    }
+
+    // Pattern: /admin/users/{id}, /admin/organizations/{id}
+    if (segments[0] === 'admin' && segments.length === 3) {
+      return true;
+    }
+
+    // Pattern: /org-admin/members/{id}
+    if (segments[0] === 'org-admin' && segments.length === 3) {
+      return true;
+    }
+
+    // Pattern: /support/tickets/{id}
+    if (segments[0] === 'support' && segments[1] === 'tickets' && segments.length === 3) {
+      return true;
+    }
+
+    // Pattern: /marketing/campaigns/{id}, /marketing/prospects/{id}
+    if (segments[0] === 'marketing' && segments.length === 3) {
+      return true;
+    }
+
+    // Pattern: /counsel/member/{id}/journal
+    if (segments[0] === 'counsel' && segments[1] === 'member') {
+      return true;
+    }
   }
 
   return false;
