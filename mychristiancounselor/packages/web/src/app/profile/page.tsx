@@ -7,6 +7,7 @@ import { AuthGuard } from '../../components/AuthGuard';
 import { getAccessToken } from '../../lib/auth';
 import { TourButton } from '../../components/TourButton';
 import { BackButton } from '../../components/BackButton';
+import { Breadcrumbs } from '../../components/Breadcrumbs';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
@@ -165,6 +166,7 @@ function ProfilePageContent() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
+        <Breadcrumbs />
         <BackButton />
 
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">

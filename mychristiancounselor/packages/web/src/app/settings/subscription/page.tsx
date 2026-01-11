@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 interface SubscriptionStatus {
   subscriptionStatus: 'none' | 'active' | 'canceled' | 'past_due';
@@ -74,6 +75,7 @@ export default function SubscriptionManagementPage() {
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-8">
+          <Breadcrumbs />
           <BackButton />
           <h1 className="text-3xl font-bold text-gray-900">Subscription Management</h1>
         </div>
