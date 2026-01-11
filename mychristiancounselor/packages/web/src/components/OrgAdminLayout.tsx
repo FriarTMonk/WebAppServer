@@ -2,9 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { TourButton } from './TourButton';
-import { buildLinkWithReferrer } from '@/lib/navigation-utils';
+import { buildLinkWithTrail, parseTrail } from '@/lib/navigation-utils';
 
 interface OrgAdminLayoutProps {
   children: React.ReactNode;
@@ -13,6 +13,9 @@ interface OrgAdminLayoutProps {
 
 export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const trailParam = searchParams.get('trail');
+  const trail = parseTrail(trailParam);
 
   const isActive = (path: string) => {
     return pathname === path ? 'bg-green-700' : 'hover:bg-green-600';
@@ -33,7 +36,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
             <div className="flex items-center gap-4">
               <TourButton />
               <Link
-                href={buildLinkWithReferrer('/home', pathname)}
+                href={buildLinkWithTrail('/home', pathname, trail)}
                 className="text-sm hover:underline"
               >
                 Back to App
@@ -50,7 +53,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
             <ul className="space-y-2">
               <li>
                 <Link
-                  href={buildLinkWithReferrer('/org-admin', pathname)}
+                  href={buildLinkWithTrail('/org-admin', pathname, trail)}
                   className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin')}`}
                 >
                   Overview
@@ -58,7 +61,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
               </li>
               <li>
                 <Link
-                  href={buildLinkWithReferrer('/org-admin/members', pathname)}
+                  href={buildLinkWithTrail('/org-admin/members', pathname, trail)}
                   className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/members')}`}
                 >
                   Members
@@ -66,7 +69,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
               </li>
               <li>
                 <Link
-                  href={buildLinkWithReferrer('/org-admin/counselor-assignments', pathname)}
+                  href={buildLinkWithTrail('/org-admin/counselor-assignments', pathname, trail)}
                   className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/counselor-assignments')}`}
                 >
                   Counselor Assignments
@@ -74,7 +77,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
               </li>
               <li>
                 <Link
-                  href={buildLinkWithReferrer('/org-admin/audit-log', pathname)}
+                  href={buildLinkWithTrail('/org-admin/audit-log', pathname, trail)}
                   className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/audit-log')}`}
                 >
                   Audit Log
@@ -89,7 +92,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
                 <ul className="mt-2 space-y-1" aria-label="Resources navigation">
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/org-admin/resources/books', pathname)}
+                      href={buildLinkWithTrail('/org-admin/resources/books', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/resources/books')}`}
                     >
                       Books
@@ -97,7 +100,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
                   </li>
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/resources/books/new', pathname)}
+                      href={buildLinkWithTrail('/resources/books/new', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/resources/books/new')}`}
                     >
                       Add New Book
@@ -105,7 +108,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
                   </li>
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/org-admin/resources/books/pending', pathname)}
+                      href={buildLinkWithTrail('/org-admin/resources/books/pending', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/resources/books/pending')}`}
                     >
                       Pending Evaluations
@@ -113,7 +116,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
                   </li>
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/org-admin/resources/organizations', pathname)}
+                      href={buildLinkWithTrail('/org-admin/resources/organizations', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/resources/organizations')}`}
                     >
                       Organizations
@@ -130,7 +133,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
                 <ul className="mt-2 space-y-1" aria-label="Settings navigation">
                   <li>
                     <Link
-                      href={buildLinkWithReferrer('/org-admin/settings/book-access', pathname)}
+                      href={buildLinkWithTrail('/org-admin/settings/book-access', pathname, trail)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/settings/book-access')}`}
                     >
                       Book Access
