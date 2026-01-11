@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AdminLayout } from '../../components/AdminLayout';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { PlatformMetrics } from '@mychristiancounselor/shared';
 import { api } from '../../lib/api';
 
@@ -125,6 +126,7 @@ export default function AdminOverviewPage() {
   return (
     <AdminLayout>
       <div>
+        <Breadcrumbs />
         <BackButton />
         <h2 className="text-3xl font-bold text-gray-900 mb-6">Platform Overview</h2>
 

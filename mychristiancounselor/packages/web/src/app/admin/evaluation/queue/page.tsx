@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminLayout } from '../../../../components/AdminLayout';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 interface QueueJob {
   id: string;
@@ -162,6 +163,7 @@ export default function EvaluationQueuePage() {
   return (
     <AdminLayout>
       <div>
+        <Breadcrumbs />
         <BackButton />
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-3xl font-bold text-gray-900">Evaluation Queue</h2>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { BookCard } from '@/components/BookCard';
 import { BookFilters } from '@/components/BookFilters';
 import { bookApi, BookFilters as BookFiltersType } from '@/lib/api';
@@ -184,6 +185,7 @@ export default function PlatformAdminAllBooksPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-6">
+          <Breadcrumbs />
           <BackButton />
           <div className="flex items-center justify-between">
             <div>

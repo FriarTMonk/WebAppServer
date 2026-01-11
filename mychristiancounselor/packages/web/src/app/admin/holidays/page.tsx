@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
 import { HolidayForm } from '@/components/admin/HolidayForm';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 interface Holiday {
   id: string;
@@ -118,6 +119,7 @@ export default function HolidayManagementPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
+      <Breadcrumbs />
       <BackButton />
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Holiday Management</h1>

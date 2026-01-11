@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminLayout } from '../../../../components/AdminLayout';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 interface Framework {
   id: string;
@@ -167,6 +168,7 @@ export default function BulkReEvaluatePage() {
   return (
     <AdminLayout>
       <div>
+        <Breadcrumbs />
         <BackButton />
         <h2 className="text-3xl font-bold text-gray-900 mb-6">Bulk Re-Evaluation</h2>
 

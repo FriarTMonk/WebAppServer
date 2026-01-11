@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminLayout } from '../../../components/AdminLayout';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { StageBadge, type SalesStage } from '../../../components/sales/StageBadge';
 import { LeadSourceIcon, type LeadSource } from '../../../components/sales/LeadSourceIcon';
 import { ProbabilityBar } from '../../../components/sales/ProbabilityBar';
@@ -118,6 +119,7 @@ export default function SalesQueuePage() {
   return (
     <AdminLayout>
       <div>
+        <Breadcrumbs />
         <BackButton />
         {/* Header */}
         <div className="flex justify-between items-center mb-6">

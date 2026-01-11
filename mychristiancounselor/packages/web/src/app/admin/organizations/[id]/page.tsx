@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { AdminLayout } from '../../../../components/AdminLayout';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { OrganizationMembersView } from '../../../../components/OrganizationMembersView';
 import { UserManagementModal } from '../../../../components/UserManagementModal';
 import { OrganizationSubscriptionModal } from '../../../../components/OrganizationSubscriptionModal';
@@ -245,6 +246,7 @@ export default function OrganizationDetailPage() {
   return (
     <AdminLayout>
       <div>
+        <Breadcrumbs />
         <BackButton />
         <div className="flex items-center justify-between mb-6">
           <div>

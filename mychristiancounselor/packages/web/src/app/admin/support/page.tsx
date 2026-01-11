@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AdminLayout } from '../../../components/AdminLayout';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { SLABadge, type SLAStatus } from '@/components/support/SLABadge';
 import { SLATooltip } from '@/components/support/SLATooltip';
 
@@ -218,6 +219,7 @@ export default function AdminSupportPage() {
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto p-6">
+        <Breadcrumbs />
         <BackButton />
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Support Tickets</h1>
