@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getPageLabel } from '@/lib/navigation-utils';
+import { parseTrail, getTrailForBack, getPageLabel } from '@/lib/navigation-utils';
 
 /**
  * Internal back button component that uses searchParams
@@ -11,14 +11,29 @@ function BackButtonContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const from = searchParams.get('from') || '/home';
-  const label = getPageLabel(from);
+  // Parse trail from URL
+  const trailParam = searchParams.get('trail');
+  const trail = parseTrail(trailParam);
+
+  // Get back navigation info
+  const backInfo = getTrailForBack(trail);
+
+  // If no trail, hide back button (we're at /home or no history)
+  if (!backInfo) {
+    return null;
+  }
+
+  const { path: backPath, trail: newTrail } = backInfo;
+  const label = getPageLabel(backPath);
+
+  // Build URL with updated trail
+  const backUrl = newTrail ? `${backPath}?trail=${newTrail}` : backPath;
 
   return (
     <button
       type="button"
-      onClick={() => router.push(from)}
-      className="flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      onClick={() => router.push(backUrl)}
+      className="flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
       aria-label={`Navigate back to ${label}`}
     >
       <svg
@@ -43,16 +58,16 @@ function BackButtonContent() {
 /**
  * Context-aware back button component
  *
- * Reads 'from' query parameter to determine where to navigate back to.
- * Falls back to /home if no from parameter exists.
- * Displays "Back to [Page Label]" based on configuration.
+ * Reads 'trail' query parameter to determine where to navigate back to.
+ * Navigates to the last page in the trail and removes it from the chain.
+ * Hides when trail is empty (at root page with no history).
  *
  * @example
  * ```tsx
  * <BackButton />
  * ```
  *
- * Do NOT use on /home page - it's the root navigation page.
+ * Automatically hides when there's no navigation history.
  */
 export function BackButton() {
   return (
