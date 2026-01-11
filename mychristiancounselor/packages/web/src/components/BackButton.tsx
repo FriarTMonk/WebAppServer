@@ -1,23 +1,13 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getPageLabel } from '@/lib/navigation-utils';
 
 /**
- * Context-aware back button component
- *
- * Reads 'from' query parameter to determine where to navigate back to.
- * Falls back to /home if no from parameter exists.
- * Displays "Back to [Page Label]" based on configuration.
- *
- * @example
- * ```tsx
- * <BackButton />
- * ```
- *
- * Do NOT use on /home page - it's the root navigation page.
+ * Internal back button component that uses searchParams
  */
-export function BackButton() {
+function BackButtonContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -47,5 +37,27 @@ export function BackButton() {
       </svg>
       <span>Back to {label}</span>
     </button>
+  );
+}
+
+/**
+ * Context-aware back button component
+ *
+ * Reads 'from' query parameter to determine where to navigate back to.
+ * Falls back to /home if no from parameter exists.
+ * Displays "Back to [Page Label]" based on configuration.
+ *
+ * @example
+ * ```tsx
+ * <BackButton />
+ * ```
+ *
+ * Do NOT use on /home page - it's the root navigation page.
+ */
+export function BackButton() {
+  return (
+    <Suspense fallback={<div className="h-10 mb-4" />}>
+      <BackButtonContent />
+    </Suspense>
   );
 }
