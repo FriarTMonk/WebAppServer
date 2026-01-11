@@ -288,6 +288,11 @@ export function buildTrail(
   const cleanCurrentPath = currentPath.split('?')[0];
   const cleanTargetPath = targetPath.split('?')[0];
 
+  // If navigating to same page, return trail unchanged
+  if (cleanCurrentPath === cleanTargetPath) {
+    return currentTrail;
+  }
+
   // Check if target is already in trail (user is backtracking)
   if (currentTrail.includes(cleanTargetPath)) {
     const index = currentTrail.indexOf(cleanTargetPath);
