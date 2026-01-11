@@ -24,18 +24,6 @@ export function isSubPage(path: string): boolean {
     return true;
   }
 
-  // Check if path has a UUID or numeric ID as the last segment (detail page)
-  const segments = pathWithoutQuery.split('/').filter(s => s.length > 0);
-  if (segments.length > 0) {
-    const lastSegment = segments[segments.length - 1];
-    // UUID pattern or numeric ID
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const numericPattern = /^\d+$/;
-    if (uuidPattern.test(lastSegment) || numericPattern.test(lastSegment)) {
-      return true;
-    }
-  }
-
   return false;
 }
 
