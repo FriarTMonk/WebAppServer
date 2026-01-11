@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { bookApi } from '@/lib/api';
 import { AlignmentScoreBadge } from '@/components/AlignmentScoreBadge';
 import { BookDetailTabs } from '@/components/books/BookDetailTabs';
+import { BackButton } from '@/components/BackButton';
 
 interface DoctrineCategoryScore {
   category: string;
@@ -166,13 +167,7 @@ export default function BookDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Back Button */}
-        <button
-          onClick={() => router.push('/resources/books')}
-          className="text-blue-600 hover:text-blue-700 mb-6 flex items-center gap-2"
-        >
-          ← Back to Book Resources
-        </button>
+        <BackButton />
 
         {/* Book Header Section */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">

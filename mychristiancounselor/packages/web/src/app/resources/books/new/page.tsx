@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserPermissions } from '../../../../hooks/useUserPermissions';
 import { bookApi, CreateBookData } from '../../../../lib/api';
+import { BackButton } from '@/components/BackButton';
 import clsx from 'clsx';
 
 type WizardStep = 'metadata' | 'pdf';
@@ -72,10 +73,6 @@ export default function AddNewBookPage() {
   if (!permissions.canAddBooks) {
     return null;
   }
-
-  const handleMetadataBack = () => {
-    router.push('/resources/books');
-  };
 
   const handleMetadataContinue = () => {
     // Validate required fields
@@ -173,12 +170,7 @@ export default function AddNewBookPage() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <button
-                onClick={() => router.push('/resources/books')}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium mb-2"
-              >
-                ← Back to Browse Books
-              </button>
+              <BackButton />
               <h1 className="text-2xl font-bold text-gray-900">Add New Book</h1>
             </div>
             {/* Progress Indicator */}
@@ -319,14 +311,8 @@ export default function AddNewBookPage() {
 
               <div className="flex gap-3">
                 <button
-                  onClick={handleMetadataBack}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
-                >
-                  ← Back
-                </button>
-                <button
                   onClick={handleMetadataContinue}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 >
                   Continue to PDF Upload →
                 </button>
