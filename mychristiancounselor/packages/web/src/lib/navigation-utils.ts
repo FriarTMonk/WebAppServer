@@ -348,3 +348,41 @@ export function getTrailForBack(currentTrail: string[]): {
     trail: encodeTrail(newTrail),
   };
 }
+
+/**
+ * Build link URL with trail parameter
+ * Replaces buildLinkWithReferrer() for new trail system
+ *
+ * @param targetPath - Target page path
+ * @param currentPath - Current page path (from usePathname())
+ * @param currentTrail - Current trail array (from parseTrail())
+ * @returns Complete URL with trail parameter
+ *
+ * @example
+ * buildLinkWithTrail('/org-admin', '/home', [])
+ *   → '/org-admin?trail=%2Fhome'
+ *
+ * buildLinkWithTrail('/resources/books', '/org-admin', ['/home'])
+ *   → '/resources/books?trail=%2Fhome%2C%2Forg-admin'
+ */
+export function buildLinkWithTrail(
+  targetPath: string,
+  currentPath: string,
+  currentTrail: string[]
+): string {
+  // Build new trail for this navigation
+  const newTrail = buildTrail(currentPath, currentTrail, targetPath);
+
+  // Encode trail for URL
+  const encodedTrail = encodeTrail(newTrail);
+
+  // If trail is empty, don't add parameter
+  if (!encodedTrail) {
+    return targetPath;
+  }
+
+  // Check if target already has query parameters
+  const separator = targetPath.includes('?') ? '&' : '?';
+
+  return `${targetPath}${separator}trail=${encodedTrail}`;
+}
