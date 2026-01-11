@@ -40,13 +40,18 @@ export function isSubPage(path: string): boolean {
       return true;
     }
 
-    // Pattern: /admin/users/{id}, /admin/organizations/{id}
-    if (segments[0] === 'admin' && segments.length === 3) {
+    // Pattern: /admin/users/{id}
+    if (segments[0] === 'admin' && segments[1] === 'users' && segments.length === 3) {
+      return true;
+    }
+
+    // Pattern: /admin/organizations/{id}
+    if (segments[0] === 'admin' && segments[1] === 'organizations' && segments.length === 3) {
       return true;
     }
 
     // Pattern: /org-admin/members/{id}
-    if (segments[0] === 'org-admin' && segments.length === 3) {
+    if (segments[0] === 'org-admin' && segments[1] === 'members' && segments.length === 3) {
       return true;
     }
 
@@ -55,8 +60,13 @@ export function isSubPage(path: string): boolean {
       return true;
     }
 
-    // Pattern: /marketing/campaigns/{id}, /marketing/prospects/{id}
-    if (segments[0] === 'marketing' && segments.length === 3) {
+    // Pattern: /marketing/campaigns/{id}
+    if (segments[0] === 'marketing' && segments[1] === 'campaigns' && segments.length === 3) {
+      return true;
+    }
+
+    // Pattern: /marketing/prospects/{id}
+    if (segments[0] === 'marketing' && segments[1] === 'prospects' && segments.length === 3) {
       return true;
     }
 
