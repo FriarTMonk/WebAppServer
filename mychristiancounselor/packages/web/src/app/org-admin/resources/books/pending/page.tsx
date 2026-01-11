@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useUserPermissions } from '../../../../../hooks/useUserPermissions';
+import { BackButton } from '@/components/BackButton';
 import { api } from '../../../../../lib/api';
 
 interface PendingBook {
@@ -117,12 +118,7 @@ export default function PendingEvaluationsPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-6">
-          <button
-            onClick={() => router.push('/org-admin/resources/books')}
-            className="text-green-600 hover:text-green-800 text-sm font-medium mb-2"
-          >
-            ← Back to Endorsed Books
-          </button>
+          <BackButton />
           <h1 className="text-2xl font-bold text-gray-900">Pending Evaluations</h1>
           <p className="text-sm text-gray-600 mt-1">
             Track books submitted by your organization awaiting evaluation

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import CounselorAssignmentManager from '@/components/CounselorAssignmentManager';
 import { OrgAdminLayout } from '@/components/OrgAdminLayout';
+import { BackButton } from '@/components/BackButton';
 
 export default function CounselorAssignmentsPage() {
   const { user } = useAuth();
@@ -26,6 +27,7 @@ export default function CounselorAssignmentsPage() {
 
   return (
     <OrgAdminLayout>
+      <BackButton />
       <CounselorAssignmentManager />
     </OrgAdminLayout>
   );

@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { OrgAdminLayout } from '../../../components/OrgAdminLayout';
+import { BackButton } from '@/components/BackButton';
 
 interface AuditLogEntry {
   id: string;
@@ -107,6 +108,7 @@ export default function OrgAdminAuditLogPage() {
   return (
     <OrgAdminLayout organizationName={organization?.name}>
       <div>
+        <BackButton />
         <h2 className="text-3xl font-bold text-gray-900 mb-6">Audit Log</h2>
 
         {loading && (

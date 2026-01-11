@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { OrgAdminLayout } from '../../components/OrgAdminLayout';
+import { BackButton } from '@/components/BackButton';
 
 interface OrgMetrics {
   organizationId: string;
@@ -98,6 +99,7 @@ export default function OrgAdminOverviewPage() {
   return (
     <OrgAdminLayout organizationName={organization?.name}>
       <div>
+        <BackButton />
         <h2 className="text-3xl font-bold text-gray-900 mb-6">Organization Overview</h2>
 
         {loading && (
