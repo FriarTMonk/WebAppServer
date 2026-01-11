@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import clsx from 'clsx';
 import { AlignmentScoreBadge } from './AlignmentScoreBadge';
 import { AddToReadingListButton } from './reading-list/AddToReadingListButton';
+import { buildLinkWithReferrer } from '@/lib/navigation-utils';
 
 interface Book {
   id: string;
@@ -36,13 +37,15 @@ function isValidImageUrl(url: string): boolean {
 
 export function BookCard({ book, showActions = true, compact = false, onClick }: BookCardProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [imageError, setImageError] = useState(false);
 
   const handleViewDetails = () => {
     if (onClick) {
       onClick();
     } else {
-      router.push(`/resources/books/${book.id}`);
+      const bookLink = buildLinkWithReferrer(`/resources/books/${book.id}`, pathname);
+      router.push(bookLink);
     }
   };
 
