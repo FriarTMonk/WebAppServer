@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { TourButton } from './TourButton';
@@ -11,7 +11,7 @@ interface OrgAdminLayoutProps {
   organizationName?: string;
 }
 
-export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutProps) {
+function OrgAdminLayoutContent({ children, organizationName }: OrgAdminLayoutProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const trailParam = searchParams.get('trail');
@@ -151,5 +151,26 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
         </main>
       </div>
     </div>
+  );
+}
+
+/**
+ * Organization Administration Layout
+ *
+ * Wraps organization admin pages with header, sidebar navigation, and trail-based breadcrumb support.
+ */
+export function OrgAdminLayout(props: OrgAdminLayoutProps) {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-green-800 text-white shadow-lg">
+          <div className="container mx-auto px-4 py-4">
+            <h1 className="text-2xl font-bold">Organization Administration</h1>
+          </div>
+        </div>
+      </div>
+    }>
+      <OrgAdminLayoutContent {...props} />
+    </Suspense>
   );
 }
