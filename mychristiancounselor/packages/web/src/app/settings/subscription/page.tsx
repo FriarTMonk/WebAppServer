@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { BackButton } from '@/components/BackButton';
 
 interface SubscriptionStatus {
   subscriptionStatus: 'none' | 'active' | 'canceled' | 'past_due';
@@ -73,15 +74,7 @@ export default function SubscriptionManagementPage() {
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <Link
-            href="/profile"
-            className="text-purple-600 hover:text-purple-700 flex items-center mb-4"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Profile
-          </Link>
+          <BackButton />
           <h1 className="text-3xl font-bold text-gray-900">Subscription Management</h1>
         </div>
 

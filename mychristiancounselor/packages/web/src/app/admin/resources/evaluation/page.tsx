@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { BackButton } from '@/components/BackButton';
 
 export default function EvaluationManagementPage() {
   const router = useRouter();
@@ -54,12 +55,7 @@ export default function EvaluationManagementPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-6">
-          <button
-            onClick={() => router.push('/admin/resources/books')}
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium mb-2"
-          >
-            ← Back to All Books
-          </button>
+          <BackButton />
           <h1 className="text-2xl font-bold text-gray-900">Evaluation Management</h1>
           <p className="text-sm text-gray-600 mt-1">
             System-level evaluation controls and analytics

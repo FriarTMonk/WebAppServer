@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUserPermissions } from '../../hooks/useUserPermissions';
+import { BackButton } from '@/components/BackButton';
 
 interface MarketingMetrics {
   prospects: {
@@ -27,7 +27,6 @@ interface MarketingMetrics {
 
 export default function MarketingDashboardPage() {
   const router = useRouter();
-  const permissions = useUserPermissions();
   const [metrics, setMetrics] = useState<MarketingMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,15 +69,7 @@ export default function MarketingDashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <button
-            onClick={() => router.push(permissions.isPlatformAdmin ? '/admin' : '/home')}
-            className="text-blue-600 hover:text-blue-800 mb-4 flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back
-          </button>
+          <BackButton />
           <h1 className="text-3xl font-bold text-gray-900">Marketing Dashboard</h1>
           <p className="mt-2 text-sm text-gray-600">
             Manage prospects and email campaigns

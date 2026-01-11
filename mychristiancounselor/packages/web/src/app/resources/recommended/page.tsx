@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
 import { apiGet, apiPost } from '../../../lib/api';
 import { showToast } from '@/components/Toast';
+import { BackButton } from '@/components/BackButton';
 
 interface RecommendedBook {
   id: string;
@@ -146,15 +147,7 @@ export default function RecommendedForMePage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-6">
-          <button
-            onClick={() => router.push('/home')}
-            className="mb-4 flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to App
-          </button>
+          <BackButton />
           <h1 className="text-2xl font-bold text-gray-900">📖 Recommended for You</h1>
           <p className="text-sm text-gray-600 mt-1">
             Personalized book suggestions based on your reading history

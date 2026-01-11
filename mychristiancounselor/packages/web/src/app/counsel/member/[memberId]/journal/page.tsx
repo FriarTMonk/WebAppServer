@@ -6,6 +6,7 @@ import { useAuth } from '../../../../../contexts/AuthContext';
 import { getAccessToken } from '../../../../../lib/auth';
 import { Journal } from '../../../../../components/Journal';
 import { Conversation } from '../../../../../components/Conversation';
+import { BackButton } from '@/components/BackButton';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
@@ -176,14 +177,7 @@ export default function MemberJournalPage() {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4">
-          <div className="mb-6">
-            <button
-              onClick={() => router.push('/counsel')}
-              className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
-            >
-              ← Back
-            </button>
-          </div>
+          <BackButton />
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
             {error}
           </div>
@@ -211,14 +205,7 @@ export default function MemberJournalPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        <div className="mb-6">
-          <button
-            onClick={() => router.back()}
-            className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
-          >
-            ← Back
-          </button>
-        </div>
+        <BackButton />
 
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Member Journal

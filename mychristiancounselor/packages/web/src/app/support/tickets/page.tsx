@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
 import { apiGet } from '../../../lib/api';
+import { BackButton } from '@/components/BackButton';
 
 interface Ticket {
   id: string;
@@ -189,14 +190,7 @@ export default function TicketsPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="mb-6">
-          <button
-            onClick={() => router.push('/home')}
-            className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
-          >
-            ← Back
-          </button>
-        </div>
+        <BackButton />
 
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">My Support Tickets</h1>

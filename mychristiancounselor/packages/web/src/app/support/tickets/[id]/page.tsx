@@ -8,6 +8,7 @@ import { Tabs, Tab } from '@/components/support/Tabs';
 import { SimilarityCard } from '@/components/support/SimilarityCard';
 import { useTextToSpeech } from '../../../../hooks/useTextToSpeech';
 import { useSpeechRecognition } from '../../../../hooks/useSpeechRecognition';
+import { BackButton } from '@/components/BackButton';
 
 interface Message {
   id: string;
@@ -434,14 +435,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4">
-          <div className="mb-6">
-            <button
-              onClick={() => router.push(isAdmin ? '/admin/support' : '/support/tickets')}
-              className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
-            >
-              ← Back to Tickets
-            </button>
-          </div>
+          <BackButton />
           <div className="p-6 bg-red-50 border border-red-200 rounded-lg text-red-700">
             {error || 'Ticket not found'}
           </div>
@@ -456,15 +450,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        {/* Back button */}
-        <div className="mb-6">
-          <button
-            onClick={() => router.push(isAdmin ? '/admin/support' : '/support/tickets')}
-            className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
-          >
-            ← Back to Tickets
-          </button>
-        </div>
+        <BackButton />
 
         {/* Ticket Header */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
