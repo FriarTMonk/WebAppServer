@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { OrgAdminLayout } from '../../../../components/OrgAdminLayout';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 interface Organization {
   id: string;
@@ -221,6 +222,7 @@ export default function BookAccessSettingsPage() {
   return (
     <OrgAdminLayout>
       <div>
+        <Breadcrumbs />
         <BackButton />
         <h2 className="text-3xl font-bold text-gray-900 mb-6">Book Access Settings</h2>
 

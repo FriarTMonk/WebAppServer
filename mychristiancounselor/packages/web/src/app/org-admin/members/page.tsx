@@ -7,6 +7,7 @@ import { UserManagementModal } from '../../../components/UserManagementModal';
 import { InviteMemberModal } from '../../../components/InviteMemberModal';
 import { useAuth } from '../../../contexts/AuthContext';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import type { AdminOrganizationMember as OrganizationMember } from '@mychristiancounselor/shared';
 
 interface Role {
@@ -306,6 +307,7 @@ export default function OrgAdminMembersPage() {
   return (
     <OrgAdminLayout organizationName={organization?.name}>
       <div>
+        <Breadcrumbs />
         <BackButton />
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-3xl font-bold text-gray-900">Organization Members</h2>

@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import CounselorAssignmentManager from '@/components/CounselorAssignmentManager';
 import { OrgAdminLayout } from '@/components/OrgAdminLayout';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 export default function CounselorAssignmentsPage() {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ export default function CounselorAssignmentsPage() {
 
   return (
     <OrgAdminLayout>
+      <Breadcrumbs />
       <BackButton />
       <CounselorAssignmentManager />
     </OrgAdminLayout>

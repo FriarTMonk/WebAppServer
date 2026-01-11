@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useUserPermissions } from '../../../../../hooks/useUserPermissions';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { api } from '../../../../../lib/api';
 
 interface PendingBook {
@@ -118,6 +119,7 @@ export default function PendingEvaluationsPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-6">
+          <Breadcrumbs />
           <BackButton />
           <h1 className="text-2xl font-bold text-gray-900">Pending Evaluations</h1>
           <p className="text-sm text-gray-600 mt-1">
