@@ -111,16 +111,28 @@ export function getParentPath(path: string): string {
  * If current path is NOT a sub-page, returns the current path itself
  * This prevents sub-pages from becoming referrers (loop prevention)
  *
- * @param currentPath - The current page path
- * @returns The valid referrer path to use
+ * Preserves the 'from' query parameter to maintain navigation chain
+ *
+ * @param currentPath - The current page path (with or without query params)
+ * @returns The valid referrer path to use (may include from parameter)
  */
 export function getValidReferrer(currentPath: string): string {
-  if (isSubPage(currentPath)) {
-    return getParentPath(currentPath);
+  // Split path and query string
+  const [pathOnly, queryString] = currentPath.split('?');
+
+  // Determine the referrer path
+  const referrerPath = isSubPage(pathOnly) ? getParentPath(pathOnly) : pathOnly;
+
+  // If there's a 'from' parameter in the current URL, preserve it
+  if (queryString) {
+    const params = new URLSearchParams(queryString);
+    const fromParam = params.get('from');
+    if (fromParam) {
+      return `${referrerPath}?from=${encodeURIComponent(fromParam)}`;
+    }
   }
 
-  // Strip query parameters and return the current path
-  return currentPath.split('?')[0];
+  return referrerPath;
 }
 
 /**
