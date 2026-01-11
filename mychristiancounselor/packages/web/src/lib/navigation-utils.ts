@@ -264,3 +264,50 @@ export function shouldAddToTrail(path: string): boolean {
   // Sub-pages should not be added to trail
   return !isSubPage(pathWithoutQuery);
 }
+
+/**
+ * Build new trail when navigating from current page to target page
+ * Handles circular navigation, sub-pages, and trail truncation
+ *
+ * @param currentPath - Current page path (without query)
+ * @param currentTrail - Current trail array
+ * @param targetPath - Target page path (without query)
+ * @returns New trail array
+ *
+ * @example
+ * buildTrail('/home', [], '/org-admin') → ['/home']
+ * buildTrail('/org-admin', ['/home'], '/resources/books') → ['/home', '/org-admin']
+ * buildTrail('/books', ['/home', '/org-admin', '/books'], '/org-admin') → ['/home'] (backtracking)
+ */
+export function buildTrail(
+  currentPath: string,
+  currentTrail: string[],
+  targetPath: string
+): string[] {
+  // Strip query parameters
+  const cleanCurrentPath = currentPath.split('?')[0];
+  const cleanTargetPath = targetPath.split('?')[0];
+
+  // Check if target is already in trail (user is backtracking)
+  if (currentTrail.includes(cleanTargetPath)) {
+    const index = currentTrail.indexOf(cleanTargetPath);
+    return currentTrail.slice(0, index);
+  }
+
+  // If current page should not be in trail (sub-page), use parent's trail
+  let newTrail = [...currentTrail];
+
+  // Add current page to trail if it should be there
+  if (shouldAddToTrail(cleanCurrentPath) && !currentTrail.includes(cleanCurrentPath)) {
+    newTrail.push(cleanCurrentPath);
+  }
+
+  // Check trail depth and log warnings
+  if (newTrail.length >= 9) {
+    console.error('⚠️ Breadcrumb trail depth critical:', newTrail.length, newTrail);
+  } else if (newTrail.length >= 6) {
+    console.warn('⚠️ Breadcrumb trail unusually deep:', newTrail.length, newTrail);
+  }
+
+  return newTrail;
+}
