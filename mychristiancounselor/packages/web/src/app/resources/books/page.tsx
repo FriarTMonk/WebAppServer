@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookCard } from '../../../components/BookCard';
 import { BookFilters } from '../../../components/BookFilters';
+import { AuthGuard } from '../../../components/AuthGuard';
 import { useUserPermissions } from '../../../hooks/useUserPermissions';
 import { useAuth } from '../../../contexts/AuthContext';
 import { bookApi, BookFilters as BookFiltersType, apiGet } from '../../../lib/api';
@@ -33,7 +34,7 @@ const DEFAULT_FILTERS: BookFiltersType = {
   sort: 'relevance',
 };
 
-export default function BrowseBooksPage() {
+function BrowseBooksPageContent() {
   const router = useRouter();
   const permissions = useUserPermissions();
   const { user } = useAuth();
@@ -345,5 +346,13 @@ export default function BrowseBooksPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function BrowseBooksPage() {
+  return (
+    <AuthGuard requireAuth redirectTo="/login">
+      <BrowseBooksPageContent />
+    </AuthGuard>
   );
 }

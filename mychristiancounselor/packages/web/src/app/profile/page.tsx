@@ -1,16 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
+import { AuthGuard } from '../../components/AuthGuard';
 import { getAccessToken } from '../../lib/auth';
 import { TourButton } from '../../components/TourButton';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
-export default function ProfilePage() {
+function ProfilePageContent() {
   const { isAuthenticated } = useAuth();
-  const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [counselorAssignments, setCounselorAssignments] = useState<any[]>([]);
@@ -35,11 +34,6 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-      return;
-    }
-
     const fetchProfile = async () => {
       try {
         const token = getAccessToken();
@@ -610,4 +604,12 @@ export default function ProfilePage() {
       alert(`Error: ${err.message}`);
     }
   }
+}
+
+export default function ProfilePage() {
+  return (
+    <AuthGuard requireAuth redirectTo="/login">
+      <ProfilePageContent />
+    </AuthGuard>
+  );
 }

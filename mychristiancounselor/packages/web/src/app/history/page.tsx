@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
+import { AuthGuard } from '../../components/AuthGuard';
 import { getAccessToken } from '../../lib/auth';
 import { ShareModal } from '../../components/ShareModal';
 import { TourButton } from '../../components/TourButton';
@@ -38,7 +39,7 @@ interface FullConversation {
   }>;
 }
 
-export default function HistoryPage() {
+function HistoryPageContent() {
   const { isAuthenticated, user } = useAuth();
   const router = useRouter();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -88,18 +89,11 @@ export default function HistoryPage() {
   };
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-      return;
-    }
-
     fetchHistory();
-  }, [isAuthenticated, router]);
+  }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchHistory();
-    }
+    fetchHistory();
   }, [activeTab]);
 
   const loadConversation = async (conversationId: string) => {
@@ -244,5 +238,13 @@ export default function HistoryPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function HistoryPage() {
+  return (
+    <AuthGuard requireAuth redirectTo="/login">
+      <HistoryPageContent />
+    </AuthGuard>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
+import { AuthGuard } from '../../../components/AuthGuard';
 import { apiGet, apiPut, apiDelete } from '../../../lib/api';
 import { showToast } from '@/components/Toast';
 import { ReadingListCard } from '@/components/reading-list/ReadingListCard';
@@ -31,7 +32,7 @@ interface ReadingListItem {
   };
 }
 
-export default function ReadingListPage() {
+function ReadingListPageContent() {
   const router = useRouter();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ReadingListTab>('want_to_read');
@@ -343,5 +344,13 @@ export default function ReadingListPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ReadingListPage() {
+  return (
+    <AuthGuard requireAuth redirectTo="/login">
+      <ReadingListPageContent />
+    </AuthGuard>
   );
 }
