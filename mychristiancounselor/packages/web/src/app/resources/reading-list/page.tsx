@@ -7,6 +7,7 @@ import { AuthGuard } from '../../../components/AuthGuard';
 import { apiGet, apiPut, apiDelete } from '../../../lib/api';
 import { showToast } from '@/components/Toast';
 import { ReadingListCard } from '@/components/reading-list/ReadingListCard';
+import { BackButton } from '@/components/BackButton';
 
 type ReadingListTab = 'want_to_read' | 'currently_reading' | 'finished';
 
@@ -214,15 +215,7 @@ function ReadingListPageContent() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-6">
-          <button
-            onClick={() => router.push('/home')}
-            className="mb-4 flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to App
-          </button>
+          <BackButton />
           <h1 className="text-3xl font-bold text-gray-900">My Reading List</h1>
           <p className="text-sm text-gray-600 mt-1">
             Track books you want to read, are currently reading, and have finished

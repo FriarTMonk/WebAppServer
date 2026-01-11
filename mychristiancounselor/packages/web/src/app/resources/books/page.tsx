@@ -8,6 +8,7 @@ import { AuthGuard } from '../../../components/AuthGuard';
 import { useUserPermissions } from '../../../hooks/useUserPermissions';
 import { useAuth } from '../../../contexts/AuthContext';
 import { bookApi, BookFilters as BookFiltersType, apiGet } from '../../../lib/api';
+import { BackButton } from '@/components/BackButton';
 
 // Book interface for type safety
 interface Book {
@@ -203,15 +204,7 @@ function BrowseBooksPageContent() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-6">
-          <button
-            onClick={() => router.push('/home')}
-            className="mb-4 flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to App
-          </button>
+          <BackButton />
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Browse Books</h1>
