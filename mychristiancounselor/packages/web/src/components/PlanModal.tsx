@@ -2,7 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { PlanType } from './PlansMenu';
+import { buildLinkWithReferrer } from '@/lib/navigation-utils';
 
 interface PlanModalProps {
   planType: PlanType;
@@ -10,6 +12,8 @@ interface PlanModalProps {
 }
 
 export function PlanModal({ planType, onClose }: PlanModalProps) {
+  const pathname = usePathname();
+
   const renderContent = () => {
     switch (planType) {
       case 'free':
@@ -74,7 +78,7 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
 
         <div className="mt-6">
           <Link
-            href="/register"
+            href={buildLinkWithReferrer('/register', pathname)}
             className="block w-full py-3 px-4 bg-blue-600 text-white text-center font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
             Start Free Trial
@@ -153,7 +157,7 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
 
         <div className="mt-6">
           <Link
-            href="/settings/subscription"
+            href={buildLinkWithReferrer('/settings/subscription', pathname)}
             className="block w-full py-3 px-4 bg-purple-600 text-white text-center font-medium rounded-lg hover:bg-purple-700 transition-colors"
           >
             Upgrade to Premium
@@ -471,7 +475,7 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
               <td className="border border-gray-200 p-3"></td>
               <td className="border border-gray-200 p-3 text-center">
                 <Link
-                  href="/register"
+                  href={buildLinkWithReferrer('/register', pathname)}
                   className="inline-block px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700"
                 >
                   Start Free
@@ -479,7 +483,7 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
               </td>
               <td className="border border-gray-200 p-3 text-center">
                 <Link
-                  href="/settings/subscription"
+                  href={buildLinkWithReferrer('/settings/subscription', pathname)}
                   className="inline-block px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded hover:bg-purple-700"
                 >
                   Upgrade
@@ -544,7 +548,7 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
               </div>
             </div>
             <Link
-              href="/register"
+              href={buildLinkWithReferrer('/register', pathname)}
               className="block mt-4 py-2 px-4 bg-blue-600 text-white text-center font-medium rounded hover:bg-blue-700"
             >
               Start Free
@@ -593,7 +597,7 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
               </div>
             </div>
             <Link
-              href="/settings/subscription"
+              href={buildLinkWithReferrer('/settings/subscription', pathname)}
               className="block mt-4 py-2 px-4 bg-purple-600 text-white text-center font-medium rounded hover:bg-purple-700"
             >
               Upgrade

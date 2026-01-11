@@ -1,8 +1,9 @@
 'use client';
 
 import { useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { MenuButton } from './MenuButton';
+import { buildLinkWithReferrer } from '@/lib/navigation-utils';
 
 /** Navigation paths for resources section */
 const RESOURCES_PATHS = {
@@ -33,12 +34,13 @@ export function ResourcesMenuSection({
   hasAccess = true,
 }: ResourcesMenuSectionProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
   const handleNavigate = (path: string) => () => {
     startTransition(async () => {
       try {
-        await router.push(path);
+        await router.push(buildLinkWithReferrer(path, pathname));
         onNavigate?.();
       } catch (error) {
         console.error(`Failed to navigate to ${path}:`, error);

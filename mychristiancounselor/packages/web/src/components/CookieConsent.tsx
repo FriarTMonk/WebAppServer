@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { buildLinkWithReferrer } from '@/lib/navigation-utils';
 
 /**
  * Cookie Consent Banner
@@ -23,6 +25,7 @@ import Link from 'next/link';
  * - No tracking or advertising cookies
  */
 export default function CookieConsent() {
+  const pathname = usePathname();
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
@@ -63,7 +66,7 @@ export default function CookieConsent() {
               We use essential cookies for authentication and session management.
               We do not use tracking or advertising cookies.{' '}
               <Link
-                href="/legal/privacy"
+                href={buildLinkWithReferrer('/legal/privacy', pathname)}
                 className="underline hover:text-teal-300 transition-colors"
               >
                 Learn more in our Privacy Policy

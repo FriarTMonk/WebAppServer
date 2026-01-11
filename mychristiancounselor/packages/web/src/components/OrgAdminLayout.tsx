@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { TourButton } from './TourButton';
+import { buildLinkWithReferrer } from '@/lib/navigation-utils';
 
 interface OrgAdminLayoutProps {
   children: React.ReactNode;
@@ -32,7 +33,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
             <div className="flex items-center gap-4">
               <TourButton />
               <Link
-                href="/home"
+                href={buildLinkWithReferrer('/home', pathname)}
                 className="text-sm hover:underline"
               >
                 Back to App
@@ -49,7 +50,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
             <ul className="space-y-2">
               <li>
                 <Link
-                  href="/org-admin"
+                  href={buildLinkWithReferrer('/org-admin', pathname)}
                   className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin')}`}
                 >
                   Overview
@@ -57,7 +58,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
               </li>
               <li>
                 <Link
-                  href="/org-admin/members"
+                  href={buildLinkWithReferrer('/org-admin/members', pathname)}
                   className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/members')}`}
                 >
                   Members
@@ -65,7 +66,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
               </li>
               <li>
                 <Link
-                  href="/org-admin/counselor-assignments"
+                  href={buildLinkWithReferrer('/org-admin/counselor-assignments', pathname)}
                   className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/counselor-assignments')}`}
                 >
                   Counselor Assignments
@@ -73,7 +74,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
               </li>
               <li>
                 <Link
-                  href="/org-admin/audit-log"
+                  href={buildLinkWithReferrer('/org-admin/audit-log', pathname)}
                   className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/audit-log')}`}
                 >
                   Audit Log
@@ -88,7 +89,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
                 <ul className="mt-2 space-y-1" aria-label="Resources navigation">
                   <li>
                     <Link
-                      href="/org-admin/resources/books"
+                      href={buildLinkWithReferrer('/org-admin/resources/books', pathname)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/resources/books')}`}
                     >
                       Books
@@ -96,7 +97,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
                   </li>
                   <li>
                     <Link
-                      href="/resources/books/new"
+                      href={buildLinkWithReferrer('/resources/books/new', pathname)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/resources/books/new')}`}
                     >
                       Add New Book
@@ -104,7 +105,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
                   </li>
                   <li>
                     <Link
-                      href="/org-admin/resources/books/pending"
+                      href={buildLinkWithReferrer('/org-admin/resources/books/pending', pathname)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/resources/books/pending')}`}
                     >
                       Pending Evaluations
@@ -112,7 +113,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
                   </li>
                   <li>
                     <Link
-                      href="/org-admin/resources/organizations"
+                      href={buildLinkWithReferrer('/org-admin/resources/organizations', pathname)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/resources/organizations')}`}
                     >
                       Organizations
@@ -129,7 +130,7 @@ export function OrgAdminLayout({ children, organizationName }: OrgAdminLayoutPro
                 <ul className="mt-2 space-y-1" aria-label="Settings navigation">
                   <li>
                     <Link
-                      href="/org-admin/settings/book-access"
+                      href={buildLinkWithReferrer('/org-admin/settings/book-access', pathname)}
                       className={`block px-4 py-2 rounded transition-colors ${isActive('/org-admin/settings/book-access')}`}
                     >
                       Book Access
