@@ -1,9 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useAuth } from '../contexts/AuthContext';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { PlansMenu } from '../components/PlansMenu';
 import { TestimonialsSection } from '../components/TestimonialsSection';
 
@@ -16,17 +14,8 @@ import { TestimonialsSection } from '../components/TestimonialsSection';
  * - Minimal design: No distractions, focus on value
  */
 export default function LandingPage() {
-  const { isAuthenticated } = useAuth();
-  const router = useRouter();
   const [isContactDropdownOpen, setIsContactDropdownOpen] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-
-  // Redirect authenticated users to conversation view
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/home');
-    }
-  }, [isAuthenticated, router]);
 
   return (
     <>
