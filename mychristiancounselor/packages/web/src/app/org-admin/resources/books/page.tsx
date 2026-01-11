@@ -1,16 +1,20 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { BookFilters } from '@/components/BookFilters';
 import { BookCard } from '@/components/BookCard';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { bookApi, BookFilters as BookFiltersType } from '@/lib/api';
-import { buildLinkWithReferrer } from '@/lib/navigation-utils';
+import { buildLinkWithTrail, parseTrail } from '@/lib/navigation-utils';
 
 export default function OrgAdminEndorsedBooksPage() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const trailParam = searchParams.get('trail');
+  const trail = parseTrail(trailParam);
   const [books, setBooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -138,6 +142,7 @@ export default function OrgAdminEndorsedBooksPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <Breadcrumbs />
       <BackButton />
 
       {/* Header */}
@@ -145,13 +150,13 @@ export default function OrgAdminEndorsedBooksPage() {
         <h1 className="text-3xl font-bold">Our Endorsed Books</h1>
         <div className="flex gap-2">
           <button
-            onClick={() => router.push(buildLinkWithReferrer('/org-admin/resources/books/pending', pathname))}
+            onClick={() => router.push(buildLinkWithTrail('/org-admin/resources/books/pending', pathname, trail))}
             className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             View Pending Evaluations
           </button>
           <button
-            onClick={() => router.push(buildLinkWithReferrer('/resources/books/new', pathname))}
+            onClick={() => router.push(buildLinkWithTrail('/resources/books/new', pathname, trail))}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Add New Book
@@ -224,7 +229,7 @@ export default function OrgAdminEndorsedBooksPage() {
           </p>
           {!filters.search && (!filters.genre || filters.genre === 'all') && (
             <button
-              onClick={() => router.push(buildLinkWithReferrer('/resources/books/new', pathname))}
+              onClick={() => router.push(buildLinkWithTrail('/resources/books/new', pathname, trail))}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               Add First Book
