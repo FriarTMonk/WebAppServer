@@ -1,18 +1,22 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { PlanType } from './PlansMenu';
-import { buildLinkWithReferrer } from '@/lib/navigation-utils';
+import { buildLinkWithTrail, parseTrail } from '@/lib/navigation-utils';
 
 interface PlanModalProps {
   planType: PlanType;
   onClose: () => void;
 }
 
-export function PlanModal({ planType, onClose }: PlanModalProps) {
+function PlanModalContent({ planType, onClose }: PlanModalProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const trailParam = searchParams.get('trail');
+  const trail = parseTrail(trailParam);
 
   const renderContent = () => {
     switch (planType) {
@@ -78,7 +82,7 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
 
         <div className="mt-6">
           <Link
-            href={buildLinkWithReferrer('/register', pathname)}
+            href={buildLinkWithTrail('/register', pathname, trail)}
             className="block w-full py-3 px-4 bg-blue-600 text-white text-center font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
             Start Free Trial
@@ -157,7 +161,7 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
 
         <div className="mt-6">
           <Link
-            href={buildLinkWithReferrer('/settings/subscription', pathname)}
+            href={buildLinkWithTrail('/settings/subscription', pathname, trail)}
             className="block w-full py-3 px-4 bg-purple-600 text-white text-center font-medium rounded-lg hover:bg-purple-700 transition-colors"
           >
             Upgrade to Premium
@@ -475,7 +479,7 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
               <td className="border border-gray-200 p-3"></td>
               <td className="border border-gray-200 p-3 text-center">
                 <Link
-                  href={buildLinkWithReferrer('/register', pathname)}
+                  href={buildLinkWithTrail('/register', pathname, trail)}
                   className="inline-block px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700"
                 >
                   Start Free
@@ -483,7 +487,7 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
               </td>
               <td className="border border-gray-200 p-3 text-center">
                 <Link
-                  href={buildLinkWithReferrer('/settings/subscription', pathname)}
+                  href={buildLinkWithTrail('/settings/subscription', pathname, trail)}
                   className="inline-block px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded hover:bg-purple-700"
                 >
                   Upgrade
@@ -548,7 +552,7 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
               </div>
             </div>
             <Link
-              href={buildLinkWithReferrer('/register', pathname)}
+              href={buildLinkWithTrail('/register', pathname, trail)}
               className="block mt-4 py-2 px-4 bg-blue-600 text-white text-center font-medium rounded hover:bg-blue-700"
             >
               Start Free
@@ -597,7 +601,7 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
               </div>
             </div>
             <Link
-              href={buildLinkWithReferrer('/settings/subscription', pathname)}
+              href={buildLinkWithTrail('/settings/subscription', pathname, trail)}
               className="block mt-4 py-2 px-4 bg-purple-600 text-white text-center font-medium rounded hover:bg-purple-700"
             >
               Upgrade
@@ -698,5 +702,17 @@ export function PlanModal({ planType, onClose }: PlanModalProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+export function PlanModal(props: PlanModalProps) {
+  return (
+    <Suspense fallback={
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full h-96 animate-pulse" />
+      </div>
+    }>
+      <PlanModalContent {...props} />
+    </Suspense>
   );
 }

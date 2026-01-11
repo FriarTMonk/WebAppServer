@@ -1,9 +1,9 @@
 'use client';
 
-import { useTransition } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useTransition, Suspense } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { MenuButton } from './MenuButton';
-import { buildLinkWithReferrer } from '@/lib/navigation-utils';
+import { buildLinkWithTrail, parseTrail } from '@/lib/navigation-utils';
 
 /** Navigation paths for resources section */
 const RESOURCES_PATHS = {
@@ -27,7 +27,7 @@ interface ResourcesMenuSectionProps {
   hasAccess?: boolean;
 }
 
-export function ResourcesMenuSection({
+function ResourcesMenuSectionContent({
   onNavigate,
   showBorder = true,
   roleGroup = true,
@@ -35,12 +35,16 @@ export function ResourcesMenuSection({
 }: ResourcesMenuSectionProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+
+  const trailParam = searchParams.get('trail');
+  const trail = parseTrail(trailParam);
 
   const handleNavigate = (path: string) => () => {
     startTransition(async () => {
       try {
-        await router.push(buildLinkWithReferrer(path, pathname));
+        await router.push(buildLinkWithTrail(path, pathname, trail));
         onNavigate?.();
       } catch (error) {
         console.error(`Failed to navigate to ${path}:`, error);
@@ -93,4 +97,12 @@ export function ResourcesMenuSection({
   }
 
   return <>{content}</>;
+}
+
+export function ResourcesMenuSection(props: ResourcesMenuSectionProps) {
+  return (
+    <Suspense fallback={<div className="h-32" />}>
+      <ResourcesMenuSectionContent {...props} />
+    </Suspense>
+  );
 }

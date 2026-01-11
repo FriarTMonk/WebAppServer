@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { buildLinkWithReferrer } from '@/lib/navigation-utils';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { buildLinkWithTrail, parseTrail } from '@/lib/navigation-utils';
 
 /**
  * Cookie Consent Banner
@@ -24,9 +24,13 @@ import { buildLinkWithReferrer } from '@/lib/navigation-utils';
  * - Essential: Session management and security
  * - No tracking or advertising cookies
  */
-export default function CookieConsent() {
+function CookieConsentContent() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [showBanner, setShowBanner] = useState(false);
+
+  const trailParam = searchParams.get('trail');
+  const trail = parseTrail(trailParam);
 
   useEffect(() => {
     // Check if user has already made a choice
@@ -66,7 +70,7 @@ export default function CookieConsent() {
               We use essential cookies for authentication and session management.
               We do not use tracking or advertising cookies.{' '}
               <Link
-                href={buildLinkWithReferrer('/legal/privacy', pathname)}
+                href={buildLinkWithTrail('/legal/privacy', pathname, trail)}
                 className="underline hover:text-teal-300 transition-colors"
               >
                 Learn more in our Privacy Policy
@@ -92,5 +96,13 @@ export default function CookieConsent() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CookieConsent() {
+  return (
+    <Suspense fallback={null}>
+      <CookieConsentContent />
+    </Suspense>
   );
 }

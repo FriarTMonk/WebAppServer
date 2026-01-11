@@ -1,26 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTour } from '../contexts/TourContext';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { apiGet } from '../lib/api';
 import { getTourForPage, getPageName } from '../config/tours';
 import { useUserPermissions } from '../hooks/useUserPermissions';
 import { ResourcesMenuSection } from './shared/ResourcesMenuSection';
 import { MenuButton } from './shared/MenuButton';
-import { buildLinkWithReferrer } from '../lib/navigation-utils';
+import { buildLinkWithTrail, parseTrail } from '../lib/navigation-utils';
 
-export function UserMenu() {
+function UserMenuContent() {
   const { user, logout, isAuthenticated, morphSession } = useAuth();
   const { startTour } = useTour();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [isSalesRep, setIsSalesRep] = useState(false);
   const [hasJournalAccess, setHasJournalAccess] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const permissions = useUserPermissions();
+
+  const trailParam = searchParams.get('trail');
+  const trail = parseTrail(trailParam);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -118,14 +122,14 @@ export function UserMenu() {
               📖 Page Tour: {getPageName(currentPageTour.tourId)}
             </button>
           )}
-          <MenuButton onClick={() => { setIsOpen(false); router.push(buildLinkWithReferrer('/profile', pathname)); }}>
+          <MenuButton onClick={() => { setIsOpen(false); router.push(buildLinkWithTrail('/profile', pathname, trail)); }}>
             Profile
           </MenuButton>
           <MenuButton
             onClick={() => {
               setIsOpen(false);
               if (hasJournalAccess) {
-                router.push(buildLinkWithReferrer('/history', pathname));
+                router.push(buildLinkWithTrail('/history', pathname, trail));
               } else {
                 setShowSubscriptionModal(true);
               }
@@ -140,28 +144,28 @@ export function UserMenu() {
             hasAccess={hasJournalAccess}
           />
           {permissions.isCounselor && (
-            <MenuButton onClick={() => { setIsOpen(false); router.push(buildLinkWithReferrer('/counsel', pathname)); }}>
+            <MenuButton onClick={() => { setIsOpen(false); router.push(buildLinkWithTrail('/counsel', pathname, trail)); }}>
               Counselor
             </MenuButton>
           )}
           {isSalesRep && (
-            <MenuButton onClick={() => { setIsOpen(false); router.push(buildLinkWithReferrer('/admin/sales', pathname)); }}>
+            <MenuButton onClick={() => { setIsOpen(false); router.push(buildLinkWithTrail('/admin/sales', pathname, trail)); }}>
               Sales Queue
             </MenuButton>
           )}
           {(isSalesRep || permissions.isPlatformAdmin) && (
-            <MenuButton onClick={() => { setIsOpen(false); router.push(buildLinkWithReferrer('/marketing', pathname)); }}>
+            <MenuButton onClick={() => { setIsOpen(false); router.push(buildLinkWithTrail('/marketing', pathname, trail)); }}>
               Marketing
             </MenuButton>
           )}
           {permissions.isOrgAdmin && !permissions.isPlatformAdmin && (
-            <MenuButton onClick={() => { setIsOpen(false); router.push(buildLinkWithReferrer('/org-admin', pathname)); }}>
+            <MenuButton onClick={() => { setIsOpen(false); router.push(buildLinkWithTrail('/org-admin', pathname, trail)); }}>
               Organization Admin
             </MenuButton>
           )}
           {permissions.isPlatformAdmin && (
             <MenuButton
-              onClick={() => { setIsOpen(false); router.push(buildLinkWithReferrer('/admin', pathname)); }}
+              onClick={() => { setIsOpen(false); router.push(buildLinkWithTrail('/admin', pathname, trail)); }}
               variant="highlighted"
               className="border-t border-gray-200"
             >
@@ -213,7 +217,7 @@ export function UserMenu() {
               <button
                 onClick={() => {
                   setShowSubscriptionModal(false);
-                  router.push(buildLinkWithReferrer('/settings/subscription', pathname));
+                  router.push(buildLinkWithTrail('/settings/subscription', pathname, trail));
                 }}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
@@ -224,5 +228,13 @@ export function UserMenu() {
         </div>
       )}
     </div>
+  );
+}
+
+export function UserMenu() {
+  return (
+    <Suspense fallback={<div className="h-10 w-32 bg-gray-200 rounded animate-pulse" />}>
+      <UserMenuContent />
+    </Suspense>
   );
 }
