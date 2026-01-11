@@ -9,6 +9,7 @@ import { ShareModal } from '../../components/ShareModal';
 import { TourButton } from '../../components/TourButton';
 import { Journal } from '../../components/Journal';
 import { Conversation } from '../../components/Conversation';
+import { BackButton } from '../../components/BackButton';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
 
@@ -40,7 +41,7 @@ interface FullConversation {
 }
 
 function HistoryPageContent() {
-  const { isAuthenticated, user } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<FullConversation | null>(null);
@@ -181,14 +182,7 @@ function HistoryPageContent() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        <div className="mb-6">
-          <button
-            onClick={() => router.push('/home')}
-            className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
-          >
-            ← Back
-          </button>
-        </div>
+        <BackButton />
 
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Conversation Journal</h1>
