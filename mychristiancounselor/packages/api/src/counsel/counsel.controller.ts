@@ -4,12 +4,14 @@ import { CounselExportService } from './counsel-export.service';
 import { AssignmentService } from './assignment.service';
 import { WellbeingAnalysisService } from './wellbeing-analysis.service';
 import { ObservationService } from './observation.service';
+import { AssessmentChartsService } from './services/assessment-charts.service';
 import { CounselRequestDto } from './dto/counsel-request.dto';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { OverrideStatusDto } from './dto/override-status.dto';
 import { CreateObservationDto } from './dto/create-observation.dto';
 import { UpdateObservationDto } from './dto/update-observation.dto';
+import { AssessmentChartQueryDto } from './dto/assessment-chart-query.dto';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { IsCounselorGuard } from './guards/is-counselor.guard';
@@ -24,6 +26,7 @@ export class CounselController {
     private assignmentService: AssignmentService,
     private wellbeingAnalysisService: WellbeingAnalysisService,
     private observationService: ObservationService,
+    private assessmentChartsService: AssessmentChartsService,
     private prisma: PrismaService,
   ) {}
 
@@ -555,5 +558,78 @@ export class CounselController {
     events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     return events;
+  }
+
+  // ===== ASSESSMENT CHARTS ENDPOINTS =====
+
+  /**
+   * Get PHQ-9 trend data for a member
+   * GET /counsel/assessment-charts/phq9-trend?memberId=xxx&startDate=xxx&endDate=xxx
+   */
+  @UseGuards(JwtAuthGuard, IsCounselorGuard)
+  @Get('assessment-charts/phq9-trend')
+  async getPhq9Trend(
+    @Request() req,
+    @Query() query: AssessmentChartQueryDto,
+  ) {
+    const counselorId = req.user.id;
+    return this.assessmentChartsService.getPhq9Trend(
+      counselorId,
+      query.memberId,
+      query.startDate ? new Date(query.startDate) : undefined,
+      query.endDate ? new Date(query.endDate) : undefined,
+    );
+  }
+
+  /**
+   * Get GAD-7 trend data for a member
+   * GET /counsel/assessment-charts/gad7-trend?memberId=xxx&startDate=xxx&endDate=xxx
+   */
+  @UseGuards(JwtAuthGuard, IsCounselorGuard)
+  @Get('assessment-charts/gad7-trend')
+  async getGad7Trend(
+    @Request() req,
+    @Query() query: AssessmentChartQueryDto,
+  ) {
+    const counselorId = req.user.id;
+    return this.assessmentChartsService.getGad7Trend(
+      counselorId,
+      query.memberId,
+      query.startDate ? new Date(query.startDate) : undefined,
+      query.endDate ? new Date(query.endDate) : undefined,
+    );
+  }
+
+  /**
+   * Get session activity data for a member
+   * GET /counsel/assessment-charts/session-activity?memberId=xxx&startDate=xxx&endDate=xxx
+   */
+  @UseGuards(JwtAuthGuard, IsCounselorGuard)
+  @Get('assessment-charts/session-activity')
+  async getSessionActivity(
+    @Request() req,
+    @Query() query: AssessmentChartQueryDto,
+  ) {
+    const counselorId = req.user.id;
+    return this.assessmentChartsService.getSessionActivity(
+      counselorId,
+      query.memberId,
+      query.startDate ? new Date(query.startDate) : undefined,
+      query.endDate ? new Date(query.endDate) : undefined,
+    );
+  }
+
+  /**
+   * Get comprehensive progress overview for a member
+   * GET /counsel/assessment-charts/progress-overview?memberId=xxx
+   */
+  @UseGuards(JwtAuthGuard, IsCounselorGuard)
+  @Get('assessment-charts/progress-overview')
+  async getProgressOverview(
+    @Request() req,
+    @Query('memberId') memberId: string,
+  ) {
+    const counselorId = req.user.id;
+    return this.assessmentChartsService.getProgressOverview(counselorId, memberId);
   }
 }

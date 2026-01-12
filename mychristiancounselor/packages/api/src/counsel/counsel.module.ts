@@ -18,6 +18,7 @@ import { CrisisAlertService } from './crisis-alert.service';
 import { AssessmentService } from './assessment.service';
 import { AssessmentScoringService } from './assessment-scoring.service';
 import { AssessmentSchedulingService } from './assessment-scheduling.service';
+import { AssessmentChartsService } from './services/assessment-charts.service';
 import { TaskController } from './task.controller';
 import { MemberTaskService } from './member-task.service';
 import { TaskTemplateService } from './task-template.service';
@@ -71,6 +72,7 @@ import { EmailModule } from '../email/email.module';
     AssessmentService,
     AssessmentScoringService,
     AssessmentSchedulingService,
+    AssessmentChartsService,
     AssessmentLibraryService,
     MemberTaskService,
     TaskTemplateService,
