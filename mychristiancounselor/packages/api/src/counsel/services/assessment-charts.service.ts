@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 
 export interface ChartDataPoint {
   date: string;
@@ -78,7 +79,7 @@ export class AssessmentChartsService {
       await this.verifyCounselorAccess(counselorId, memberId);
 
       // Build date filter
-      const dateFilter: any = {};
+      const dateFilter: Prisma.AssignedAssessmentWhereInput = {};
       if (startDate || endDate) {
         dateFilter.completedAt = {};
         if (startDate) dateFilter.completedAt.gte = startDate;
@@ -91,6 +92,7 @@ export class AssessmentChartsService {
         where: {
           memberId,
           status: 'completed',
+          responses: { isNot: null },
           ...dateFilter,
         },
         include: {
@@ -164,7 +166,7 @@ export class AssessmentChartsService {
       await this.verifyCounselorAccess(counselorId, memberId);
 
       // Build date filter
-      const dateFilter: any = {};
+      const dateFilter: Prisma.AssignedAssessmentWhereInput = {};
       if (startDate || endDate) {
         dateFilter.completedAt = {};
         if (startDate) dateFilter.completedAt.gte = startDate;
@@ -177,6 +179,7 @@ export class AssessmentChartsService {
         where: {
           memberId,
           status: 'completed',
+          responses: { isNot: null },
           ...dateFilter,
         },
         include: {
@@ -252,7 +255,7 @@ export class AssessmentChartsService {
       await this.verifyCounselorAccess(counselorId, memberId);
 
       // Build session date filter
-      const sessionWhere: any = { userId: memberId };
+      const sessionWhere: Prisma.SessionWhereInput = { userId: memberId };
       if (startDate || endDate) {
         sessionWhere.createdAt = {};
         if (startDate) sessionWhere.createdAt.gte = startDate;
@@ -269,17 +272,16 @@ export class AssessmentChartsService {
       });
 
       // Build task date filter
-      const taskWhere: any = {
+      const taskWhere: Prisma.MemberTaskWhereInput = {
         memberId,
         completedAt: { not: null },
       };
       if (startDate || endDate) {
-        const completedFilter: any = { not: null };
-        if (startDate || endDate) {
-          const andConditions = [{ completedAt: { not: null } }];
-          if (startDate) andConditions.push({ completedAt: { gte: startDate } });
-          if (endDate) andConditions.push({ completedAt: { lte: endDate } });
-          taskWhere.AND = andConditions;
+        if (startDate) {
+          taskWhere.completedAt = { ...taskWhere.completedAt, gte: startDate };
+        }
+        if (endDate) {
+          taskWhere.completedAt = { ...taskWhere.completedAt, lte: endDate };
         }
       }
 
@@ -392,6 +394,7 @@ export class AssessmentChartsService {
     });
 
     if (!assignment) {
+      this.logger.warn(`Counselor ${counselorId} attempted to access member ${memberId} without assignment`);
       throw new NotFoundException('Member not found or access denied');
     }
   }
@@ -419,7 +422,11 @@ export class AssessmentChartsService {
     const sumXY = indices.reduce((sum, x, i) => sum + x * scores[i], 0);
     const sumX2 = indices.reduce((sum, x) => sum + x * x, 0);
 
-    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const denominator = n * sumX2 - sumX * sumX;
+    if (denominator === 0) {
+      return 'insufficient_data';
+    }
+    const slope = (n * sumXY - sumX * sumY) / denominator;
 
     // For assessment scores, lower is better (PHQ-9, GAD-7)
     // So negative slope = improving

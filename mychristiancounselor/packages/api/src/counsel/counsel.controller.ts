@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, Request, UseGuards, Put, Delete, HttpCode, Query, ForbiddenException, Patch, NotFoundException } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Request, UseGuards, Put, Delete, HttpCode, Query, ForbiddenException, Patch, NotFoundException, ParseUUIDPipe } from '@nestjs/common';
 import { CounselService } from './counsel.service';
 import { CounselExportService } from './counsel-export.service';
 import { AssignmentService } from './assignment.service';
@@ -627,7 +627,7 @@ export class CounselController {
   @Get('assessment-charts/progress-overview')
   async getProgressOverview(
     @Request() req,
-    @Query('memberId') memberId: string,
+    @Query('memberId', ParseUUIDPipe) memberId: string,
   ) {
     const counselorId = req.user.id;
     return this.assessmentChartsService.getProgressOverview(counselorId, memberId);
