@@ -41,54 +41,66 @@ export function MarketingCharts() {
 
     // Define fetch functions inline
     const fetchCampaignPerformance = async () => {
-      const response = await apiFetch('/api/admin/marketing-charts/campaign-performance');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch campaigns: ${response.status}`);
-      }
-      const data: CampaignPerformanceResponse[] = await response.json();
+      try {
+        const response = await apiFetch('/api/admin/marketing-charts/campaign-performance');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch campaigns: ${response.status}`);
+        }
+        const data: CampaignPerformanceResponse[] = await response.json();
 
-      // Validate and transform
-      if (!Array.isArray(data) || data.length === 0) {
+        // Validate and transform
+        if (!Array.isArray(data) || data.length === 0) {
+          setCampaignData(null);
+          return;
+        }
+
+        setCampaignData({
+          data: data.map(c => ({
+            campaign: c.campaignName || 'Unknown',
+            sent: c.sent ?? 0,
+            opened: c.opened ?? 0,
+            clicked: c.clicked ?? 0,
+          })),
+          xAxisKey: 'campaign',
+          bars: [
+            { dataKey: 'sent', name: 'Sent', color: '#3b82f6' },
+            { dataKey: 'opened', name: 'Opened', color: '#10b981' },
+            { dataKey: 'clicked', name: 'Clicked', color: '#f59e0b' },
+          ],
+        });
+      } catch (error) {
+        console.error('Error fetching campaign performance:', error);
         setCampaignData(null);
-        return;
+        throw error;
       }
-
-      setCampaignData({
-        data: data.map(c => ({
-          campaign: c.campaignName || 'Unknown',
-          sent: c.sent ?? 0,
-          opened: c.opened ?? 0,
-          clicked: c.clicked ?? 0,
-        })),
-        xAxisKey: 'campaign',
-        bars: [
-          { dataKey: 'sent', name: 'Sent', color: '#3b82f6' },
-          { dataKey: 'opened', name: 'Opened', color: '#10b981' },
-          { dataKey: 'clicked', name: 'Clicked', color: '#f59e0b' },
-        ],
-      });
     };
 
     const fetchLeadConversion = async () => {
-      const response = await apiFetch('/api/admin/marketing-charts/lead-conversion');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch lead conversion: ${response.status}`);
-      }
-      const data: LeadConversionResponse[] = await response.json();
+      try {
+        const response = await apiFetch('/api/admin/marketing-charts/lead-conversion');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch lead conversion: ${response.status}`);
+        }
+        const data: LeadConversionResponse[] = await response.json();
 
-      // Validate and transform
-      if (!Array.isArray(data) || data.length === 0) {
+        // Validate and transform
+        if (!Array.isArray(data) || data.length === 0) {
+          setConversionData(null);
+          return;
+        }
+
+        setConversionData(
+          data.map(item => ({
+            name: item.stage || 'Unknown',
+            value: item.count ?? 0,
+            fill: getStageColor(item.stage),
+          }))
+        );
+      } catch (error) {
+        console.error('Error fetching lead conversion:', error);
         setConversionData(null);
-        return;
+        throw error;
       }
-
-      setConversionData(
-        data.map(item => ({
-          name: item.stage || 'Unknown',
-          value: item.count ?? 0,
-          fill: getStageColor(item.stage),
-        }))
-      );
     };
 
     const results = await Promise.allSettled([

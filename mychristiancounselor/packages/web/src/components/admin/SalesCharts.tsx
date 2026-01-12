@@ -53,61 +53,74 @@ export function SalesCharts() {
 
     // Define fetch functions inline
     const fetchPipelineStages = async () => {
-      const response = await apiFetch('/api/admin/sales-charts/pipeline-stages');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch pipeline stages: ${response.status}`);
-      }
-      const data: PipelineStagesResponse[] = await response.json();
+      try {
+        const response = await apiFetch('/api/admin/sales-charts/pipeline-stages');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch pipeline stages: ${response.status}`);
+        }
+        const data: PipelineStagesResponse[] = await response.json();
 
-      // Validate and transform
-      if (!Array.isArray(data) || data.length === 0) {
+        // Validate and transform
+        if (!Array.isArray(data) || data.length === 0) {
+          setPipelineData(null);
+          return;
+        }
+
+        setPipelineData({
+          data: data.map(item => ({
+            stage: item.stage || 'Unknown',
+            count: item.count ?? 0,
+            value: item.value ?? 0,
+          })),
+          xAxisKey: 'stage',
+          bars: [
+            { dataKey: 'count', name: 'Count', color: '#3b82f6' },
+            { dataKey: 'value', name: 'Value ($)', color: '#10b981' },
+          ],
+        });
+      } catch (error) {
+        console.error('Error fetching pipeline stages:', error);
         setPipelineData(null);
-        return;
+        throw error;
       }
-
-      setPipelineData({
-        data: data.map(item => ({
-          stage: item.stage || 'Unknown',
-          count: item.count ?? 0,
-          value: item.value ?? 0,
-        })),
-        xAxisKey: 'stage',
-        bars: [
-          { dataKey: 'count', name: 'Count', color: '#3b82f6' },
-          { dataKey: 'value', name: 'Value ($)', color: '#10b981' },
-        ],
-      });
     };
 
     const fetchProjections = async () => {
-      const response = await apiFetch('/api/admin/sales-charts/projections');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch projections: ${response.status}`);
-      }
-      const data: ProjectionsResponse = await response.json();
+      try {
+        const response = await apiFetch('/api/admin/sales-charts/projections');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch projections: ${response.status}`);
+        }
+        const data: ProjectionsResponse = await response.json();
 
-      // Validate and transform
-      if (!data || !Array.isArray(data.data) || data.data.length === 0) {
+        // Validate and transform
+        if (!data || !Array.isArray(data.data) || data.data.length === 0) {
+          setProjectionsData(null);
+          setProjectionsSummary(null);
+          return;
+        }
+
+        setProjectionsData({
+          data: data.data.map(item => ({
+            date: item.date || 'Unknown',
+            revenue: item.value ?? 0,
+          })),
+          xAxisKey: 'date',
+          lines: [
+            { dataKey: 'revenue', name: 'Revenue', color: '#3b82f6' },
+          ],
+        });
+
+        setProjectionsSummary({
+          projectedRevenue: data.projectedRevenue ?? 0,
+          conversionRate: data.conversionRate ?? 0,
+        });
+      } catch (error) {
+        console.error('Error fetching projections:', error);
         setProjectionsData(null);
         setProjectionsSummary(null);
-        return;
+        throw error;
       }
-
-      setProjectionsData({
-        data: data.data.map(item => ({
-          date: item.date || 'Unknown',
-          revenue: item.value ?? 0,
-        })),
-        xAxisKey: 'date',
-        lines: [
-          { dataKey: 'revenue', name: 'Revenue', color: '#3b82f6' },
-        ],
-      });
-
-      setProjectionsSummary({
-        projectedRevenue: data.projectedRevenue ?? 0,
-        conversionRate: data.conversionRate ?? 0,
-      });
     };
 
     const results = await Promise.allSettled([
