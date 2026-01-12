@@ -6,25 +6,23 @@ import type { LineChartData } from '@/components/charts';
 import { apiFetch } from '@/lib/api';
 
 interface MoodTrendData {
-  data: Array<{ date: string; value: number }>;
-  average: number;
+  trend: Array<{ date: string; moodRating: number }>;
+  averageMood: number;
 }
 
 interface SleepTrendData {
-  data: Array<{ date: string; value: number }>;
-  averageHours: number;
+  trend: Array<{ date: string; sleepHours: number }>;
+  averageSleep: number;
 }
 
 interface ExerciseTrendData {
-  data: Array<{ date: string; value: number }>;
-  totalMinutes: number;
+  trend: Array<{ date: string; exerciseMinutes: number }>;
+  totalExercise: number;
 }
 
 interface CorrelationData {
-  metric1: string;
-  metric2: string;
   correlation: number;
-  data: Array<{ x: number; y: number }>;
+  interpretation: string;
 }
 
 export default function WellnessChartsPage() {
@@ -33,256 +31,187 @@ export default function WellnessChartsPage() {
   const [exerciseData, setExerciseData] = useState<ExerciseTrendData | null>(null);
   const [correlationData, setCorrelationData] = useState<CorrelationData | null>(null);
 
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [loadingMood, setLoadingMood] = useState(true);
-  const [loadingSleep, setLoadingSleep] = useState(true);
-  const [loadingExercise, setLoadingExercise] = useState(true);
-  const [loadingCorrelation, setLoadingCorrelation] = useState(true);
+  // Date range: default last 30 days
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return date.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
-  const [errorMood, setErrorMood] = useState<string | null>(null);
-  const [errorSleep, setErrorSleep] = useState<string | null>(null);
-  const [errorExercise, setErrorExercise] = useState<string | null>(null);
-  const [errorCorrelation, setErrorCorrelation] = useState<string | null>(null);
-
-  // Set default date range (last 30 days)
   useEffect(() => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - 30);
-
-    setStartDate(start.toISOString().split('T')[0]);
-    setEndDate(end.toISOString().split('T')[0]);
+    fetchAllData();
   }, []);
 
-  // Fetch data when date range changes
-  useEffect(() => {
-    if (startDate && endDate) {
-      fetchMoodData();
-      fetchSleepData();
-      fetchExerciseData();
-      fetchCorrelationData();
+  const fetchAllData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await Promise.all([
+        fetchMoodData(),
+        fetchSleepData(),
+        fetchExerciseData(),
+        fetchCorrelationData(),
+      ]);
+    } catch (err) {
+      setError('Failed to load wellness data');
+    } finally {
+      setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate]);
+  };
 
   const fetchMoodData = async () => {
-    setLoadingMood(true);
-    setErrorMood(null);
-    try {
-      const params = new URLSearchParams({ startDate, endDate });
-      const response = await apiFetch(`/api/resources/wellness-charts/mood-trend?${params}`);
-
-      if (!response.ok) throw new Error('Failed to fetch mood data');
-
-      const data = await response.json();
-      setMoodData(data);
-    } catch (error) {
-      setErrorMood(error instanceof Error ? error.message : 'Failed to load mood data');
-    } finally {
-      setLoadingMood(false);
-    }
+    const params = new URLSearchParams({ startDate, endDate });
+    const response = await apiFetch(`/api/resources/wellness-charts/mood-trend?${params}`);
+    const data = await response.json();
+    setMoodData(data);
   };
 
   const fetchSleepData = async () => {
-    setLoadingSleep(true);
-    setErrorSleep(null);
-    try {
-      const params = new URLSearchParams({ startDate, endDate });
-      const response = await apiFetch(`/api/resources/wellness-charts/sleep-trend?${params}`);
-
-      if (!response.ok) throw new Error('Failed to fetch sleep data');
-
-      const data = await response.json();
-      setSleepData(data);
-    } catch (error) {
-      setErrorSleep(error instanceof Error ? error.message : 'Failed to load sleep data');
-    } finally {
-      setLoadingSleep(false);
-    }
+    const params = new URLSearchParams({ startDate, endDate });
+    const response = await apiFetch(`/api/resources/wellness-charts/sleep-trend?${params}`);
+    const data = await response.json();
+    setSleepData(data);
   };
 
   const fetchExerciseData = async () => {
-    setLoadingExercise(true);
-    setErrorExercise(null);
-    try {
-      const params = new URLSearchParams({ startDate, endDate });
-      const response = await apiFetch(`/api/resources/wellness-charts/exercise-trend?${params}`);
-
-      if (!response.ok) throw new Error('Failed to fetch exercise data');
-
-      const data = await response.json();
-      setExerciseData(data);
-    } catch (error) {
-      setErrorExercise(error instanceof Error ? error.message : 'Failed to load exercise data');
-    } finally {
-      setLoadingExercise(false);
-    }
+    const params = new URLSearchParams({ startDate, endDate });
+    const response = await apiFetch(`/api/resources/wellness-charts/exercise-trend?${params}`);
+    const data = await response.json();
+    setExerciseData(data);
   };
 
   const fetchCorrelationData = async () => {
-    setLoadingCorrelation(true);
-    setErrorCorrelation(null);
-    try {
-      const params = new URLSearchParams({
-        metric1: 'mood',
-        metric2: 'sleep',
-        startDate,
-        endDate,
-      });
-      const response = await apiFetch(`/api/resources/wellness-charts/correlation?${params}`);
-
-      if (!response.ok) throw new Error('Failed to fetch correlation data');
-
-      const data = await response.json();
-      setCorrelationData(data);
-    } catch (error) {
-      setErrorCorrelation(error instanceof Error ? error.message : 'Failed to load correlation data');
-    } finally {
-      setLoadingCorrelation(false);
-    }
+    const params = new URLSearchParams({
+      startDate,
+      endDate,
+      metric1: 'mood',
+      metric2: 'sleep'
+    });
+    const response = await apiFetch(`/api/resources/wellness-charts/correlation?${params}`);
+    const data = await response.json();
+    setCorrelationData(data);
   };
 
-  const handleDateRangeChange = () => {
-    if (startDate && endDate) {
-      fetchMoodData();
-      fetchSleepData();
-      fetchExerciseData();
-      fetchCorrelationData();
-    }
-  };
+  // Chart data transformations
+  const moodChartData: LineChartData[] =
+    moodData?.trend.map(d => ({ date: d.date, value: d.moodRating })) || [];
+
+  const sleepChartData: LineChartData[] =
+    sleepData?.trend.map(d => ({ date: d.date, value: d.sleepHours })) || [];
+
+  const exerciseChartData: LineChartData[] =
+    exerciseData?.trend.map(d => ({ date: d.date, value: d.exerciseMinutes })) || [];
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Wellness Trends</h1>
-        <p className="text-gray-600 mt-2">Track your mood, sleep, and exercise patterns over time</p>
-      </div>
+      <h1 className="text-3xl font-bold mb-6">Wellness Tracking</h1>
 
-      {/* Date Range Filter */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="flex items-end gap-4">
-          <div className="flex-1">
-            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
-              Start Date
-            </label>
-            <input
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex-1">
-            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
-              End Date
-            </label>
-            <input
-              id="endDate"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <button
-            onClick={handleDateRangeChange}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Update
-          </button>
+      {/* Date Range Selector */}
+      <div className="bg-white p-4 rounded-lg shadow mb-6 flex gap-4 items-end">
+        <div>
+          <label htmlFor="start-date" className="block text-sm font-medium text-gray-700 mb-1">
+            Start Date
+          </label>
+          <input
+            type="date"
+            id="start-date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="border rounded px-3 py-2"
+          />
         </div>
+        <div>
+          <label htmlFor="end-date" className="block text-sm font-medium text-gray-700 mb-1">
+            End Date
+          </label>
+          <input
+            type="date"
+            id="end-date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="border rounded px-3 py-2"
+          />
+        </div>
+        <button
+          onClick={fetchAllData}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Update
+        </button>
       </div>
 
       {/* Charts Grid */}
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Mood Trend */}
-        <ChartContainer
-          title="Mood Trend"
-          description={moodData ? `Average mood: ${moodData.average.toFixed(1)}/10` : undefined}
-          isLoading={loadingMood}
-          error={errorMood}
-        >
-          {moodData && (
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-xl font-semibold mb-4">Mood Trend</h2>
+          <ChartContainer isLoading={loading} error={error}>
             <LineChart
-              data={moodData.data as LineChartData[]}
+              data={moodChartData}
               xAxisKey="date"
-              lines={[
-                { dataKey: 'value', name: 'Mood Rating', color: '#3b82f6' },
-              ]}
+              lines={[{ dataKey: 'value', name: 'Mood', color: '#3b82f6' }]}
               height={300}
-              emptyMessage="No mood data available for this period"
             />
+          </ChartContainer>
+          {moodData && (
+            <p className="mt-2 text-sm text-gray-600">
+              Average Mood: {moodData.averageMood.toFixed(1)}
+            </p>
           )}
-        </ChartContainer>
+        </div>
 
         {/* Sleep Trend */}
-        <ChartContainer
-          title="Sleep Trend"
-          description={sleepData ? `Average sleep: ${sleepData.averageHours.toFixed(1)} hours` : undefined}
-          isLoading={loadingSleep}
-          error={errorSleep}
-        >
-          {sleepData && (
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-xl font-semibold mb-4">Sleep Trend</h2>
+          <ChartContainer isLoading={loading} error={error}>
             <LineChart
-              data={sleepData.data as LineChartData[]}
+              data={sleepChartData}
               xAxisKey="date"
-              lines={[
-                { dataKey: 'value', name: 'Sleep Hours', color: '#8b5cf6' },
-              ]}
+              lines={[{ dataKey: 'value', name: 'Sleep', color: '#10b981' }]}
               height={300}
-              emptyMessage="No sleep data available for this period"
             />
+          </ChartContainer>
+          {sleepData && (
+            <p className="mt-2 text-sm text-gray-600">
+              Average Sleep: {sleepData.averageSleep.toFixed(1)} hours
+            </p>
           )}
-        </ChartContainer>
+        </div>
 
         {/* Exercise Trend */}
-        <ChartContainer
-          title="Exercise Trend"
-          description={exerciseData ? `Total exercise: ${exerciseData.totalMinutes} minutes` : undefined}
-          isLoading={loadingExercise}
-          error={errorExercise}
-        >
-          {exerciseData && (
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-xl font-semibold mb-4">Exercise Trend</h2>
+          <ChartContainer isLoading={loading} error={error}>
             <LineChart
-              data={exerciseData.data as LineChartData[]}
+              data={exerciseChartData}
               xAxisKey="date"
-              lines={[
-                { dataKey: 'value', name: 'Exercise Minutes', color: '#10b981' },
-              ]}
+              lines={[{ dataKey: 'value', name: 'Exercise', color: '#f59e0b' }]}
               height={300}
-              emptyMessage="No exercise data available for this period"
             />
+          </ChartContainer>
+          {exerciseData && (
+            <p className="mt-2 text-sm text-gray-600">
+              Total Exercise: {exerciseData.totalExercise} minutes
+            </p>
           )}
-        </ChartContainer>
+        </div>
 
         {/* Mood vs Sleep Correlation */}
-        <ChartContainer
-          title="Mood vs Sleep Correlation"
-          description={
-            correlationData
-              ? `Correlation coefficient: ${correlationData.correlation.toFixed(3)}`
-              : undefined
-          }
-          isLoading={loadingCorrelation}
-          error={errorCorrelation}
-        >
-          {correlationData && correlationData.data.length > 0 && (
-            <div className="h-64 flex items-center justify-center">
-              <p className="text-sm text-gray-600">
-                {correlationData.correlation > 0.7
-                  ? 'Strong positive correlation: Better sleep tends to improve mood'
-                  : correlationData.correlation > 0.3
-                  ? 'Moderate positive correlation between sleep and mood'
-                  : correlationData.correlation < -0.3
-                  ? 'Negative correlation detected'
-                  : 'Weak or no significant correlation'}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-xl font-semibold mb-4">Mood vs Sleep Correlation</h2>
+          {correlationData && (
+            <div className="text-center py-12">
+              <p className="text-4xl font-bold text-blue-600">
+                {correlationData.correlation.toFixed(2)}
               </p>
+              <p className="text-gray-600 mt-2">{correlationData.interpretation}</p>
             </div>
           )}
-        </ChartContainer>
+        </div>
       </div>
     </div>
   );
