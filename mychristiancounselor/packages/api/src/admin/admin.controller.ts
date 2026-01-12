@@ -19,6 +19,10 @@ import { CostAnalyticsService, CostAnalyticsQuery } from './services/cost-analyt
 import { BulkReEvaluationService, BulkReEvaluationOptions } from './services/bulk-re-evaluation.service';
 import { AnalyticsChartsService } from './services/analytics-charts.service';
 import { AnalyticsChartQueryDto } from './dto/analytics-chart-query.dto';
+import { MarketingChartsService } from './services/marketing-charts.service';
+import { SalesChartsService } from './services/sales-charts.service';
+import { MarketingChartQueryDto } from './dto/marketing-chart-query.dto';
+import { SalesChartQueryDto } from './dto/sales-chart-query.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, IsPlatformAdminGuard)
@@ -36,6 +40,8 @@ export class AdminController {
     private costAnalytics: CostAnalyticsService,
     private bulkReEvaluation: BulkReEvaluationService,
     private analyticsCharts: AnalyticsChartsService,
+    private marketingCharts: MarketingChartsService,
+    private salesCharts: SalesChartsService,
   ) {}
 
   @Get('audit-log')
@@ -592,6 +598,67 @@ export class AdminController {
   @Get('analytics-charts/revenue')
   async getRevenue(@Query() query: AnalyticsChartQueryDto) {
     return this.analyticsCharts.getRevenue(
+      query.startDate ? new Date(query.startDate) : undefined,
+      query.endDate ? new Date(query.endDate) : undefined,
+    );
+  }
+
+  /**
+   * Get campaign performance chart data
+   * GET /admin/marketing-charts/campaign-performance
+   *
+   * Returns email campaign metrics including open rates, click rates, and bounce rates.
+   * Uses EmailCampaign and EmailCampaignRecipient models for tracking.
+   */
+  @Get('marketing-charts/campaign-performance')
+  async getCampaignPerformance(@Query() query: MarketingChartQueryDto) {
+    return this.marketingCharts.getCampaignPerformance(
+      query.startDate ? new Date(query.startDate) : undefined,
+      query.endDate ? new Date(query.endDate) : undefined,
+      query.campaignId,
+    );
+  }
+
+  /**
+   * Get lead conversion chart data
+   * GET /admin/marketing-charts/lead-conversion
+   *
+   * Returns lead conversion funnel data based on user subscription status.
+   * Uses User.subscriptionStatus as proxy for conversion stages.
+   */
+  @Get('marketing-charts/lead-conversion')
+  async getLeadConversion(@Query() query: MarketingChartQueryDto) {
+    return this.marketingCharts.getLeadConversion(
+      query.startDate ? new Date(query.startDate) : undefined,
+      query.endDate ? new Date(query.endDate) : undefined,
+    );
+  }
+
+  /**
+   * Get sales pipeline stages chart data
+   * GET /admin/sales-charts/pipeline-stages
+   *
+   * Returns sales opportunities grouped by stage with counts and deal values.
+   * Uses SalesOpportunity model with dealValue and stage fields.
+   */
+  @Get('sales-charts/pipeline-stages')
+  async getPipelineStages(@Query() query: SalesChartQueryDto) {
+    return this.salesCharts.getPipelineStages(
+      query.startDate ? new Date(query.startDate) : undefined,
+      query.endDate ? new Date(query.endDate) : undefined,
+    );
+  }
+
+  /**
+   * Get sales projections chart data
+   * GET /admin/sales-charts/projections
+   *
+   * Returns sales projections based on weighted pipeline value and subscription trends.
+   * Calculates projected revenue using dealValue * probability for active opportunities.
+   */
+  @Get('sales-charts/projections')
+  async getSalesProjections(@Query() query: SalesChartQueryDto) {
+    return this.salesCharts.getSalesProjections(
       query.startDate ? new Date(query.startDate) : undefined,
       query.endDate ? new Date(query.endDate) : undefined,
     );

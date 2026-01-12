@@ -16,6 +16,8 @@ import { QueueMonitoringService } from './services/queue-monitoring.service';
 import { CostAnalyticsService } from './services/cost-analytics.service';
 import { BulkReEvaluationService } from './services/bulk-re-evaluation.service';
 import { AnalyticsChartsService } from './services/analytics-charts.service';
+import { MarketingChartsService } from './services/marketing-charts.service';
+import { SalesChartsService } from './services/sales-charts.service';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { AnalyticsChartsService } from './services/analytics-charts.service';
     CostAnalyticsService,
     BulkReEvaluationService,
     AnalyticsChartsService,
+    MarketingChartsService,
+    SalesChartsService,
     MorphAuditMiddleware,
   ],
   controllers: [AdminController, AdminStatusController],
