@@ -1,10 +1,4 @@
-import { IsOptional, IsDateString, IsEnum } from 'class-validator';
-
-export enum TimeGranularity {
-  DAILY = 'daily',
-  WEEKLY = 'weekly',
-  MONTHLY = 'monthly',
-}
+import { IsOptional, IsDateString } from 'class-validator';
 
 export class AnalyticsChartQueryDto {
   @IsOptional()
@@ -14,8 +8,4 @@ export class AnalyticsChartQueryDto {
   @IsOptional()
   @IsDateString()
   endDate?: string;
-
-  @IsOptional()
-  @IsEnum(TimeGranularity)
-  granularity?: TimeGranularity;
 }

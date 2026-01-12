@@ -1,4 +1,4 @@
-import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 
@@ -36,7 +36,8 @@ export interface UserGrowthData {
 export interface RevenueData {
   data: ChartDataPoint[];
   totalRevenue: number;
-  activeSubscriptions: number;
+  subscriptionCount: number;
+  mrr: number;
   growthRate: number;
 }
 
@@ -57,6 +58,8 @@ export interface RevenueData {
 @Injectable()
 export class AnalyticsChartsService {
   private readonly logger = new Logger(AnalyticsChartsService.name);
+  private readonly ACTIVE_USER_WINDOW_DAYS = 30;
+  private readonly GROWTH_COMPARISON_WINDOW_DAYS = 30;
 
   constructor(private prisma: PrismaService) {}
 
@@ -76,6 +79,10 @@ export class AnalyticsChartsService {
   ): Promise<EvaluationCostsData> {
     try {
       this.logger.log('Fetching evaluation costs analytics');
+
+      if (startDate && endDate && startDate > endDate) {
+        throw new BadRequestException('startDate must be before or equal to endDate');
+      }
 
       const where: Prisma.EvaluationCostLogWhereInput = {};
 
@@ -109,9 +116,11 @@ export class AnalyticsChartsService {
       // Current month cost
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const currentMonthCost = costLogs
-        .filter(log => log.evaluatedAt >= startOfMonth)
-        .reduce((sum, log) => sum + log.totalCost, 0);
+      const monthResult = await this.prisma.evaluationCostLog.aggregate({
+        where: { evaluatedAt: { gte: startOfMonth } },
+        _sum: { totalCost: true },
+      });
+      const currentMonthCost = monthResult._sum.totalCost || 0;
 
       return {
         data,
@@ -146,6 +155,10 @@ export class AnalyticsChartsService {
   ): Promise<EmailHealthData> {
     try {
       this.logger.log('Fetching email health analytics');
+
+      if (startDate && endDate && startDate > endDate) {
+        throw new BadRequestException('startDate must be before or equal to endDate');
+      }
 
       const where: Prisma.EmailCampaignWhereInput = {
         status: 'sent', // Only include sent campaigns
@@ -243,6 +256,10 @@ export class AnalyticsChartsService {
     try {
       this.logger.log('Fetching user growth analytics');
 
+      if (startDate && endDate && startDate > endDate) {
+        throw new BadRequestException('startDate must be before or equal to endDate');
+      }
+
       const where: Prisma.UserWhereInput = {};
 
       if (startDate || endDate) {
@@ -274,7 +291,7 @@ export class AnalyticsChartsService {
       // Active users (based on RefreshToken activity in last 30 days)
       // Using RefreshToken.createdAt as proxy for login activity
       const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - this.ACTIVE_USER_WINDOW_DAYS);
 
       const activeUserIds = await this.prisma.refreshToken.findMany({
         where: {
@@ -290,7 +307,7 @@ export class AnalyticsChartsService {
 
       // Calculate growth rate (last 30 days vs previous 30 days)
       const sixtyDaysAgo = new Date();
-      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - (this.GROWTH_COMPARISON_WINDOW_DAYS * 2));
 
       const [recentUsers, previousUsers] = await Promise.all([
         this.prisma.user.count({
@@ -348,6 +365,10 @@ export class AnalyticsChartsService {
     try {
       this.logger.log('Fetching revenue analytics');
 
+      if (startDate && endDate && startDate > endDate) {
+        throw new BadRequestException('startDate must be before or equal to endDate');
+      }
+
       const where: Prisma.SubscriptionWhereInput = {
         status: 'active',
       };
@@ -375,19 +396,22 @@ export class AnalyticsChartsService {
         })),
       );
 
-      // Total subscription count (proxy for total revenue)
-      const totalRevenue = subscriptions.length;
+      // Subscription count in date range
+      const subscriptionCount = subscriptions.length;
 
-      // Active subscriptions count
-      const activeSubscriptions = await this.prisma.subscription.count({
+      // Total active subscriptions (all time)
+      const totalActiveSubscriptions = await this.prisma.subscription.count({
         where: { status: 'active' },
       });
 
+      // MRR is set to 0 since we don't have amount field
+      const mrr = 0;
+
       // Calculate growth rate
       const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - this.ACTIVE_USER_WINDOW_DAYS);
       const sixtyDaysAgo = new Date();
-      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - (this.GROWTH_COMPARISON_WINDOW_DAYS * 2));
 
       const [recentSubscriptions, previousSubscriptions] = await Promise.all([
         this.prisma.subscription.count({
@@ -411,8 +435,9 @@ export class AnalyticsChartsService {
 
       return {
         data,
-        totalRevenue,
-        activeSubscriptions,
+        totalRevenue: totalActiveSubscriptions,  // Total active subscriptions
+        subscriptionCount,  // Subscriptions in filtered period
+        mrr,
         growthRate,
       };
     } catch (error) {
