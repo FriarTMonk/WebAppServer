@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ChartContainer, LineChart } from '@/components/charts';
 import type { LineChartData } from '@/components/charts';
 import { apiFetch } from '@/lib/api';
@@ -42,59 +42,73 @@ export default function WellnessChartsPage() {
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
-  useEffect(() => {
-    fetchAllData();
-  }, []);
-
-  const fetchAllData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await Promise.all([
-        fetchMoodData(),
-        fetchSleepData(),
-        fetchExerciseData(),
-        fetchCorrelationData(),
-      ]);
-    } catch (err) {
-      setError('Failed to load wellness data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchMoodData = async () => {
-    const params = new URLSearchParams({ startDate, endDate });
+  const fetchMoodData = async (start: string, end: string) => {
+    const params = new URLSearchParams({ startDate: start, endDate: end });
     const response = await apiFetch(`/api/resources/wellness-charts/mood-trend?${params}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch mood data: ${response.status}`);
+    }
     const data = await response.json();
     setMoodData(data);
   };
 
-  const fetchSleepData = async () => {
-    const params = new URLSearchParams({ startDate, endDate });
+  const fetchSleepData = async (start: string, end: string) => {
+    const params = new URLSearchParams({ startDate: start, endDate: end });
     const response = await apiFetch(`/api/resources/wellness-charts/sleep-trend?${params}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch sleep data: ${response.status}`);
+    }
     const data = await response.json();
     setSleepData(data);
   };
 
-  const fetchExerciseData = async () => {
-    const params = new URLSearchParams({ startDate, endDate });
+  const fetchExerciseData = async (start: string, end: string) => {
+    const params = new URLSearchParams({ startDate: start, endDate: end });
     const response = await apiFetch(`/api/resources/wellness-charts/exercise-trend?${params}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch exercise data: ${response.status}`);
+    }
     const data = await response.json();
     setExerciseData(data);
   };
 
-  const fetchCorrelationData = async () => {
+  const fetchCorrelationData = async (start: string, end: string) => {
     const params = new URLSearchParams({
-      startDate,
-      endDate,
+      startDate: start,
+      endDate: end,
       metric1: 'mood',
       metric2: 'sleep'
     });
     const response = await apiFetch(`/api/resources/wellness-charts/correlation?${params}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch correlation data: ${response.status}`);
+    }
     const data = await response.json();
     setCorrelationData(data);
   };
+
+  const fetchAllData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    const results = await Promise.allSettled([
+      fetchMoodData(startDate, endDate),
+      fetchSleepData(startDate, endDate),
+      fetchExerciseData(startDate, endDate),
+      fetchCorrelationData(startDate, endDate),
+    ]);
+
+    const failures = results.filter(r => r.status === 'rejected');
+    if (failures.length > 0) {
+      setError(`Failed to load ${failures.length} chart(s)`);
+    }
+
+    setLoading(false);
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
 
   // Chart data transformations
   const moodChartData: LineChartData[] =
