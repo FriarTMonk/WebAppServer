@@ -39,6 +39,21 @@ export function LineChart({
     return <EmptyChart message={emptyMessage} height={height} />;
   }
 
+  // Validate that xAxisKey exists in data
+  const hasValidXAxis = data.every(item => xAxisKey in item);
+  if (!hasValidXAxis) {
+    console.warn(`LineChart: xAxisKey "${xAxisKey}" not found in all data items`);
+    return <EmptyChart message="Invalid chart configuration" height={height} />;
+  }
+
+  // Validate that all line dataKeys exist
+  const invalidLines = lines.filter(line =>
+    !data.every(item => line.dataKey in item)
+  );
+  if (invalidLines.length > 0) {
+    console.warn(`LineChart: Invalid dataKeys: ${invalidLines.map(l => l.dataKey).join(', ')}`);
+  }
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <RechartsLineChart data={data}>

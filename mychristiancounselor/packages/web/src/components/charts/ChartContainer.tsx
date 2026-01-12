@@ -32,8 +32,9 @@ export function ChartContainer({
       )}
 
       {isLoading && (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="flex items-center justify-center h-64" role="status" aria-live="polite">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" aria-hidden="true"></div>
+          <span className="sr-only">Loading chart data...</span>
         </div>
       )}
 

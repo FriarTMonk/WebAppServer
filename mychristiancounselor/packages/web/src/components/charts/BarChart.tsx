@@ -41,6 +41,21 @@ export function BarChart({
     return <EmptyChart message={emptyMessage} height={height} />;
   }
 
+  // Validate that xAxisKey exists in data
+  const hasValidXAxis = data.every(item => xAxisKey in item);
+  if (!hasValidXAxis) {
+    console.warn(`BarChart: xAxisKey "${xAxisKey}" not found in all data items`);
+    return <EmptyChart message="Invalid chart configuration" height={height} />;
+  }
+
+  // Validate that all bar dataKeys exist
+  const invalidBars = bars.filter(bar =>
+    !data.every(item => bar.dataKey in item)
+  );
+  if (invalidBars.length > 0) {
+    console.warn(`BarChart: Invalid dataKeys: ${invalidBars.map(b => b.dataKey).join(', ')}`);
+  }
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <RechartsBarChart data={data} layout={layout}>
@@ -86,7 +101,7 @@ export function BarChart({
             dataKey={bar.dataKey}
             name={bar.name}
             fill={bar.color}
-            radius={[4, 4, 0, 0]}
+            radius={layout === 'horizontal' ? [4, 4, 0, 0] : [0, 4, 4, 0]}
           />
         ))}
       </RechartsBarChart>
