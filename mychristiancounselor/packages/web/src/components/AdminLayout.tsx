@@ -121,6 +121,39 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
                 </ul>
               </li>
 
+              {/* Analytics Section */}
+              <li>
+                <div className="px-4 py-2 text-xs font-semibold text-blue-300 uppercase tracking-wider">
+                  Analytics
+                </div>
+                <ul className="mt-2 space-y-1">
+                  <li>
+                    <Link
+                      href={buildLinkWithTrail('/admin/analytics', pathname, trail)}
+                      className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/analytics')}`}
+                    >
+                      Platform Analytics
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href={buildLinkWithTrail('/admin/marketing/analytics', pathname, trail)}
+                      className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/marketing/analytics')}`}
+                    >
+                      Marketing Analytics
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href={buildLinkWithTrail('/admin/sales/analytics', pathname, trail)}
+                      className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/sales/analytics')}`}
+                    >
+                      Sales Analytics
+                    </Link>
+                  </li>
+                </ul>
+              </li>
+
               {/* Technical Section */}
               <li>
                 <div className="px-4 py-2 text-xs font-semibold text-blue-300 uppercase tracking-wider">
