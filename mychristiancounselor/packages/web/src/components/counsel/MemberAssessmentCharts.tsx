@@ -24,7 +24,7 @@ interface ProgressOverviewResponse {
 }
 
 interface SessionActivityResponse {
-  activity: Array<{ week: string; sessionCount: number }>;
+  activity: Array<{ date: string; sessionCount: number }>;
 }
 
 export function MemberAssessmentCharts({ memberId }: MemberAssessmentChartsProps) {
@@ -43,6 +43,13 @@ export function MemberAssessmentCharts({ memberId }: MemberAssessmentChartsProps
       throw new Error(`Failed to fetch PHQ-9 data: ${response.status}`);
     }
     const data: ScoreTrendResponse = await response.json();
+
+    // Add validation
+    if (!data.scores || !Array.isArray(data.scores)) {
+      setPhq9Data([]);
+      return;
+    }
+
     setPhq9Data(data.scores.map(s => ({ date: s.date, value: s.score })));
   };
 
@@ -52,6 +59,13 @@ export function MemberAssessmentCharts({ memberId }: MemberAssessmentChartsProps
       throw new Error(`Failed to fetch GAD-7 data: ${response.status}`);
     }
     const data: ScoreTrendResponse = await response.json();
+
+    // Add validation
+    if (!data.scores || !Array.isArray(data.scores)) {
+      setGad7Data([]);
+      return;
+    }
+
     setGad7Data(data.scores.map(s => ({ date: s.date, value: s.score })));
   };
 
@@ -62,19 +76,18 @@ export function MemberAssessmentCharts({ memberId }: MemberAssessmentChartsProps
     }
     const data: ProgressOverviewResponse = await response.json();
 
-    // Use progress overview data to create both assessment and task completion charts
-    // For assessment completion, count the number of assessments with data
-    const phq9Count = data.phq9.scores.length;
-    const gad7Count = data.gad7.scores.length;
-    const totalAssessments = phq9Count + gad7Count;
+    // Add null checks with fallbacks
+    const phq9Count = data.phq9?.scores?.length ?? 0;
+    const gad7Count = data.gad7?.scores?.length ?? 0;
+    const tasksCompleted = data.tasksCompleted ?? 0;
 
     setAssessmentCompletion([
-      { name: 'Completed', value: totalAssessments },
+      { name: 'PHQ-9 Completed', value: phq9Count },
+      { name: 'GAD-7 Completed', value: gad7Count },
     ]);
 
-    // For task completion, use the tasksCompleted field
     setTaskCompletion([
-      { name: 'Completed', value: data.tasksCompleted },
+      { name: 'Tasks Completed', value: tasksCompleted },
     ]);
   };
 
@@ -84,7 +97,14 @@ export function MemberAssessmentCharts({ memberId }: MemberAssessmentChartsProps
       throw new Error(`Failed to fetch session activity data: ${response.status}`);
     }
     const data: SessionActivityResponse = await response.json();
-    setSessionFrequency(data.activity.map(a => ({ week: a.week, count: a.sessionCount })));
+
+    // Add validation
+    if (!data.activity || !Array.isArray(data.activity)) {
+      setSessionFrequency([]);
+      return;
+    }
+
+    setSessionFrequency(data.activity.map(a => ({ week: a.date, count: a.sessionCount })));
   };
 
   const fetchChartData = useCallback(async () => {
