@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { LineChart, BarChart } from '@/components/charts';
+import { LineChart, BarChart, ChartContainer } from '@/components/charts';
 import { apiFetch } from '@/lib/api';
 
 interface EvaluationCostsResponse {
@@ -45,6 +45,16 @@ interface ChartData {
   bars?: Array<{ dataKey: string; name: string; color: string }>;
 }
 
+// Helper functions for safe number formatting
+const formatCurrency = (val: number | null | undefined) =>
+  val != null ? `$${val.toFixed(2)}` : 'N/A';
+
+const formatPercentage = (val: number | null | undefined) =>
+  val != null ? `${val.toFixed(1)}%` : 'N/A';
+
+const formatInteger = (val: number | null | undefined) =>
+  val != null ? val.toString() : 'N/A';
+
 export function AdminAnalyticsCharts() {
   const [costsData, setCostsData] = useState<ChartData | null>(null);
   const [emailData, setEmailData] = useState<ChartData | null>(null);
@@ -59,151 +69,152 @@ export function AdminAnalyticsCharts() {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const fetchEvaluationCosts = async () => {
-    try {
-      const response = await apiFetch('/api/admin/analytics-charts/evaluation-costs');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch costs: ${response.status}`);
-      }
-      const data: EvaluationCostsResponse = await response.json();
-
-      // Validate data
-      if (!data.data || !Array.isArray(data.data)) {
-        setCostsData(null);
-        return;
-      }
-
-      // Store summary data
-      setCostsSummary({
-        totalCost: data.totalCost,
-        averageCostPerBook: data.averageCostPerBook,
-        currentMonthCost: data.currentMonthCost,
-      });
-
-      setCostsData({
-        data: data.data.map(d => ({ date: d.date, value: d.value })),
-        xAxisKey: 'date',
-        lines: [{ dataKey: 'value', name: 'Daily Cost', color: '#3b82f6' }],
-      });
-    } catch (error) {
-      console.error('Error fetching evaluation costs:', error);
-      setCostsData(null);
-      throw error;
-    }
-  };
-
-  const fetchEmailHealth = async () => {
-    try {
-      const response = await apiFetch('/api/admin/analytics-charts/email-health');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch email health: ${response.status}`);
-      }
-      const data: EmailHealthResponse = await response.json();
-
-      // Validate data
-      if (!data.trendData || !Array.isArray(data.trendData)) {
-        setEmailData(null);
-        return;
-      }
-
-      // Store summary data
-      setEmailSummary({
-        bounceRate: data.bounceRate,
-        openRate: data.openRate,
-        clickRate: data.clickRate,
-      });
-
-      setEmailData({
-        data: data.trendData.map(d => ({
-          date: d.date,
-          bounces: d.bounces,
-          opens: d.opens,
-          clicks: d.clicks,
-        })),
-        xAxisKey: 'date',
-        lines: [
-          { dataKey: 'bounces', name: 'Bounces', color: '#ef4444' },
-          { dataKey: 'opens', name: 'Opens', color: '#10b981' },
-          { dataKey: 'clicks', name: 'Clicks', color: '#3b82f6' },
-        ],
-      });
-    } catch (error) {
-      console.error('Error fetching email health:', error);
-      setEmailData(null);
-      throw error;
-    }
-  };
-
-  const fetchUserGrowth = async () => {
-    try {
-      const response = await apiFetch('/api/admin/analytics-charts/user-growth');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch user growth: ${response.status}`);
-      }
-      const data: UserGrowthResponse = await response.json();
-
-      // Validate data
-      if (!data.data || !Array.isArray(data.data)) {
-        setUsersData(null);
-        return;
-      }
-
-      // Store summary data
-      setUsersSummary({
-        totalUsers: data.totalUsers,
-        activeUsers: data.activeUsers,
-        growthRate: data.growthRate,
-      });
-
-      setUsersData({
-        data: data.data.map(d => ({ date: d.date, value: d.value })),
-        xAxisKey: 'date',
-        bars: [{ dataKey: 'value', name: 'New Users', color: '#8b5cf6' }],
-      });
-    } catch (error) {
-      console.error('Error fetching user growth:', error);
-      setUsersData(null);
-      throw error;
-    }
-  };
-
-  const fetchRevenue = async () => {
-    try {
-      const response = await apiFetch('/api/admin/analytics-charts/revenue');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch revenue: ${response.status}`);
-      }
-      const data: RevenueResponse = await response.json();
-
-      // Validate data
-      if (!data.data || !Array.isArray(data.data)) {
-        setRevenueData(null);
-        return;
-      }
-
-      // Store summary data
-      setRevenueSummary({
-        totalRevenue: data.totalRevenue,
-        subscriptionCount: data.subscriptionCount,
-        mrr: data.mrr,
-        growthRate: data.growthRate,
-      });
-
-      setRevenueData({
-        data: data.data.map(d => ({ date: d.date, value: d.value })),
-        xAxisKey: 'date',
-        lines: [{ dataKey: 'value', name: 'Daily Revenue', color: '#10b981' }],
-      });
-    } catch (error) {
-      console.error('Error fetching revenue:', error);
-      setRevenueData(null);
-      throw error;
-    }
-  };
-
   const fetchChartData = useCallback(async () => {
     setLoading(true);
     setErrorMessage(null);
+
+    // Define all fetch functions inline to avoid dependency issues
+    const fetchEvaluationCosts = async () => {
+      try {
+        const response = await apiFetch('/api/admin/analytics-charts/evaluation-costs');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch costs: ${response.status}`);
+        }
+        const data: EvaluationCostsResponse = await response.json();
+
+        // Validate data
+        if (!data.data || !Array.isArray(data.data)) {
+          setCostsData(null);
+          return;
+        }
+
+        // Store summary data
+        setCostsSummary({
+          totalCost: data.totalCost,
+          averageCostPerBook: data.averageCostPerBook,
+          currentMonthCost: data.currentMonthCost,
+        });
+
+        setCostsData({
+          data: data.data.map(d => ({ date: d.date, value: d.value })),
+          xAxisKey: 'date',
+          lines: [{ dataKey: 'value', name: 'Daily Cost', color: '#3b82f6' }],
+        });
+      } catch (error) {
+        console.error('Error fetching evaluation costs:', error);
+        setCostsData(null);
+        throw error;
+      }
+    };
+
+    const fetchEmailHealth = async () => {
+      try {
+        const response = await apiFetch('/api/admin/analytics-charts/email-health');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch email health: ${response.status}`);
+        }
+        const data: EmailHealthResponse = await response.json();
+
+        // Validate data
+        if (!data.trendData || !Array.isArray(data.trendData)) {
+          setEmailData(null);
+          return;
+        }
+
+        // Store summary data
+        setEmailSummary({
+          bounceRate: data.bounceRate,
+          openRate: data.openRate,
+          clickRate: data.clickRate,
+        });
+
+        setEmailData({
+          data: data.trendData.map(d => ({
+            date: d.date,
+            bounces: d.bounces,
+            opens: d.opens,
+            clicks: d.clicks,
+          })),
+          xAxisKey: 'date',
+          lines: [
+            { dataKey: 'bounces', name: 'Bounces', color: '#ef4444' },
+            { dataKey: 'opens', name: 'Opens', color: '#10b981' },
+            { dataKey: 'clicks', name: 'Clicks', color: '#3b82f6' },
+          ],
+        });
+      } catch (error) {
+        console.error('Error fetching email health:', error);
+        setEmailData(null);
+        throw error;
+      }
+    };
+
+    const fetchUserGrowth = async () => {
+      try {
+        const response = await apiFetch('/api/admin/analytics-charts/user-growth');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch user growth: ${response.status}`);
+        }
+        const data: UserGrowthResponse = await response.json();
+
+        // Validate data
+        if (!data.data || !Array.isArray(data.data)) {
+          setUsersData(null);
+          return;
+        }
+
+        // Store summary data
+        setUsersSummary({
+          totalUsers: data.totalUsers,
+          activeUsers: data.activeUsers,
+          growthRate: data.growthRate,
+        });
+
+        setUsersData({
+          data: data.data.map(d => ({ date: d.date, value: d.value })),
+          xAxisKey: 'date',
+          bars: [{ dataKey: 'value', name: 'New Users', color: '#8b5cf6' }],
+        });
+      } catch (error) {
+        console.error('Error fetching user growth:', error);
+        setUsersData(null);
+        throw error;
+      }
+    };
+
+    const fetchRevenue = async () => {
+      try {
+        const response = await apiFetch('/api/admin/analytics-charts/revenue');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch revenue: ${response.status}`);
+        }
+        const data: RevenueResponse = await response.json();
+
+        // Validate data
+        if (!data.data || !Array.isArray(data.data)) {
+          setRevenueData(null);
+          return;
+        }
+
+        // Store summary data
+        setRevenueSummary({
+          totalRevenue: data.totalRevenue,
+          subscriptionCount: data.subscriptionCount,
+          mrr: data.mrr,
+          growthRate: data.growthRate,
+        });
+
+        setRevenueData({
+          data: data.data.map(d => ({ date: d.date, value: d.value })),
+          xAxisKey: 'date',
+          lines: [{ dataKey: 'value', name: 'Daily Revenue', color: '#10b981' }],
+        });
+      } catch (error) {
+        console.error('Error fetching revenue:', error);
+        setRevenueData(null);
+        throw error;
+      }
+    };
 
     const results = await Promise.allSettled([
       fetchEvaluationCosts(),
@@ -224,19 +235,6 @@ export function AdminAnalyticsCharts() {
     fetchChartData();
   }, [fetchChartData]);
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="animate-pulse">
-            <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
-            <div className="h-64 bg-gray-100 rounded"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {errorMessage && (
@@ -254,35 +252,32 @@ export function AdminAnalyticsCharts() {
             <div className="bg-blue-50 p-3 rounded">
               <p className="text-xs text-gray-600">Total Cost</p>
               <p className="text-lg font-semibold text-blue-700">
-                ${costsSummary.totalCost.toFixed(2)}
+                {formatCurrency(costsSummary.totalCost)}
               </p>
             </div>
             <div className="bg-blue-50 p-3 rounded">
               <p className="text-xs text-gray-600">Avg per Book</p>
               <p className="text-lg font-semibold text-blue-700">
-                ${costsSummary.averageCostPerBook.toFixed(2)}
+                {formatCurrency(costsSummary.averageCostPerBook)}
               </p>
             </div>
             <div className="bg-blue-50 p-3 rounded">
               <p className="text-xs text-gray-600">Current Month</p>
               <p className="text-lg font-semibold text-blue-700">
-                ${costsSummary.currentMonthCost.toFixed(2)}
+                {formatCurrency(costsSummary.currentMonthCost)}
               </p>
             </div>
           </div>
         )}
-        {costsData && costsData.lines ? (
+        <ChartContainer isLoading={loading} error={errorMessage}>
           <LineChart
-            data={costsData.data}
-            xAxisKey={costsData.xAxisKey}
-            lines={costsData.lines}
+            data={costsData?.data || []}
+            xAxisKey={costsData?.xAxisKey || 'date'}
+            lines={costsData?.lines || []}
             height={300}
+            emptyMessage="No cost data available"
           />
-        ) : (
-          <div className="h-64 flex items-center justify-center text-gray-500">
-            No cost data available
-          </div>
-        )}
+        </ChartContainer>
       </div>
 
       {/* Revenue Trends */}
@@ -294,41 +289,38 @@ export function AdminAnalyticsCharts() {
             <div className="bg-green-50 p-3 rounded">
               <p className="text-xs text-gray-600">Total Revenue</p>
               <p className="text-lg font-semibold text-green-700">
-                ${revenueSummary.totalRevenue.toFixed(2)}
+                {formatCurrency(revenueSummary.totalRevenue)}
               </p>
             </div>
             <div className="bg-green-50 p-3 rounded">
               <p className="text-xs text-gray-600">MRR</p>
               <p className="text-lg font-semibold text-green-700">
-                ${revenueSummary.mrr.toFixed(2)}
+                {formatCurrency(revenueSummary.mrr)}
               </p>
             </div>
             <div className="bg-green-50 p-3 rounded">
               <p className="text-xs text-gray-600">Subscriptions</p>
               <p className="text-lg font-semibold text-green-700">
-                {revenueSummary.subscriptionCount}
+                {formatInteger(revenueSummary.subscriptionCount)}
               </p>
             </div>
             <div className="bg-green-50 p-3 rounded">
               <p className="text-xs text-gray-600">Growth Rate</p>
               <p className="text-lg font-semibold text-green-700">
-                {revenueSummary.growthRate.toFixed(1)}%
+                {formatPercentage(revenueSummary.growthRate)}
               </p>
             </div>
           </div>
         )}
-        {revenueData && revenueData.lines ? (
+        <ChartContainer isLoading={loading} error={errorMessage}>
           <LineChart
-            data={revenueData.data}
-            xAxisKey={revenueData.xAxisKey}
-            lines={revenueData.lines}
+            data={revenueData?.data || []}
+            xAxisKey={revenueData?.xAxisKey || 'date'}
+            lines={revenueData?.lines || []}
             height={300}
+            emptyMessage="No revenue data available"
           />
-        ) : (
-          <div className="h-64 flex items-center justify-center text-gray-500">
-            No revenue data available
-          </div>
-        )}
+        </ChartContainer>
       </div>
 
       {/* Grid for smaller charts */}
@@ -342,35 +334,32 @@ export function AdminAnalyticsCharts() {
               <div className="bg-red-50 p-2 rounded text-center">
                 <p className="text-xs text-gray-600">Bounce</p>
                 <p className="text-sm font-semibold text-red-700">
-                  {emailSummary.bounceRate.toFixed(1)}%
+                  {formatPercentage(emailSummary.bounceRate)}
                 </p>
               </div>
               <div className="bg-green-50 p-2 rounded text-center">
                 <p className="text-xs text-gray-600">Open</p>
                 <p className="text-sm font-semibold text-green-700">
-                  {emailSummary.openRate.toFixed(1)}%
+                  {formatPercentage(emailSummary.openRate)}
                 </p>
               </div>
               <div className="bg-blue-50 p-2 rounded text-center">
                 <p className="text-xs text-gray-600">Click</p>
                 <p className="text-sm font-semibold text-blue-700">
-                  {emailSummary.clickRate.toFixed(1)}%
+                  {formatPercentage(emailSummary.clickRate)}
                 </p>
               </div>
             </div>
           )}
-          {emailData && emailData.lines ? (
+          <ChartContainer isLoading={loading} error={errorMessage}>
             <LineChart
-              data={emailData.data}
-              xAxisKey={emailData.xAxisKey}
-              lines={emailData.lines}
+              data={emailData?.data || []}
+              xAxisKey={emailData?.xAxisKey || 'date'}
+              lines={emailData?.lines || []}
               height={250}
+              emptyMessage="No email data available"
             />
-          ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500">
-              No email data available
-            </div>
-          )}
+          </ChartContainer>
         </div>
 
         {/* User Growth */}
@@ -382,35 +371,32 @@ export function AdminAnalyticsCharts() {
               <div className="bg-purple-50 p-2 rounded text-center">
                 <p className="text-xs text-gray-600">Total</p>
                 <p className="text-sm font-semibold text-purple-700">
-                  {usersSummary.totalUsers}
+                  {formatInteger(usersSummary.totalUsers)}
                 </p>
               </div>
               <div className="bg-purple-50 p-2 rounded text-center">
                 <p className="text-xs text-gray-600">Active</p>
                 <p className="text-sm font-semibold text-purple-700">
-                  {usersSummary.activeUsers}
+                  {formatInteger(usersSummary.activeUsers)}
                 </p>
               </div>
               <div className="bg-purple-50 p-2 rounded text-center">
                 <p className="text-xs text-gray-600">Growth</p>
                 <p className="text-sm font-semibold text-purple-700">
-                  {usersSummary.growthRate.toFixed(1)}%
+                  {formatPercentage(usersSummary.growthRate)}
                 </p>
               </div>
             </div>
           )}
-          {usersData && usersData.bars ? (
+          <ChartContainer isLoading={loading} error={errorMessage}>
             <BarChart
-              data={usersData.data}
-              xAxisKey={usersData.xAxisKey}
-              bars={usersData.bars}
+              data={usersData?.data || []}
+              xAxisKey={usersData?.xAxisKey || 'date'}
+              bars={usersData?.bars || []}
               height={250}
+              emptyMessage="No user data available"
             />
-          ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500">
-              No user data available
-            </div>
-          )}
+          </ChartContainer>
         </div>
       </div>
     </div>
