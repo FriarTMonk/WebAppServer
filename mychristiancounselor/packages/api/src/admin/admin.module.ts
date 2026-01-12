@@ -15,6 +15,7 @@ import { EvaluationFrameworkService } from './services/evaluation-framework.serv
 import { QueueMonitoringService } from './services/queue-monitoring.service';
 import { CostAnalyticsService } from './services/cost-analytics.service';
 import { BulkReEvaluationService } from './services/bulk-re-evaluation.service';
+import { AnalyticsChartsService } from './services/analytics-charts.service';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { BulkReEvaluationService } from './services/bulk-re-evaluation.service';
     QueueMonitoringService,
     CostAnalyticsService,
     BulkReEvaluationService,
+    AnalyticsChartsService,
     MorphAuditMiddleware,
   ],
   controllers: [AdminController, AdminStatusController],

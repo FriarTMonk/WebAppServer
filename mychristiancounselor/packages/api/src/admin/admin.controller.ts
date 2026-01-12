@@ -17,6 +17,8 @@ import { EvaluationFrameworkService } from './services/evaluation-framework.serv
 import { QueueMonitoringService } from './services/queue-monitoring.service';
 import { CostAnalyticsService, CostAnalyticsQuery } from './services/cost-analytics.service';
 import { BulkReEvaluationService, BulkReEvaluationOptions } from './services/bulk-re-evaluation.service';
+import { AnalyticsChartsService } from './services/analytics-charts.service';
+import { AnalyticsChartQueryDto } from './dto/analytics-chart-query.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, IsPlatformAdminGuard)
@@ -33,6 +35,7 @@ export class AdminController {
     private queueMonitoring: QueueMonitoringService,
     private costAnalytics: CostAnalyticsService,
     private bulkReEvaluation: BulkReEvaluationService,
+    private analyticsCharts: AnalyticsChartsService,
   ) {}
 
   @Get('audit-log')
@@ -532,5 +535,65 @@ export class AdminController {
       triggeredBy: userId,
     };
     return this.bulkReEvaluation.triggerBulkReEvaluation(options);
+  }
+
+  /**
+   * Get evaluation costs chart data
+   * GET /admin/analytics-charts/evaluation-costs
+   *
+   * Returns AI evaluation cost trends and aggregates.
+   * Uses EvaluationCostLog model for actual cost tracking.
+   */
+  @Get('analytics-charts/evaluation-costs')
+  async getEvaluationCosts(@Query() query: AnalyticsChartQueryDto) {
+    return this.analyticsCharts.getEvaluationCosts(
+      query.startDate ? new Date(query.startDate) : undefined,
+      query.endDate ? new Date(query.endDate) : undefined,
+    );
+  }
+
+  /**
+   * Get email health chart data
+   * GET /admin/analytics-charts/email-health
+   *
+   * Returns email campaign performance metrics including bounce, open, and click rates.
+   * Uses EmailCampaign and EmailCampaignRecipient models.
+   */
+  @Get('analytics-charts/email-health')
+  async getEmailHealth(@Query() query: AnalyticsChartQueryDto) {
+    return this.analyticsCharts.getEmailHealth(
+      query.startDate ? new Date(query.startDate) : undefined,
+      query.endDate ? new Date(query.endDate) : undefined,
+    );
+  }
+
+  /**
+   * Get user growth chart data
+   * GET /admin/analytics-charts/user-growth
+   *
+   * Returns user registration trends, total users, and active user counts.
+   * Active users determined by RefreshToken activity (proxy for login tracking).
+   */
+  @Get('analytics-charts/user-growth')
+  async getUserGrowth(@Query() query: AnalyticsChartQueryDto) {
+    return this.analyticsCharts.getUserGrowth(
+      query.startDate ? new Date(query.startDate) : undefined,
+      query.endDate ? new Date(query.endDate) : undefined,
+    );
+  }
+
+  /**
+   * Get revenue chart data
+   * GET /admin/analytics-charts/revenue
+   *
+   * Returns subscription-based metrics.
+   * Note: Uses subscription counts as proxy since Subscription model lacks amount field.
+   */
+  @Get('analytics-charts/revenue')
+  async getRevenue(@Query() query: AnalyticsChartQueryDto) {
+    return this.analyticsCharts.getRevenue(
+      query.startDate ? new Date(query.startDate) : undefined,
+      query.endDate ? new Date(query.endDate) : undefined,
+    );
   }
 }
