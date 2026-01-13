@@ -5,6 +5,7 @@ import { ActionConfig } from './types';
 import { ACTION_TYPES } from './constants';
 import { JsonPreview } from './shared/JsonPreview';
 import { ActionFormFields } from './shared/ActionFormFields';
+import { getDefaultAction } from './defaults';
 
 interface Step4AddActionsProps {
   actions: ActionConfig[];
@@ -124,9 +125,11 @@ export function Step4AddActions({
                     </label>
                     <select
                       value={action.type}
-                      onChange={(e) =>
-                        handleUpdateAction(index, { ...action, type: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const newType = e.target.value;
+                        const defaultAction = getDefaultAction(newType);
+                        handleUpdateAction(index, defaultAction);
+                      }}
                       className="w-full px-3 py-2 border rounded-md"
                       required
                     >
