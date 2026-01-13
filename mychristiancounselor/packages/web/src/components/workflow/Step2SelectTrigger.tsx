@@ -1,12 +1,13 @@
 'use client';
 
 import { TRIGGER_TYPES } from './constants';
-import { TriggerConfig } from './types';
+import { TriggerConfig, ConditionConfig } from './types';
 import { JsonPreview } from './shared/JsonPreview';
+import { getDefaultConditions } from './defaults';
 
 interface Step2SelectTriggerProps {
   trigger: TriggerConfig | null;
-  onTriggerChange: (trigger: TriggerConfig, resetConditions?: boolean) => void;
+  onTriggerChange: (trigger: TriggerConfig, defaultConditions?: ConditionConfig) => void;
   error?: string;
 }
 
@@ -24,9 +25,14 @@ export function Step2SelectTrigger({
         description: triggerType.description,
       };
 
-      // Reset conditions if trigger changed
+      // Pass default conditions for this trigger
       const shouldReset = trigger?.event !== event;
-      onTriggerChange(newTrigger, shouldReset);
+      if (shouldReset) {
+        const defaultConditions = getDefaultConditions(event);
+        onTriggerChange(newTrigger, defaultConditions);
+      } else {
+        onTriggerChange(newTrigger);
+      }
     }
   };
 
