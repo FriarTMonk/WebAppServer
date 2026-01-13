@@ -51,10 +51,6 @@ export class WellnessChartsService {
     try {
       this.logger.log(`Fetching mood trend for user ${userId}`);
 
-      // NOTE: WellnessEntry model does not exist in schema yet
-      // Returning empty data until model is created
-      // TODO: Once WellnessEntry model is added, uncomment the query below
-      /*
       const where: any = { userId };
 
       if (startDate) {
@@ -73,20 +69,18 @@ export class WellnessChartsService {
         },
       });
 
-      const data = entries
+      const trend = entries
         .filter(e => e.moodRating !== null)
         .map(e => ({
           date: e.date.toISOString().split('T')[0],
-          value: e.moodRating!,
+          moodRating: e.moodRating!,
         }));
 
-      const average = data.length > 0
-        ? data.reduce((sum, d) => sum + d.value, 0) / data.length
+      const averageMood = trend.length > 0
+        ? trend.reduce((sum, d) => sum + d.moodRating, 0) / trend.length
         : 0;
-      */
 
-      // Return empty data structure
-      return { trend: [], averageMood: 0 };
+      return { trend, averageMood };
     } catch (error) {
       this.logger.error(`Failed to fetch mood trend for user ${userId}`, error.stack);
       throw new InternalServerErrorException('Failed to fetch mood trend data');
@@ -97,10 +91,6 @@ export class WellnessChartsService {
     try {
       this.logger.log(`Fetching sleep trend for user ${userId}`);
 
-      // NOTE: WellnessEntry model does not exist in schema yet
-      // Returning empty data until model is created
-      // TODO: Once WellnessEntry model is added, uncomment the query below
-      /*
       const where: any = { userId };
 
       if (startDate) {
@@ -119,20 +109,18 @@ export class WellnessChartsService {
         },
       });
 
-      const data = entries
+      const trend = entries
         .filter(e => e.sleepHours !== null)
         .map(e => ({
           date: e.date.toISOString().split('T')[0],
-          value: e.sleepHours!,
+          sleepHours: e.sleepHours!,
         }));
 
-      const averageHours = data.length > 0
-        ? data.reduce((sum, d) => sum + d.value, 0) / data.length
+      const averageSleep = trend.length > 0
+        ? trend.reduce((sum, d) => sum + d.sleepHours, 0) / trend.length
         : 0;
-      */
 
-      // Return empty data structure
-      return { trend: [], averageSleep: 0 };
+      return { trend, averageSleep };
     } catch (error) {
       this.logger.error(`Failed to fetch sleep trend for user ${userId}`, error.stack);
       throw new InternalServerErrorException('Failed to fetch sleep trend data');
@@ -143,10 +131,6 @@ export class WellnessChartsService {
     try {
       this.logger.log(`Fetching exercise trend for user ${userId}`);
 
-      // NOTE: WellnessEntry model does not exist in schema yet
-      // Returning empty data until model is created
-      // TODO: Once WellnessEntry model is added, uncomment the query below
-      /*
       const where: any = { userId };
 
       if (startDate) {
@@ -165,18 +149,16 @@ export class WellnessChartsService {
         },
       });
 
-      const data = entries
+      const trend = entries
         .filter(e => e.exerciseMinutes !== null)
         .map(e => ({
           date: e.date.toISOString().split('T')[0],
-          value: e.exerciseMinutes!,
+          exerciseMinutes: e.exerciseMinutes!,
         }));
 
-      const totalMinutes = data.reduce((sum, d) => sum + d.value, 0);
-      */
+      const totalExercise = trend.reduce((sum, d) => sum + d.exerciseMinutes, 0);
 
-      // Return empty data structure
-      return { trend: [], totalExercise: 0 };
+      return { trend, totalExercise };
     } catch (error) {
       this.logger.error(`Failed to fetch exercise trend for user ${userId}`, error.stack);
       throw new InternalServerErrorException('Failed to fetch exercise trend data');
@@ -197,10 +179,6 @@ export class WellnessChartsService {
         throw new BadRequestException('Cannot correlate a metric with itself');
       }
 
-      // NOTE: WellnessEntry model does not exist in schema yet
-      // Returning empty data until model is created
-      // TODO: Once WellnessEntry model is added, uncomment the query below
-      /*
       const where: any = { userId };
 
       if (startDate) {
@@ -239,13 +217,23 @@ export class WellnessChartsService {
         data.map(d => d.x),
         data.map(d => d.y),
       );
-      */
 
-      // Return empty data structure
-      return {
-        correlation: 0,
-        interpretation: 'No data available yet',
-      };
+      let interpretation = 'No data available';
+      if (data.length > 0) {
+        if (correlation > 0.7) {
+          interpretation = 'Strong positive correlation';
+        } else if (correlation > 0.3) {
+          interpretation = 'Moderate positive correlation';
+        } else if (correlation > -0.3) {
+          interpretation = 'Weak or no correlation';
+        } else if (correlation > -0.7) {
+          interpretation = 'Moderate negative correlation';
+        } else {
+          interpretation = 'Strong negative correlation';
+        }
+      }
+
+      return { correlation, interpretation };
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;

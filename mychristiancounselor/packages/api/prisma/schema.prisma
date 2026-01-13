@@ -83,6 +83,7 @@ model User {
   ticketLinksCreated        TicketLink[]             @relation("TicketLinksCreated")
   ticketMessagesAuthored    TicketMessage[]          @relation("TicketMessagesAuthored")
   readingLists              UserReadingList[]        @relation("ReadingLists")
+  wellnessEntries           WellnessEntry[]
 
   @@index([email])
   @@index([verificationToken])
@@ -128,7 +129,7 @@ model Organization {
   website                           String?
 
   // Book filtering (Phase 4)
-  customBookIds          String[] @default([])
+  customBookIds String[] @default([])
 
   // Relations
   assessments             Assessment[]
@@ -1288,6 +1289,24 @@ model WorkflowExecution {
   @@index([executedAt])
   @@index([success])
   @@index([ruleId, executedAt])
+}
+
+model WellnessEntry {
+  id              String   @id @default(uuid())
+  userId          String
+  date            DateTime
+  moodRating      Int?
+  sleepHours      Float?
+  exerciseMinutes Int?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@index([userId, date])
 }
 
 enum EmailCampaignStatus {
