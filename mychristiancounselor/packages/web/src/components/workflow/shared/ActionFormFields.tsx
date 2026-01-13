@@ -1,7 +1,6 @@
 'use client';
 
 import { ActionType, ActionConfig } from '../types';
-import { ACTION_TYPES } from '../constants';
 
 interface ActionFormFieldsProps {
   actionType: ActionType;

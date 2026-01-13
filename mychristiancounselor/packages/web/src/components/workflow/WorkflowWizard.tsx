@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { WorkflowWizardState, TriggerConfig, ConditionConfig, ActionConfig } from './types';
+import { WorkflowWizardState, TriggerConfig, ConditionConfig } from './types';
 import { Step1BasicInfo } from './Step1BasicInfo';
 import { Step2SelectTrigger } from './Step2SelectTrigger';
 import { Step3ConfigureConditions } from './Step3ConfigureConditions';
@@ -137,7 +137,7 @@ export function WorkflowWizard({ organizationId, onClose }: WorkflowWizardProps)
         isActive: state.isActive,
       };
 
-      const result = await createWorkflow(workflowData);
+      await createWorkflow(workflowData);
 
       clearDraft();
 
