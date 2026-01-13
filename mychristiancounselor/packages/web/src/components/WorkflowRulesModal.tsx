@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { WorkflowRule, WorkflowRuleActivity, workflowRulesApi, apiDelete } from '@/lib/api';
 import { EditWorkflowRuleModal } from './EditWorkflowRuleModal';
+import { WorkflowWizard } from './workflow';
 
 interface WorkflowRulesModalProps {
   memberName: string;
   memberId: string;
+  organizationId: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -20,6 +22,7 @@ interface GroupedRules {
 export default function WorkflowRulesModal({
   memberName,
   memberId,
+  organizationId,
   onClose,
   onSuccess,
 }: WorkflowRulesModalProps) {
@@ -34,6 +37,7 @@ export default function WorkflowRulesModal({
   const [showMoreActivity, setShowMoreActivity] = useState(false);
   const [togglingRule, setTogglingRule] = useState<string | null>(null);
   const [editingRule, setEditingRule] = useState<WorkflowRule | null>(null);
+  const [showWorkflowWizard, setShowWorkflowWizard] = useState(false);
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -382,13 +386,21 @@ export default function WorkflowRulesModal({
                 )}
               </div>
 
-              {/* Section 3: Create Custom Rule - TODO */}
-              <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> The ability to create and edit custom workflow
-                  rules will be added in a future update. For now, you can view existing
-                  rules and their activity.
-                </p>
+              {/* Section 3: Create Custom Workflow */}
+              <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-900">Create Custom Workflow</p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    Design automation rules for your organization
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowWorkflowWizard(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+                >
+                  New Workflow
+                </button>
               </div>
             </>
           )}
@@ -415,6 +427,20 @@ export default function WorkflowRulesModal({
           }}
           rule={editingRule}
         />
+      )}
+
+      {showWorkflowWizard && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <WorkflowWizard
+              organizationId={organizationId}
+              onClose={() => {
+                setShowWorkflowWizard(false);
+                fetchData(); // Refresh the rules list after creating a workflow
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

@@ -54,6 +54,7 @@ export default function CounselorDashboard() {
   const [workflowRulesModal, setWorkflowRulesModal] = useState<{
     memberName: string;
     memberId: string;
+    organizationId: string;
   } | null>(null);
   const [selectedSummary, setSelectedSummary] = useState<CounselorMemberSummary | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -416,6 +417,7 @@ export default function CounselorDashboard() {
         <WorkflowRulesModal
           memberName={workflowRulesModal.memberName}
           memberId={workflowRulesModal.memberId}
+          organizationId={workflowRulesModal.organizationId}
           onClose={() => setWorkflowRulesModal(null)}
           onSuccess={() => {
             refetch();
@@ -578,6 +580,7 @@ export default function CounselorDashboard() {
                   setWorkflowRulesModal({
                     memberName: `${memberSummary.member.firstName} ${memberSummary.member.lastName}`,
                     memberId: memberSummary.member.id,
+                    organizationId: memberSummary.assignment.organizationId,
                   });
                 }
                 setOpenDropdown(null);
