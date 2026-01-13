@@ -20,31 +20,25 @@ import { PrismaService } from '../../prisma/prisma.service';
  * }
  */
 
-export interface ChartDataPoint {
-  date: string;
-  value: number;
-}
-
+// Response interfaces matching frontend expectations
 export interface MoodTrendData {
-  data: ChartDataPoint[];
-  average: number;
+  trend: Array<{ date: string; moodRating: number }>;
+  averageMood: number;
 }
 
 export interface SleepTrendData {
-  data: ChartDataPoint[];
-  averageHours: number;
+  trend: Array<{ date: string; sleepHours: number }>;
+  averageSleep: number;
 }
 
 export interface ExerciseTrendData {
-  data: ChartDataPoint[];
-  totalMinutes: number;
+  trend: Array<{ date: string; exerciseMinutes: number }>;
+  totalExercise: number;
 }
 
 export interface CorrelationData {
-  metric1: string;
-  metric2: string;
   correlation: number;
-  data: Array<{ x: number; y: number }>;
+  interpretation: string;
 }
 
 @Injectable()
@@ -57,6 +51,10 @@ export class WellnessChartsService {
     try {
       this.logger.log(`Fetching mood trend for user ${userId}`);
 
+      // NOTE: WellnessEntry model does not exist in schema yet
+      // Returning empty data until model is created
+      // TODO: Once WellnessEntry model is added, uncomment the query below
+      /*
       const where: any = { userId };
 
       if (startDate) {
@@ -66,9 +64,6 @@ export class WellnessChartsService {
         where.date = { ...where.date, lte: endDate };
       }
 
-      // NOTE: WellnessEntry model does not exist in schema yet
-      // This will need to be updated once the model is created
-      // For now, this is a placeholder implementation
       const entries = await this.prisma.wellnessEntry.findMany({
         where,
         orderBy: { date: 'asc' },
@@ -88,8 +83,10 @@ export class WellnessChartsService {
       const average = data.length > 0
         ? data.reduce((sum, d) => sum + d.value, 0) / data.length
         : 0;
+      */
 
-      return { data, average };
+      // Return empty data structure
+      return { trend: [], averageMood: 0 };
     } catch (error) {
       this.logger.error(`Failed to fetch mood trend for user ${userId}`, error.stack);
       throw new InternalServerErrorException('Failed to fetch mood trend data');
@@ -100,6 +97,10 @@ export class WellnessChartsService {
     try {
       this.logger.log(`Fetching sleep trend for user ${userId}`);
 
+      // NOTE: WellnessEntry model does not exist in schema yet
+      // Returning empty data until model is created
+      // TODO: Once WellnessEntry model is added, uncomment the query below
+      /*
       const where: any = { userId };
 
       if (startDate) {
@@ -109,9 +110,6 @@ export class WellnessChartsService {
         where.date = { ...where.date, lte: endDate };
       }
 
-      // NOTE: WellnessEntry model does not exist in schema yet
-      // This will need to be updated once the model is created
-      // For now, this is a placeholder implementation
       const entries = await this.prisma.wellnessEntry.findMany({
         where,
         orderBy: { date: 'asc' },
@@ -131,8 +129,10 @@ export class WellnessChartsService {
       const averageHours = data.length > 0
         ? data.reduce((sum, d) => sum + d.value, 0) / data.length
         : 0;
+      */
 
-      return { data, averageHours };
+      // Return empty data structure
+      return { trend: [], averageSleep: 0 };
     } catch (error) {
       this.logger.error(`Failed to fetch sleep trend for user ${userId}`, error.stack);
       throw new InternalServerErrorException('Failed to fetch sleep trend data');
@@ -143,6 +143,10 @@ export class WellnessChartsService {
     try {
       this.logger.log(`Fetching exercise trend for user ${userId}`);
 
+      // NOTE: WellnessEntry model does not exist in schema yet
+      // Returning empty data until model is created
+      // TODO: Once WellnessEntry model is added, uncomment the query below
+      /*
       const where: any = { userId };
 
       if (startDate) {
@@ -152,9 +156,6 @@ export class WellnessChartsService {
         where.date = { ...where.date, lte: endDate };
       }
 
-      // NOTE: WellnessEntry model does not exist in schema yet
-      // This will need to be updated once the model is created
-      // For now, this is a placeholder implementation
       const entries = await this.prisma.wellnessEntry.findMany({
         where,
         orderBy: { date: 'asc' },
@@ -172,8 +173,10 @@ export class WellnessChartsService {
         }));
 
       const totalMinutes = data.reduce((sum, d) => sum + d.value, 0);
+      */
 
-      return { data, totalMinutes };
+      // Return empty data structure
+      return { trend: [], totalExercise: 0 };
     } catch (error) {
       this.logger.error(`Failed to fetch exercise trend for user ${userId}`, error.stack);
       throw new InternalServerErrorException('Failed to fetch exercise trend data');
@@ -194,6 +197,10 @@ export class WellnessChartsService {
         throw new BadRequestException('Cannot correlate a metric with itself');
       }
 
+      // NOTE: WellnessEntry model does not exist in schema yet
+      // Returning empty data until model is created
+      // TODO: Once WellnessEntry model is added, uncomment the query below
+      /*
       const where: any = { userId };
 
       if (startDate) {
@@ -203,9 +210,6 @@ export class WellnessChartsService {
         where.date = { ...where.date, lte: endDate };
       }
 
-      // NOTE: WellnessEntry model does not exist in schema yet
-      // This will need to be updated once the model is created
-      // For now, this is a placeholder implementation
       const entries = await this.prisma.wellnessEntry.findMany({
         where,
         select: {
@@ -235,12 +239,12 @@ export class WellnessChartsService {
         data.map(d => d.x),
         data.map(d => d.y),
       );
+      */
 
+      // Return empty data structure
       return {
-        metric1,
-        metric2,
-        correlation,
-        data,
+        correlation: 0,
+        interpretation: 'No data available yet',
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
