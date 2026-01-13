@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams, usePathname } from 'next/navigation';
 import { BackButton } from '@/components/BackButton';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { ChartContainer, LineChart } from '@/components/charts';
 import type { LineChartData } from '@/components/charts';
 import { apiFetch } from '@/lib/api';
+import { buildLinkWithTrail, parseTrail } from '@/lib/navigation-utils';
 
 interface MoodTrendData {
   trend: Array<{ date: string; moodRating: number }>;
@@ -27,7 +29,10 @@ interface CorrelationData {
   interpretation: string;
 }
 
-export default function WellnessChartsPage() {
+function WellnessChartsContent() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [moodData, setMoodData] = useState<MoodTrendData | null>(null);
   const [sleepData, setSleepData] = useState<SleepTrendData | null>(null);
   const [exerciseData, setExerciseData] = useState<ExerciseTrendData | null>(null);
@@ -35,6 +40,10 @@ export default function WellnessChartsPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Parse trail for navigation
+  const trailParam = searchParams.get('trail');
+  const trail = parseTrail(trailParam);
 
   // Date range: default last 30 days
   const [startDate, setStartDate] = useState(() => {
@@ -130,11 +139,19 @@ export default function WellnessChartsPage() {
 
       <Breadcrumbs />
 
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Wellness Tracking</h1>
-        <p className="text-gray-600 mt-2">
-          Visualize your wellness trends over time
-        </p>
+      <div className="mb-6 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Wellness Tracking</h1>
+          <p className="text-gray-600 mt-2">
+            Visualize your wellness trends over time
+          </p>
+        </div>
+        <a
+          href={buildLinkWithTrail('/resources/wellness/entry', pathname, trail)}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+        >
+          Add Wellness Entry
+        </a>
       </div>
 
       {/* Date Range Selector */}
@@ -241,5 +258,13 @@ export default function WellnessChartsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function WellnessChartsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center">Loading...</div>}>
+      <WellnessChartsContent />
+    </Suspense>
   );
 }

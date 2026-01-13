@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { BackButton } from '@/components/BackButton';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
@@ -16,7 +16,7 @@ interface WellnessEntry {
   notes: string | null;
 }
 
-export default function WellnessEntryPage() {
+function WellnessEntryContent() {
   const searchParams = useSearchParams();
   const dateParam = searchParams?.get('date');
 
@@ -288,5 +288,13 @@ export default function WellnessEntryPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function WellnessEntryPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-8">Loading...</div>}>
+      <WellnessEntryContent />
+    </Suspense>
   );
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Query, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Query, Param, UseGuards, NotFoundException } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { WellnessEntryService, CreateWellnessEntryDto, UpdateWellnessEntryDto } from '../services/wellness-entry.service';
@@ -30,7 +30,11 @@ export class WellnessEntryController {
     @CurrentUser('id') userId: string,
     @Param('date') date: string,
   ) {
-    return this.wellnessEntry.findByDate(userId, date);
+    const entry = await this.wellnessEntry.findByDate(userId, date);
+    if (!entry) {
+      throw new NotFoundException('No wellness entry found for this date');
+    }
+    return entry;
   }
 
   @Put(':date')
