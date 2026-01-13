@@ -9,6 +9,7 @@ import { buildLinkWithTrail, parseTrail } from '@/lib/navigation-utils';
 const RESOURCES_PATHS = {
   books: '/resources/books',
   readingList: '/resources/reading-list',
+  wellnessEntry: '/resources/wellness/entry',
   wellnessCharts: '/resources/wellness/charts',
   organizations: '/resources/organizations',
   recommended: '/resources/recommended',
@@ -68,6 +69,13 @@ function ResourcesMenuSectionContent({
         variant={!hasAccess ? 'disabled' : 'default'}
       >
         My Reading List
+      </MenuButton>
+      <MenuButton
+        onClick={handleNavigate(RESOURCES_PATHS.wellnessEntry)}
+        disabled={isPending || !hasAccess}
+        variant={!hasAccess ? 'disabled' : 'default'}
+      >
+        Wellness Entry
       </MenuButton>
       <MenuButton
         onClick={handleNavigate(RESOURCES_PATHS.wellnessCharts)}

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { ChartContainer, LineChart } from '@/components/charts';
 import type { LineChartData } from '@/components/charts';
 import { apiFetch } from '@/lib/api';
@@ -122,7 +124,18 @@ export default function WellnessChartsPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Wellness Tracking</h1>
+      <div className="mb-6">
+        <BackButton />
+      </div>
+
+      <Breadcrumbs />
+
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Wellness Tracking</h1>
+        <p className="text-gray-600 mt-2">
+          Visualize your wellness trends over time
+        </p>
+      </div>
 
       {/* Date Range Selector */}
       <div className="bg-white p-4 rounded-lg shadow mb-6 flex gap-4 items-end">
