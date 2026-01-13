@@ -6,7 +6,7 @@ import { JsonPreview } from './shared/JsonPreview';
 
 interface Step2SelectTriggerProps {
   trigger: TriggerConfig | null;
-  onTriggerChange: (trigger: TriggerConfig) => void;
+  onTriggerChange: (trigger: TriggerConfig, resetConditions?: boolean) => void;
   error?: string;
 }
 
@@ -18,11 +18,15 @@ export function Step2SelectTrigger({
   const handleSelectTrigger = (event: string) => {
     const triggerType = TRIGGER_TYPES.find(t => t.event === event);
     if (triggerType) {
-      onTriggerChange({
+      const newTrigger = {
         event: triggerType.event,
         name: triggerType.name,
         description: triggerType.description,
-      });
+      };
+
+      // Reset conditions if trigger changed
+      const shouldReset = trigger?.event !== event;
+      onTriggerChange(newTrigger, shouldReset);
     }
   };
 
