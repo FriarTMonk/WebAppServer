@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { WorkflowWizardState, TriggerConfig, ConditionConfig, ActionConfig } from './types';
 import { Step1BasicInfo } from './Step1BasicInfo';
@@ -11,6 +11,7 @@ import { Step5ReviewActivate } from './Step5ReviewActivate';
 import { validateStep1, validateStep2, validateStep3, validateStep4, ValidationErrors } from './validation';
 import { testWorkflow, createWorkflow } from './api';
 import { showToast } from '@/components/Toast';
+import { saveDraft, loadDraft, clearDraft } from './persistence';
 
 interface WorkflowWizardProps {
   organizationId: string;
@@ -33,6 +34,26 @@ export function WorkflowWizard({ organizationId, onClose }: WorkflowWizardProps)
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [testing, setTesting] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  // Load draft on mount
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft && draft.organizationId === organizationId) {
+      // Show confirmation dialog
+      if (confirm('Would you like to restore your previous workflow draft?')) {
+        setState(draft);
+      } else {
+        clearDraft();
+      }
+    }
+  }, [organizationId]);
+
+  // Save draft on state change
+  useEffect(() => {
+    if (state.name || state.trigger || state.actions.length > 0) {
+      saveDraft(state);
+    }
+  }, [state]);
 
   const handleNext = () => {
     // Validate current step
@@ -117,6 +138,8 @@ export function WorkflowWizard({ organizationId, onClose }: WorkflowWizardProps)
       };
 
       const result = await createWorkflow(workflowData);
+
+      clearDraft();
 
       showToast('Workflow created successfully!', 'success');
 
