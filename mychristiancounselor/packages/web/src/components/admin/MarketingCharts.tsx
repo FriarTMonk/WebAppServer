@@ -42,7 +42,7 @@ export function MarketingCharts() {
     // Define fetch functions inline
     const fetchCampaignPerformance = async () => {
       try {
-        const response = await apiFetch('/api/admin/marketing-charts/campaign-performance');
+        const response = await apiFetch('/admin/marketing-charts/campaign-performance');
         if (!response.ok) {
           throw new Error(`Failed to fetch campaigns: ${response.status}`);
         }
@@ -77,7 +77,7 @@ export function MarketingCharts() {
 
     const fetchLeadConversion = async () => {
       try {
-        const response = await apiFetch('/api/admin/marketing-charts/lead-conversion');
+        const response = await apiFetch('/admin/marketing-charts/lead-conversion');
         if (!response.ok) {
           throw new Error(`Failed to fetch lead conversion: ${response.status}`);
         }

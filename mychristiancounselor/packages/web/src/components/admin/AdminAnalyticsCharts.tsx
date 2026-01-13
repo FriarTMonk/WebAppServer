@@ -76,7 +76,7 @@ export function AdminAnalyticsCharts() {
     // Define all fetch functions inline to avoid dependency issues
     const fetchEvaluationCosts = async () => {
       try {
-        const response = await apiFetch('/api/admin/analytics-charts/evaluation-costs');
+        const response = await apiFetch('/admin/analytics-charts/evaluation-costs');
         if (!response.ok) {
           throw new Error(`Failed to fetch costs: ${response.status}`);
         }
@@ -109,7 +109,7 @@ export function AdminAnalyticsCharts() {
 
     const fetchEmailHealth = async () => {
       try {
-        const response = await apiFetch('/api/admin/analytics-charts/email-health');
+        const response = await apiFetch('/admin/analytics-charts/email-health');
         if (!response.ok) {
           throw new Error(`Failed to fetch email health: ${response.status}`);
         }
@@ -151,7 +151,7 @@ export function AdminAnalyticsCharts() {
 
     const fetchUserGrowth = async () => {
       try {
-        const response = await apiFetch('/api/admin/analytics-charts/user-growth');
+        const response = await apiFetch('/admin/analytics-charts/user-growth');
         if (!response.ok) {
           throw new Error(`Failed to fetch user growth: ${response.status}`);
         }
@@ -184,7 +184,7 @@ export function AdminAnalyticsCharts() {
 
     const fetchRevenue = async () => {
       try {
-        const response = await apiFetch('/api/admin/analytics-charts/revenue');
+        const response = await apiFetch('/admin/analytics-charts/revenue');
         if (!response.ok) {
           throw new Error(`Failed to fetch revenue: ${response.status}`);
         }

@@ -54,7 +54,7 @@ export function SalesCharts() {
     // Define fetch functions inline
     const fetchPipelineStages = async () => {
       try {
-        const response = await apiFetch('/api/admin/sales-charts/pipeline-stages');
+        const response = await apiFetch('/admin/sales-charts/pipeline-stages');
         if (!response.ok) {
           throw new Error(`Failed to fetch pipeline stages: ${response.status}`);
         }
@@ -87,7 +87,7 @@ export function SalesCharts() {
 
     const fetchProjections = async () => {
       try {
-        const response = await apiFetch('/api/admin/sales-charts/projections');
+        const response = await apiFetch('/admin/sales-charts/projections');
         if (!response.ok) {
           throw new Error(`Failed to fetch projections: ${response.status}`);
         }
