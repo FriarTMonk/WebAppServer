@@ -14,6 +14,8 @@ import { randomBytes } from 'crypto';
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
   private readonly ACTIVE_USER_DAYS_THRESHOLD = 7;
+  private metricsCache: { data: PlatformMetrics; timestamp: number } | null = null;
+  private readonly METRICS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor(
     private prisma: PrismaService,
@@ -114,6 +116,14 @@ export class AdminService {
    */
   async getPlatformMetrics(): Promise<PlatformMetrics> {
     try {
+      // Return cached data if fresh
+      if (this.metricsCache &&
+          Date.now() - this.metricsCache.timestamp < this.METRICS_CACHE_TTL) {
+        this.logger.debug('Returning cached platform metrics');
+        return this.metricsCache.data;
+      }
+
+      this.logger.debug('Fetching fresh platform metrics');
       const activeUserThresholdDate = new Date(
         Date.now() - this.ACTIVE_USER_DAYS_THRESHOLD * 24 * 60 * 60 * 1000
       );
@@ -214,7 +224,7 @@ export class AdminService {
         };
       }
 
-      return {
+      const metrics: PlatformMetrics = {
         activeUsers: {
           total: activeUsers,
           individual: individualUsers,
@@ -233,6 +243,14 @@ export class AdminService {
         marketingMetrics,
         timestamp: new Date(),
       };
+
+      // Cache the metrics
+      this.metricsCache = {
+        data: metrics,
+        timestamp: Date.now(),
+      };
+
+      return metrics;
     } catch (error) {
       this.logger.error('Failed to retrieve platform metrics', error);
       throw new InternalServerErrorException('Failed to retrieve platform metrics');
