@@ -8,6 +8,8 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { BrowserNotifications } from '@/components/notifications/BrowserNotifications';
 import { NotificationPermissionPrompt } from '@/components/notifications/NotificationPermissionPrompt';
 import { useQueueNotifications } from '@/hooks/useQueueNotifications';
+import { calculateQueueHealth } from '@/utils/queueHealth';
+import { QueueHealthWidget } from '@/components/queue/QueueHealthWidget';
 
 interface QueueJob {
   id: string;
@@ -37,6 +39,10 @@ export default function EvaluationQueuePage() {
   const [queuePaused, setQueuePaused] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [previousJobs, setPreviousJobs] = useState<QueueJob[]>([]);
+  const [healthMetrics, setHealthMetrics] = useState<any>(null);
+  const [failureHistory, setFailureHistory] = useState<Array<{ timestamp: string; rate: number }>>([]);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const permission = BrowserNotifications.getPermission();
@@ -105,8 +111,40 @@ export default function EvaluationQueuePage() {
 
       const data = await response.json();
       const jobsList = data.jobs || data;
-      setJobs(Array.isArray(jobsList) ? jobsList : []);
+      const jobs = Array.isArray(jobsList) ? jobsList : [];
+      setJobs(jobs);
       setQueuePaused(data.queuePaused || false);
+
+      // Calculate health metrics
+      const status = {
+        waiting: jobs.filter(j => j.state === 'waiting').length,
+        active: jobs.filter(j => j.state === 'active').length,
+        completed: jobs.filter(j => j.state === 'completed').length,
+        failed: jobs.filter(j => j.state === 'failed').length,
+        isPaused: data.queuePaused || false,
+      };
+
+      const recentCompleted = jobs.filter(j => j.state === 'completed');
+      const recentFailed = jobs.filter(j => j.state === 'failed');
+
+      const health = calculateQueueHealth(
+        status,
+        recentCompleted.map(j => ({ completedAt: new Date() })),
+        recentFailed.map(j => ({ failedAt: new Date() }))
+      );
+
+      setHealthMetrics(health);
+      setLastUpdateTime(new Date());
+
+      // Update failure history for sparkline
+      setFailureHistory(prev => {
+        const newHistory = [
+          ...prev,
+          { timestamp: new Date().toISOString(), rate: health.failureRate },
+        ];
+        // Keep only last 100 points
+        return newHistory.slice(-100);
+      });
     } catch (err) {
       console.error('Error fetching queue jobs:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -223,6 +261,15 @@ export default function EvaluationQueuePage() {
             setNotificationsEnabled(permission === 'granted');
           }}
         />
+
+        {healthMetrics && (
+          <QueueHealthWidget
+            health={healthMetrics}
+            failureHistory={failureHistory}
+            lastUpdateSeconds={Math.floor((Date.now() - lastUpdateTime.getTime()) / 1000)}
+            onSettingsClick={() => setShowSettings(true)}
+          />
+        )}
 
         {/* Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
