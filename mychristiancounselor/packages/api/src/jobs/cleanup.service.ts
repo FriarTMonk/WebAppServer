@@ -100,4 +100,35 @@ export class CleanupService {
       this.logger.error('Error during account cleanup job:', error);
     }
   }
+
+  /**
+   * Delete expired refresh tokens to prevent table bloat
+   *
+   * Performance Impact:
+   * - Prevents RefreshToken table from growing unbounded
+   * - Improves query performance on metrics endpoints that join with RefreshToken
+   * - Reduces storage overhead
+   *
+   * Runs daily at 1 AM to clean up tokens that have expired
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  async deleteExpiredRefreshTokens() {
+    this.logger.log('Running expired refresh token cleanup job...');
+
+    try {
+      const now = new Date();
+
+      const result = await this.prisma.refreshToken.deleteMany({
+        where: {
+          expiresAt: {
+            lt: now,
+          },
+        },
+      });
+
+      this.logger.log(`Deleted ${result.count} expired refresh tokens`);
+    } catch (error) {
+      this.logger.error('Error during refresh token cleanup job:', error);
+    }
+  }
 }
