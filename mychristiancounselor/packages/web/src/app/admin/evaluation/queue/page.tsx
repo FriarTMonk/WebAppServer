@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { AdminLayout } from '../../../../components/AdminLayout';
 import { BackButton } from '@/components/BackButton';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
+import { BrowserNotifications } from '@/components/notifications/BrowserNotifications';
+import { NotificationPermissionPrompt } from '@/components/notifications/NotificationPermissionPrompt';
+import { useQueueNotifications } from '@/hooks/useQueueNotifications';
 
 interface QueueJob {
   id: string;
@@ -32,6 +35,44 @@ export default function EvaluationQueuePage() {
   const [filter, setFilter] = useState<'all' | 'waiting' | 'active' | 'completed' | 'failed'>('all');
   const [selectedJob, setSelectedJob] = useState<QueueJob | null>(null);
   const [queuePaused, setQueuePaused] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [previousJobs, setPreviousJobs] = useState<QueueJob[]>([]);
+
+  useEffect(() => {
+    const permission = BrowserNotifications.getPermission();
+    setNotificationsEnabled(permission === 'granted');
+  }, []);
+
+  // Use notification hook for queue status changes
+  const queueStatus = {
+    waiting: jobs.filter(j => j.state === 'waiting').length,
+    active: jobs.filter(j => j.state === 'active').length,
+    completed: jobs.filter(j => j.state === 'completed').length,
+    failed: jobs.filter(j => j.state === 'failed').length,
+    delayed: jobs.filter(j => j.state === 'delayed').length,
+    isPaused: queuePaused,
+  };
+  useQueueNotifications(queueStatus, notificationsEnabled);
+
+  // Check for max retries
+  useEffect(() => {
+    if (!notificationsEnabled || jobs.length === 0) return;
+
+    jobs.forEach(job => {
+      if (job.state === 'failed' && job.attemptsMade >= 3) {
+        const previousJob = previousJobs.find(pj => pj.id === job.id);
+        // Only notify once when job first reaches max retries
+        if (!previousJob || previousJob.attemptsMade < 3) {
+          BrowserNotifications.sendQueueAlert('max_retries', {
+            jobId: job.id,
+            attempts: job.attemptsMade,
+          });
+        }
+      }
+    });
+
+    setPreviousJobs(jobs);
+  }, [jobs, notificationsEnabled, previousJobs]);
 
   useEffect(() => {
     fetchJobs();
@@ -176,6 +217,12 @@ export default function EvaluationQueuePage() {
             {queuePaused ? 'Resume Queue' : 'Pause Queue'}
           </button>
         </div>
+
+        <NotificationPermissionPrompt
+          onPermissionChange={(permission) => {
+            setNotificationsEnabled(permission === 'granted');
+          }}
+        />
 
         {/* Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
