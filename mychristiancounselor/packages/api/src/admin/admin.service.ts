@@ -128,9 +128,22 @@ export class AdminService {
         Date.now() - this.ACTIVE_USER_DAYS_THRESHOLD * 24 * 60 * 60 * 1000
       );
 
+      // Optimized active users query - query RefreshToken directly for better performance
+      const recentTokens = await this.prisma.refreshToken.findMany({
+        where: {
+          createdAt: {
+            gte: activeUserThresholdDate,
+          },
+        },
+        select: {
+          userId: true,
+        },
+        distinct: ['userId'],
+      });
+      const activeUsersCount = recentTokens.length;
+
       const [
         totalUsers,
-        activeUsers,
         individualUsers,
         orgUsers,
         totalOrgs,
@@ -140,20 +153,6 @@ export class AdminService {
       ] = await Promise.all([
         // Total users
         this.prisma.user.count({ where: { isActive: true } }),
-
-        // Active users (logged in within last N days)
-        this.prisma.user.count({
-          where: {
-            isActive: true,
-            refreshTokens: {
-              some: {
-                createdAt: {
-                  gte: activeUserThresholdDate,
-                },
-              },
-            },
-          },
-        }),
 
         // Individual account users
         this.prisma.user.count({
@@ -226,7 +225,7 @@ export class AdminService {
 
       const metrics: PlatformMetrics = {
         activeUsers: {
-          total: activeUsers,
+          total: activeUsersCount,
           individual: individualUsers,
           organization: orgUsers,
         },
