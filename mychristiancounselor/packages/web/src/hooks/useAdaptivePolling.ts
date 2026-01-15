@@ -17,12 +17,16 @@ export function useAdaptivePolling({
   inactiveInterval = baseInterval * 2,
   enabled = true,
 }: UseAdaptivePollingOptions) {
-  const [isTabActive, setIsTabActive] = useState(!document.hidden);
+  const [isTabActive, setIsTabActive] = useState(
+    typeof document !== 'undefined' ? !document.hidden : true
+  );
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastPollTimeRef = useRef<number>(Date.now());
 
   // Track tab visibility
   useEffect(() => {
+    if (typeof document === 'undefined') return;
+
     const handleVisibilityChange = () => {
       setIsTabActive(!document.hidden);
     };
