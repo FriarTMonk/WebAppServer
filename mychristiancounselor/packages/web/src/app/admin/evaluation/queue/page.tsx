@@ -11,6 +11,7 @@ import { useQueueNotifications } from '@/hooks/useQueueNotifications';
 import { useAdaptivePolling } from '@/hooks/useAdaptivePolling';
 import { calculateQueueHealth } from '@/utils/queueHealth';
 import { QueueHealthWidget } from '@/components/queue/QueueHealthWidget';
+import { AutoRefreshControls } from '@/components/queue/AutoRefreshControls';
 
 interface QueueJob {
   id: string;
@@ -44,6 +45,8 @@ export default function EvaluationQueuePage() {
   const [failureHistory, setFailureHistory] = useState<Array<{ timestamp: string; rate: number }>>([]);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const [showSettings, setShowSettings] = useState(false);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(5000);
 
   useEffect(() => {
     const permission = BrowserNotifications.getPermission();
@@ -151,10 +154,10 @@ export default function EvaluationQueuePage() {
   // Use adaptive polling hook instead of manual setInterval
   useAdaptivePolling({
     onPoll: fetchJobs,
-    baseInterval: 5000, // 5 seconds
-    activeInterval: 5000, // 5 seconds when tab is active
-    inactiveInterval: 15000, // 15 seconds when tab is inactive
-    enabled: true,
+    baseInterval: refreshInterval,
+    activeInterval: refreshInterval,
+    inactiveInterval: refreshInterval * 3, // 3x slower when tab is inactive
+    enabled: autoRefreshEnabled,
   });
 
   const handleRetryJob = async (jobId: string) => {
@@ -250,14 +253,22 @@ export default function EvaluationQueuePage() {
         <BackButton />
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-3xl font-bold text-gray-900">Evaluation Queue</h2>
-          <button
-            onClick={handleToggleQueue}
-            className={`px-4 py-2 rounded-lg text-white ${
-              queuePaused ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'
-            }`}
-          >
-            {queuePaused ? 'Resume Queue' : 'Pause Queue'}
-          </button>
+          <div className="flex gap-3">
+            <AutoRefreshControls
+              enabled={autoRefreshEnabled}
+              interval={refreshInterval}
+              onToggle={setAutoRefreshEnabled}
+              onIntervalChange={setRefreshInterval}
+            />
+            <button
+              onClick={handleToggleQueue}
+              className={`px-4 py-2 rounded-lg text-white ${
+                queuePaused ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'
+              }`}
+            >
+              {queuePaused ? 'Resume Queue' : 'Pause Queue'}
+            </button>
+          </div>
         </div>
 
         <NotificationPermissionPrompt
