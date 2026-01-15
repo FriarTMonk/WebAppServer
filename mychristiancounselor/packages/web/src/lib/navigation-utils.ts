@@ -270,20 +270,17 @@ export function buildTrail(
   // If current page should not be in trail (sub-page), use parent's trail
   let newTrail = [...currentTrail];
 
-  // Check if current and target are sibling pages
-  if (shouldAddToTrail(cleanCurrentPath) && shouldAddToTrail(cleanTargetPath) && areSiblings(cleanCurrentPath, cleanTargetPath)) {
-    // Navigating between siblings: replace last item instead of adding
-    // Example: /admin/organizations → /admin/users (replace, don't accumulate)
-    if (newTrail.length > 0 && newTrail[newTrail.length - 1] === cleanCurrentPath) {
-      // Current page is already the last item, do nothing (target will be added by navigation)
-      return newTrail.slice(0, -1); // Remove current page
-    }
-    // Current page not in trail yet, just continue without adding it
-    return newTrail;
+  // Check if target is a sibling of any page currently in the trail
+  if (shouldAddToTrail(cleanTargetPath)) {
+    // Remove all siblings of target from trail (keep only ancestors)
+    newTrail = newTrail.filter(path => !areSiblings(path, cleanTargetPath));
   }
 
   // Add current page to trail if it should be there (normal hierarchical navigation)
-  if (shouldAddToTrail(cleanCurrentPath) && !currentTrail.includes(cleanCurrentPath)) {
+  // But NOT if target is a sibling of current (prevents accumulation)
+  if (shouldAddToTrail(cleanCurrentPath) &&
+      !currentTrail.includes(cleanCurrentPath) &&
+      !areSiblings(cleanCurrentPath, cleanTargetPath)) {
     newTrail.push(cleanCurrentPath);
   }
 
