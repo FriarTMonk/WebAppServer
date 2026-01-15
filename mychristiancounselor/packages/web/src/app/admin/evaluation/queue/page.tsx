@@ -12,6 +12,8 @@ import { useAdaptivePolling } from '@/hooks/useAdaptivePolling';
 import { calculateQueueHealth } from '@/utils/queueHealth';
 import { QueueHealthWidget } from '@/components/queue/QueueHealthWidget';
 import { AutoRefreshControls } from '@/components/queue/AutoRefreshControls';
+import { NotificationSettings } from '@/components/notifications/NotificationSettings';
+import { SoundAlerts } from '@/utils/soundAlerts';
 
 interface QueueJob {
   id: string;
@@ -51,6 +53,12 @@ export default function EvaluationQueuePage() {
   useEffect(() => {
     const permission = BrowserNotifications.getPermission();
     setNotificationsEnabled(permission === 'granted');
+
+    // Initialize sound alerts from localStorage
+    const soundEnabled = localStorage.getItem('soundAlertsEnabled');
+    if (soundEnabled !== null) {
+      SoundAlerts.setEnabled(soundEnabled === 'true');
+    }
   }, []);
 
   // Use notification hook for queue status changes
@@ -485,6 +493,11 @@ export default function EvaluationQueuePage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Notification Settings Modal */}
+        {showSettings && (
+          <NotificationSettings onClose={() => setShowSettings(false)} />
         )}
       </div>
     </AdminLayout>
