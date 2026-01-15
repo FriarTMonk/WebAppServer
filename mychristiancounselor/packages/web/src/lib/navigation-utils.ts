@@ -251,10 +251,38 @@ export function buildTrail(
     return currentTrail.slice(0, index);
   }
 
+  // Helper: check if two paths are siblings (same parent, same depth)
+  const areSiblings = (path1: string, path2: string): boolean => {
+    const segments1 = path1.split('/').filter(s => s);
+    const segments2 = path2.split('/').filter(s => s);
+
+    // Must have same depth
+    if (segments1.length !== segments2.length) return false;
+
+    // Must have same parent (all segments except last must match)
+    for (let i = 0; i < segments1.length - 1; i++) {
+      if (segments1[i] !== segments2[i]) return false;
+    }
+
+    return true;
+  };
+
   // If current page should not be in trail (sub-page), use parent's trail
   let newTrail = [...currentTrail];
 
-  // Add current page to trail if it should be there
+  // Check if current and target are sibling pages
+  if (shouldAddToTrail(cleanCurrentPath) && shouldAddToTrail(cleanTargetPath) && areSiblings(cleanCurrentPath, cleanTargetPath)) {
+    // Navigating between siblings: replace last item instead of adding
+    // Example: /admin/organizations → /admin/users (replace, don't accumulate)
+    if (newTrail.length > 0 && newTrail[newTrail.length - 1] === cleanCurrentPath) {
+      // Current page is already the last item, do nothing (target will be added by navigation)
+      return newTrail.slice(0, -1); // Remove current page
+    }
+    // Current page not in trail yet, just continue without adding it
+    return newTrail;
+  }
+
+  // Add current page to trail if it should be there (normal hierarchical navigation)
   if (shouldAddToTrail(cleanCurrentPath) && !currentTrail.includes(cleanCurrentPath)) {
     newTrail.push(cleanCurrentPath);
   }
