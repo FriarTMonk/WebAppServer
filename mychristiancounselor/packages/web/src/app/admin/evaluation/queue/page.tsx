@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminLayout } from '../../../../components/AdminLayout';
 import { BackButton } from '@/components/BackButton';
@@ -8,6 +8,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { BrowserNotifications } from '@/components/notifications/BrowserNotifications';
 import { NotificationPermissionPrompt } from '@/components/notifications/NotificationPermissionPrompt';
 import { useQueueNotifications } from '@/hooks/useQueueNotifications';
+import { useAdaptivePolling } from '@/hooks/useAdaptivePolling';
 import { calculateQueueHealth } from '@/utils/queueHealth';
 import { QueueHealthWidget } from '@/components/queue/QueueHealthWidget';
 
@@ -80,13 +81,7 @@ export default function EvaluationQueuePage() {
     setPreviousJobs(jobs);
   }, [jobs, notificationsEnabled, previousJobs]);
 
-  useEffect(() => {
-    fetchJobs();
-    const interval = setInterval(fetchJobs, 5000); // Poll every 5 seconds
-    return () => clearInterval(interval);
-  }, [filter]);
-
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     try {
       setError(null);
 
@@ -151,7 +146,16 @@ export default function EvaluationQueuePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, router]);
+
+  // Use adaptive polling hook instead of manual setInterval
+  useAdaptivePolling({
+    onPoll: fetchJobs,
+    baseInterval: 5000, // 5 seconds
+    activeInterval: 5000, // 5 seconds when tab is active
+    inactiveInterval: 15000, // 15 seconds when tab is inactive
+    enabled: true,
+  });
 
   const handleRetryJob = async (jobId: string) => {
     try {
