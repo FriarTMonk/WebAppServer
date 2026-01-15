@@ -84,6 +84,29 @@ export default function EvaluationQueuePage() {
     setPreviousJobs(jobs);
   }, [jobs, notificationsEnabled, previousJobs]);
 
+  // Update tab title with queue stats
+  useEffect(() => {
+    const waiting = jobs.filter(j => j.state === 'waiting').length;
+    const active = jobs.filter(j => j.state === 'active').length;
+    const failed = jobs.filter(j => j.state === 'failed').length;
+
+    if (waiting === 0 && active === 0 && failed === 0) {
+      document.title = 'Queue Empty - Evaluation Queue';
+    } else {
+      const parts = [];
+      if (failed > 0) parts.push(`${failed} failed`);
+      if (active > 0) parts.push(`${active} active`);
+      if (waiting > 0) parts.push(`${waiting} waiting`);
+
+      document.title = `(${parts.join(', ')}) - Evaluation Queue`;
+    }
+
+    // Cleanup: restore original title on unmount
+    return () => {
+      document.title = 'Evaluation Queue';
+    };
+  }, [jobs]);
+
   const fetchJobs = useCallback(async () => {
     try {
       setError(null);
