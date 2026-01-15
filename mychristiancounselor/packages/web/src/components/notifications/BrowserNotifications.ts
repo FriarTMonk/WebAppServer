@@ -1,3 +1,5 @@
+import { SoundAlerts } from '@/utils/soundAlerts';
+
 export type NotificationPermissionStatus = 'granted' | 'denied' | 'default';
 
 export interface NotificationOptions {
@@ -65,30 +67,38 @@ export class BrowserNotifications {
         body: `${data.count}+ evaluations failed in the last 5 minutes`,
         tag: 'queue-failure-spike',
         requireInteraction: true,
+        soundType: 'critical' as const,
       },
       stalled: {
         title: 'Queue Alert: Processing Stalled',
         body: 'Queue has been idle for 15 minutes with pending jobs',
         tag: 'queue-stalled',
         requireInteraction: true,
+        soundType: 'critical' as const,
       },
       max_retries: {
         title: 'Evaluation Failed (Max Retries)',
         body: `Book evaluation ${data.jobId} failed after 3 attempts`,
         tag: 'queue-max-retries',
         requireInteraction: false,
+        soundType: 'failure' as const,
       },
       paused: {
         title: 'Queue Paused by Admin',
         body: `Evaluation queue paused by ${data.adminName || 'another admin'}`,
         tag: 'queue-paused',
         requireInteraction: false,
+        soundType: 'failure' as const,
       },
     };
 
     const config = notificationConfigs[type];
     if (!config) return;
 
+    // Play sound alert
+    SoundAlerts.playAlert(config.soundType);
+
+    // Send browser notification
     this.send({
       ...config,
       data: { type, ...data },
