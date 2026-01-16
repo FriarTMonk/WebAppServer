@@ -9,33 +9,52 @@ datasource db {
 }
 
 model User {
-  id                        String                   @id @default(uuid())
-  email                     String                   @unique
-  passwordHash              String
-  firstName                 String?
-  lastName                  String?
-  emailVerified             Boolean                  @default(false)
-  verificationToken         String?                  @unique
-  resetToken                String?                  @unique
-  resetTokenExpiry          DateTime?
-  isActive                  Boolean                  @default(true)
-  createdAt                 DateTime                 @default(now())
-  updatedAt                 DateTime                 @updatedAt
-  accountType               String                   @default("individual")
-  isPlatformAdmin           Boolean                  @default(false)
-  comparisonTranslations    String[]                 @default(["ESV", "NASB", "NIV", "NKJV"])
-  preferredTranslation      String?                  @default("KJV")
-  stripeCustomerId          String?                  @unique
-  subscriptionEnd           DateTime?
-  subscriptionStart         DateTime?
-  subscriptionStatus        String                   @default("none")
-  subscriptionTier          String?
-  birthDate                 DateTime?
-  completedTours            String[]                 @default([])
-  deletionRequestedAt       DateTime?
-  deletionRequestedBy       String?
-  isSalesRep                Boolean                  @default(false)
-  verificationTokenExpiry   DateTime?
+  id                      String    @id @default(uuid())
+  email                   String    @unique
+  passwordHash            String
+  firstName               String?
+  lastName                String?
+  emailVerified           Boolean   @default(false)
+  verificationToken       String?   @unique
+  resetToken              String?   @unique
+  resetTokenExpiry        DateTime?
+  isActive                Boolean   @default(true)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  accountType             String    @default("individual")
+  isPlatformAdmin         Boolean   @default(false)
+  comparisonTranslations  String[]  @default(["ESV", "NASB", "NIV", "NKJV"])
+  preferredTranslation    String?   @default("KJV")
+  stripeCustomerId        String?   @unique
+  subscriptionEnd         DateTime?
+  subscriptionStart       DateTime?
+  subscriptionStatus      String    @default("none")
+  subscriptionTier        String?
+  birthDate               DateTime?
+  completedTours          String[]  @default([])
+  deletionRequestedAt     DateTime?
+  deletionRequestedBy     String?
+  isSalesRep              Boolean   @default(false)
+  verificationTokenExpiry DateTime?
+
+  // Two-Factor Authentication
+  twoFactorEnabled     Boolean   @default(false)
+  twoFactorMethod      String?
+  twoFactorSecret      String?
+  twoFactorBackupCodes String[]  @default([])
+  twoFactorEnabledAt   DateTime?
+
+  // Email Verification (for email 2FA)
+  emailVerificationCode  String?
+  emailCodeExpiresAt     DateTime?
+  emailCodeUsedAt        DateTime?
+  emailCodeAttempts      Int       @default(0)
+  lastEmailCodeRequestAt DateTime?
+
+  // Security Banners
+  lastSecurityBannerShown   DateTime?
+  deploymentBannerDismissed Boolean   @default(false)
+
   adminActionsGiven         AdminAuditLog[]          @relation("AdminActions")
   adminActionsReceived      AdminAuditLog[]          @relation("ActionsReceived")
   assessmentsCreated        Assessment[]             @relation("AssessmentsCreated")
@@ -92,6 +111,7 @@ model User {
   @@index([isPlatformAdmin])
   @@index([isSalesRep])
   @@index([subscriptionStatus])
+  @@index([twoFactorEnabled, twoFactorMethod])
 }
 
 model RefreshToken {
