@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CampaignExecutionService } from '../campaign-execution.service';
+import { DistributedLockService } from '../../common/services/distributed-lock.service';
 
 @Injectable()
 export class CampaignSchedulerService {
@@ -10,6 +11,7 @@ export class CampaignSchedulerService {
   constructor(
     private prisma: PrismaService,
     private campaignExecutionService: CampaignExecutionService,
+    private lockService: DistributedLockService,
   ) {}
 
   @Cron('*/5 * * * *', {
@@ -17,6 +19,23 @@ export class CampaignSchedulerService {
     timeZone: 'America/New_York',
   })
   async executeScheduledCampaigns() {
+    const lockKey = 'campaign-scheduler-lock';
+    const lockTTL = 300; // 5 minutes
+
+    const result = await this.lockService.withLock(
+      lockKey,
+      lockTTL,
+      async () => {
+        return await this.executeScheduledCampaignsInternal();
+      },
+    );
+
+    if (result === null) {
+      this.logger.log('Another instance is executing campaigns, skipping');
+    }
+  }
+
+  private async executeScheduledCampaignsInternal() {
     this.logger.log('Checking for scheduled campaigns...');
 
     const now = new Date();

@@ -8,6 +8,8 @@ import { CampaignsController } from './campaigns.controller';
 import { CampaignsService } from './campaigns.service';
 import { CampaignExecutionService } from './campaign-execution.service';
 import { CampaignSchedulerService } from './services/campaign-scheduler.service';
+import { RedisService } from '../common/services/redis.service';
+import { DistributedLockService } from '../common/services/distributed-lock.service';
 import { ConversionController } from './conversion.controller';
 import { OptOutService } from './opt-out.service';
 import { IsSalesRepGuard } from './guards/is-sales-rep.guard';
@@ -20,6 +22,8 @@ import { IsSalesRepGuard } from './guards/is-sales-rep.guard';
     CampaignsService,
     CampaignExecutionService,
     CampaignSchedulerService,
+    RedisService,
+    DistributedLockService,
     OptOutService,
     IsSalesRepGuard,
   ],
