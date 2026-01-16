@@ -16,6 +16,7 @@ import { EmailService } from '../email/email.service';
 import { EmailRateLimitService } from '../email/email-rate-limit.service';
 import { SessionLimitService } from '../counsel/session-limit.service';
 import { SubscriptionService } from '../subscription/subscription.service';
+import { TwoFactorService } from './services/two-factor.service';
 
 @Injectable()
 export class AuthService {
@@ -33,6 +34,7 @@ export class AuthService {
     private emailRateLimit: EmailRateLimitService,
     private sessionLimitService: SessionLimitService,
     private subscriptionService: SubscriptionService,
+    private twoFactorService: TwoFactorService,
   ) {}
 
   // ===== PASSWORD METHODS =====
@@ -164,6 +166,21 @@ export class AuthService {
       throw new UnauthorizedException('Please verify your email before logging in. Check your inbox for the verification link.');
     }
 
+    // Check if 2FA is enabled
+    if (user.twoFactorEnabled) {
+      // Send verification code for email 2FA
+      if (user.twoFactorMethod === 'email') {
+        await this.twoFactorService.sendEmailCode(user.id);
+      }
+
+      // Return response indicating 2FA is required
+      return {
+        requires2FA: true,
+        userId: user.id,
+        method: user.twoFactorMethod,
+      } as any;
+    }
+
     // Check session limit and create login session
     const subscriptionStatus = await this.subscriptionService.getSubscriptionStatus(user.id);
     const limitStatus = await this.sessionLimitService.checkLimit(user.id, subscriptionStatus.hasHistoryAccess);
@@ -187,6 +204,58 @@ export class AuthService {
       user: this.sanitizeUser(user),
       tokens,
       sessionLimitStatus: limitStatus, // Return limit status for frontend to handle
+    };
+  }
+
+  async verifyLogin2FA(userId: string, code: string, method: 'email' | 'totp', ipAddress?: string, userAgent?: string): Promise<AuthResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (!user.twoFactorEnabled || user.twoFactorMethod !== method) {
+      throw new UnauthorizedException('2FA not configured for this method');
+    }
+
+    let verified = false;
+
+    if (method === 'email') {
+      verified = await this.twoFactorService.verifyEmailCode(userId, code);
+    } else if (method === 'totp') {
+      // TOTP verification to be implemented
+      throw new BadRequestException('TOTP verification not yet implemented');
+    }
+
+    if (!verified) {
+      throw new UnauthorizedException('Invalid verification code');
+    }
+
+    // 2FA verified, complete login flow
+    // Check session limit and create login session
+    const subscriptionStatus = await this.subscriptionService.getSubscriptionStatus(user.id);
+    const limitStatus = await this.sessionLimitService.checkLimit(user.id, subscriptionStatus.hasHistoryAccess);
+
+    // Create a Session record for this login
+    await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        title: 'Session',
+        status: 'active',
+        preferredTranslation: 'ASV',
+      },
+    });
+    this.logger.log(`User ${user.id} logged in with 2FA - created login session - session limit: ${limitStatus.used}/${limitStatus.limit}`);
+
+    // Generate tokens
+    const tokens = await this.generateTokens(this.sanitizeUser(user), ipAddress, userAgent);
+
+    return {
+      user: this.sanitizeUser(user),
+      tokens,
+      sessionLimitStatus: limitStatus,
     };
   }
 

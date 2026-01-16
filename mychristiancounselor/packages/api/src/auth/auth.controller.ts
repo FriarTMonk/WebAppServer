@@ -37,6 +37,24 @@ export class AuthController {
   }
 
   @Public()
+  @Post('login/verify-2fa')
+  @HttpCode(HttpStatus.OK)
+  async verifyLogin2FA(
+    @Body('userId') userId: string,
+    @Body('code') code: string,
+    @Body('method') method: 'email' | 'totp',
+    @Req() req: Request,
+  ): Promise<AuthResponse> {
+    return this.authService.verifyLogin2FA(
+      userId,
+      code,
+      method,
+      req.ip,
+      req.headers['user-agent']
+    );
+  }
+
+  @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(@Body() dto: RefreshTokenDto, @Req() req: Request): Promise<AuthTokens> {
