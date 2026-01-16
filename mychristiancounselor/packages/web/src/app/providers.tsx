@@ -5,6 +5,7 @@ import { TourProvider } from '../contexts/TourContext';
 import { TourRunner } from '../components/TourRunner';
 import { GlobalMorphBanner } from '../components/GlobalMorphBanner';
 import { GlobalInvitationBanner } from '../components/GlobalInvitationBanner';
+import { GlobalSecurityBanner } from '../components/GlobalSecurityBanner';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -12,6 +13,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <TourProvider>
         <GlobalMorphBanner />
         <GlobalInvitationBanner />
+        <GlobalSecurityBanner />
         <TourRunner />
         {children}
       </TourProvider>
