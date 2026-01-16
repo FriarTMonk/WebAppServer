@@ -9,6 +9,8 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
 import { CounselModule } from '../counsel/counsel.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
+import { TwoFactorService } from './services/two-factor.service';
+import { TwoFactorController } from './controllers/two-factor.controller';
 
 @Module({
   imports: [
@@ -28,8 +30,8 @@ import { SubscriptionModule } from '../subscription/subscription.module';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  controllers: [AuthController, TwoFactorController],
+  providers: [AuthService, JwtStrategy, TwoFactorService],
+  exports: [AuthService, TwoFactorService],
 })
 export class AuthModule {}
