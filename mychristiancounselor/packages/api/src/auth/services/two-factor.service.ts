@@ -365,4 +365,23 @@ support@mychristiancounselor.online
 
     return user;
   }
+
+  async dismissBanner(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { deploymentBannerDismissed: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        deploymentBannerDismissed: user.deploymentBannerDismissed ? undefined : true,
+        lastSecurityBannerShown: new Date(),
+      },
+    });
+  }
 }

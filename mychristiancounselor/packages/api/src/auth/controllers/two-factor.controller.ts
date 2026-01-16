@@ -93,6 +93,12 @@ export class TwoFactorController {
     return this.twoFactorService.get2FAStatus(req.user.id);
   }
 
+  @Post('dismiss-banner')
+  async dismissBanner(@Req() req: any) {
+    await this.twoFactorService.dismissBanner(req.user.id);
+    return { success: true };
+  }
+
   @Post('disable')
   async disable2FA(@Req() req: any) {
     await this.twoFactorService.disable2FA(req.user.id);
