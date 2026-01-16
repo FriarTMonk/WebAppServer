@@ -7,6 +7,7 @@ import { ProspectsService } from './prospects.service';
 import { CampaignsController } from './campaigns.controller';
 import { CampaignsService } from './campaigns.service';
 import { CampaignExecutionService } from './campaign-execution.service';
+import { CampaignSchedulerService } from './services/campaign-scheduler.service';
 import { ConversionController } from './conversion.controller';
 import { OptOutService } from './opt-out.service';
 import { IsSalesRepGuard } from './guards/is-sales-rep.guard';
@@ -18,6 +19,7 @@ import { IsSalesRepGuard } from './guards/is-sales-rep.guard';
     ProspectsService,
     CampaignsService,
     CampaignExecutionService,
+    CampaignSchedulerService,
     OptOutService,
     IsSalesRepGuard,
   ],
