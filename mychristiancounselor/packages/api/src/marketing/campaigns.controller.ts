@@ -34,6 +34,42 @@ export class CampaignsController {
     return this.campaignsService.getMetrics(req.user.id, req.user.isPlatformAdmin || false);
   }
 
+  @Get('scheduled')
+  async getScheduledCampaigns(@Req() req: any) {
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    const campaigns = await this.prisma.emailCampaign.findMany({
+      where: {
+        status: 'scheduled',
+        scheduledFor: {
+          gte: now,
+          lte: tomorrow,
+        },
+      },
+      orderBy: { scheduledFor: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        scheduledFor: true,
+        recipients: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    return {
+      campaigns: campaigns.map(c => ({
+        id: c.id,
+        name: c.name,
+        scheduledFor: c.scheduledFor,
+        recipientCount: c.recipients.length,
+      })),
+    };
+  }
+
   @Get()
   async listCampaigns(
     @Req() req: any,
