@@ -94,13 +94,17 @@
     "helmet": "^8.1.0",
     "joi": "^17.13.3",
     "postmark": "^4.0.5",
+    "qrcode": "^1.5.4",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0",
+    "speakeasy": "^2.0.0",
     "stripe": "^20.0.0",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.0.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/speakeasy": "^2.0.10",
     "jest-mock-extended": "^4.0.0",
     "ts-node": "^10.9.2"
   },
