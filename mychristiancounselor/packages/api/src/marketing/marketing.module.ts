@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
 import { ProspectsController } from './prospects.controller';
@@ -11,7 +12,7 @@ import { OptOutService } from './opt-out.service';
 import { IsSalesRepGuard } from './guards/is-sales-rep.guard';
 
 @Module({
-  imports: [PrismaModule, EmailModule],
+  imports: [PrismaModule, EmailModule, ScheduleModule.forRoot()],
   controllers: [ProspectsController, CampaignsController, ConversionController],
   providers: [
     ProspectsService,
