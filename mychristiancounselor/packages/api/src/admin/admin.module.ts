@@ -18,6 +18,8 @@ import { BulkReEvaluationService } from './services/bulk-re-evaluation.service';
 import { AnalyticsChartsService } from './services/analytics-charts.service';
 import { MarketingChartsService } from './services/marketing-charts.service';
 import { SalesChartsService } from './services/sales-charts.service';
+import { SecurityStatsService } from './services/security-stats.service';
+import { SecurityStatsController } from './controllers/security-stats.controller';
 
 @Module({
   imports: [
@@ -40,9 +42,10 @@ import { SalesChartsService } from './services/sales-charts.service';
     AnalyticsChartsService,
     MarketingChartsService,
     SalesChartsService,
+    SecurityStatsService,
     MorphAuditMiddleware,
   ],
-  controllers: [AdminController, AdminStatusController],
+  controllers: [AdminController, AdminStatusController, SecurityStatsController],
   exports: [AdminService],
 })
 export class AdminModule implements NestModule {
