@@ -251,20 +251,41 @@ export function buildTrail(
     return currentTrail.slice(0, index);
   }
 
-  // Helper: check if two paths are siblings (same parent, same depth)
+  // Helper: check if two paths are siblings
   const areSiblings = (path1: string, path2: string): boolean => {
     const segments1 = path1.split('/').filter(s => s);
     const segments2 = path2.split('/').filter(s => s);
 
-    // Must have same depth
-    if (segments1.length !== segments2.length) return false;
+    // Same exact path is not a sibling of itself
+    if (path1 === path2) return false;
 
-    // Must have same parent (all segments except last must match)
-    for (let i = 0; i < segments1.length - 1; i++) {
-      if (segments1[i] !== segments2[i]) return false;
+    // Special case: Analytics pages are all siblings regardless of depth
+    // Examples: /admin/analytics, /admin/marketing/analytics, /admin/sales/analytics
+    const endsWithAnalytics1 = segments1[segments1.length - 1] === 'analytics';
+    const endsWithAnalytics2 = segments2[segments2.length - 1] === 'analytics';
+    if (endsWithAnalytics1 && endsWithAnalytics2) {
+      // Both end with analytics, check if they share the same root
+      if (segments1[0] === segments2[0]) {
+        return true; // Same root + both analytics = siblings
+      }
     }
 
-    return true;
+    // Standard sibling check: same depth, exactly one segment differs
+    if (segments1.length !== segments2.length) return false;
+
+    // Count how many segments differ
+    let diffCount = 0;
+    for (let i = 0; i < segments1.length; i++) {
+      if (segments1[i] !== segments2[i]) {
+        diffCount++;
+      }
+    }
+
+    // Siblings if exactly one segment differs at any position
+    // Examples:
+    // - /admin/sales and /admin/users (differ at last segment)
+    // - /admin/sales/analytics and /admin/marketing/analytics (differ at middle segment)
+    return diffCount === 1;
   };
 
   // If current page should not be in trail (sub-page), use parent's trail
