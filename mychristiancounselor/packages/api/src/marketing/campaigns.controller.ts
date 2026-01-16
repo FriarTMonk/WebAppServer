@@ -70,6 +70,41 @@ export class CampaignsController {
     };
   }
 
+  @Get('execution-log')
+  async getExecutionLog(@Req() req: any, @Query('limit') limit?: string) {
+    const limitNum = limit ? parseInt(limit, 10) : 100;
+
+    const campaigns = await this.prisma.emailCampaign.findMany({
+      where: {
+        status: { in: ['sent', 'failed'] },
+        sentAt: { not: null },
+      },
+      orderBy: { sentAt: 'desc' },
+      take: limitNum,
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        sentAt: true,
+        recipients: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    return {
+      executions: campaigns.map(c => ({
+        id: c.id,
+        name: c.name,
+        status: c.status,
+        executedAt: c.sentAt,
+        recipientCount: c.recipients.length,
+      })),
+    };
+  }
+
   @Get()
   async listCampaigns(
     @Req() req: any,
