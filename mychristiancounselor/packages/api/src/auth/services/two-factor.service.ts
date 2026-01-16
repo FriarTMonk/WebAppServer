@@ -166,7 +166,173 @@ support@mychristiancounselor.online
     });
   }
 
-  // ========== TOTP 2FA (to be implemented in next tasks) ==========
+  // ========== TOTP 2FA ==========
+
+  async setupTOTP(userId: string): Promise<{
+    secret: string;
+    qrCode: string;
+    backupCodes: string[];
+  }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, firstName: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // Generate TOTP secret
+    const secret = speakeasy.generateSecret({
+      name: `MyChristianCounselor (${user.email})`,
+      issuer: 'MyChristianCounselor',
+      length: 32,
+    });
+
+    // Generate QR code as data URL
+    const qrCode = await QRCode.toDataURL(secret.otpauth_url);
+
+    // Generate backup codes (10 codes, 8 characters each)
+    const backupCodes = Array.from({ length: 10 }, () => generateRandomString(8));
+
+    // Encrypt and store secret and backup codes (not enabled yet)
+    const encryptedSecret = encrypt(secret.base32);
+    const encryptedBackupCodes = backupCodes.map((code) => encrypt(code));
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        twoFactorSecret: encryptedSecret,
+        twoFactorBackupCodes: encryptedBackupCodes,
+        // Don't enable yet - user must verify first
+      },
+    });
+
+    return {
+      secret: secret.base32,
+      qrCode,
+      backupCodes, // Return plain text for user to save
+    };
+  }
+
+  async verifyTOTPCode(userId: string, code: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { twoFactorSecret: true },
+    });
+
+    if (!user || !user.twoFactorSecret) {
+      throw new BadRequestException('TOTP not set up for this user');
+    }
+
+    // Decrypt secret
+    const secret = decrypt(user.twoFactorSecret);
+
+    // Verify code with 1-step window (allows for slight time drift)
+    const verified = speakeasy.totp.verify({
+      secret,
+      encoding: 'base32',
+      token: code,
+      window: 1,
+    });
+
+    return verified;
+  }
+
+  async completeTOTPSetup(userId: string, code: string): Promise<void> {
+    const verified = await this.verifyTOTPCode(userId, code);
+
+    if (!verified) {
+      throw new BadRequestException('Invalid TOTP code');
+    }
+
+    // Enable TOTP 2FA
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        twoFactorEnabled: true,
+        twoFactorMethod: 'totp',
+        twoFactorEnabledAt: new Date(),
+      },
+    });
+  }
+
+  async verifyBackupCode(userId: string, code: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { twoFactorBackupCodes: true },
+    });
+
+    if (!user || !user.twoFactorBackupCodes || user.twoFactorBackupCodes.length === 0) {
+      return false;
+    }
+
+    // Try to match against encrypted backup codes
+    for (let i = 0; i < user.twoFactorBackupCodes.length; i++) {
+      const encryptedCode = user.twoFactorBackupCodes[i];
+      try {
+        const decryptedCode = decrypt(encryptedCode);
+        if (decryptedCode === code) {
+          // Found matching code - remove it (one-time use)
+          const updatedCodes = user.twoFactorBackupCodes.filter((_, index) => index !== i);
+          await this.prisma.user.update({
+            where: { id: userId },
+            data: { twoFactorBackupCodes: updatedCodes },
+          });
+          return true;
+        }
+      } catch (error) {
+        // Decryption failed, skip this code
+        continue;
+      }
+    }
+
+    return false;
+  }
+
+  async regenerateBackupCodes(userId: string): Promise<string[]> {
+    // Generate new backup codes
+    const backupCodes = Array.from({ length: 10 }, () => generateRandomString(8));
+    const encryptedBackupCodes = backupCodes.map((code) => encrypt(code));
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { twoFactorBackupCodes: encryptedBackupCodes },
+    });
+
+    return backupCodes;
+  }
+
+  async upgrade2FAMethod(userId: string, newMethod: 'totp'): Promise<{
+    secret: string;
+    qrCode: string;
+    backupCodes: string[];
+  }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { twoFactorEnabled: true, twoFactorMethod: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    if (!user.twoFactorEnabled) {
+      throw new BadRequestException('2FA is not enabled. Use setup instead.');
+    }
+
+    if (user.twoFactorMethod === newMethod) {
+      throw new BadRequestException(`2FA is already set to ${newMethod}`);
+    }
+
+    // For now, only support upgrading from email to TOTP
+    if (user.twoFactorMethod !== 'email' || newMethod !== 'totp') {
+      throw new BadRequestException('Only upgrading from email to TOTP is supported');
+    }
+
+    // Set up TOTP (this will store the secret but not enable it yet)
+    return this.setupTOTP(userId);
+  }
 
   // ========== COMMON ==========
 

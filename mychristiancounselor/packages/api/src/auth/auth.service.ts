@@ -225,8 +225,13 @@ export class AuthService {
     if (method === 'email') {
       verified = await this.twoFactorService.verifyEmailCode(userId, code);
     } else if (method === 'totp') {
-      // TOTP verification to be implemented
-      throw new BadRequestException('TOTP verification not yet implemented');
+      // Try TOTP first, then backup code
+      verified = await this.twoFactorService.verifyTOTPCode(userId, code);
+
+      if (!verified) {
+        // Try backup code if TOTP failed
+        verified = await this.twoFactorService.verifyBackupCode(userId, code);
+      }
     }
 
     if (!verified) {
