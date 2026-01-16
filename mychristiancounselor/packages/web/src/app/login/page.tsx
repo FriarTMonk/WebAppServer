@@ -6,7 +6,9 @@ import Link from 'next/link';
 import { login, saveTokens, clearTokens } from '../../lib/auth';
 import { useAuth } from '../../contexts/AuthContext';
 import { SessionLimitModal } from '../../components/SessionLimitModal';
+import { TwoFactorCodeInput } from '../../components/security/TwoFactorCodeInput';
 import { SessionLimitStatus } from '@mychristiancounselor/shared';
+import { api } from '@/lib/api';
 
 function LoginForm() {
   const router = useRouter();
@@ -21,6 +23,13 @@ function LoginForm() {
     limitStatus: SessionLimitStatus | null;
   }>({ isOpen: false, limitStatus: null });
 
+  // 2FA state
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [twoFactorUserId, setTwoFactorUserId] = useState<string | null>(null);
+  const [twoFactorMethod, setTwoFactorMethod] = useState<'email' | 'totp' | null>(null);
+  const [verifying2FA, setVerifying2FA] = useState(false);
+  const [twoFactorError, setTwoFactorError] = useState<string | null>(null);
+
   // Clear any stale tokens when landing on login page
   // This ensures a clean login state
   useEffect(() => {
@@ -34,6 +43,17 @@ function LoginForm() {
 
     try {
       const response = await login({ email, password });
+
+      // Check if 2FA is required
+      if ((response as any).requires2FA) {
+        setRequires2FA(true);
+        setTwoFactorUserId((response as any).userId);
+        setTwoFactorMethod((response as any).method);
+        setLoading(false);
+        return;
+      }
+
+      // Normal login flow - save tokens and redirect
       saveTokens(response.tokens.accessToken, response.tokens.refreshToken);
       setUser(response.user);
 
@@ -55,6 +75,50 @@ function LoginForm() {
     }
   };
 
+  const handleVerify2FA = async (code: string) => {
+    if (!twoFactorUserId || !twoFactorMethod) {
+      setTwoFactorError('Invalid 2FA state');
+      return;
+    }
+
+    setVerifying2FA(true);
+    setTwoFactorError(null);
+
+    try {
+      const response = await api.post('/auth/login/verify-2fa', {
+        userId: twoFactorUserId,
+        code,
+        method: twoFactorMethod,
+      });
+
+      // Save tokens and set user
+      saveTokens(response.data.tokens.accessToken, response.data.tokens.refreshToken);
+      setUser(response.data.user);
+
+      // Check session limit
+      if (response.data.sessionLimitStatus && response.data.sessionLimitStatus.isLimited) {
+        setSessionLimitModal({ isOpen: true, limitStatus: response.data.sessionLimitStatus });
+        setVerifying2FA(false);
+        return;
+      }
+
+      // Redirect
+      const redirect = searchParams.get('redirect') || '/home';
+      router.push(redirect);
+    } catch (err: any) {
+      setTwoFactorError(err.response?.data?.message || 'Invalid verification code');
+    } finally {
+      setVerifying2FA(false);
+    }
+  };
+
+  const handleBackToLogin = () => {
+    setRequires2FA(false);
+    setTwoFactorUserId(null);
+    setTwoFactorMethod(null);
+    setTwoFactorError(null);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -67,16 +131,48 @@ function LoginForm() {
             />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
+            {requires2FA ? 'Two-Factor Authentication' : 'Sign in to your account'}
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
-              create a new account
-            </Link>
-          </p>
+          {!requires2FA && (
+            <p className="mt-2 text-center text-sm text-gray-600">
+              Or{' '}
+              <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
+                create a new account
+              </Link>
+            </p>
+          )}
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+
+        {requires2FA ? (
+          // 2FA Verification Screen
+          <div className="mt-8 space-y-6">
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                {twoFactorMethod === 'email'
+                  ? 'Enter the 6-digit code sent to your email'
+                  : 'Enter the 6-digit code from your authenticator app'}
+              </p>
+            </div>
+
+            <TwoFactorCodeInput
+              length={6}
+              onComplete={handleVerify2FA}
+              disabled={verifying2FA}
+              error={twoFactorError || undefined}
+            />
+
+            <div className="flex justify-center">
+              <button
+                onClick={handleBackToLogin}
+                className="text-sm text-blue-600 hover:text-blue-700"
+              >
+                Back to login
+              </button>
+            </div>
+          </div>
+        ) : (
+          // Normal Login Form
+          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="rounded-md bg-red-50 p-4">
               <p className="text-sm text-red-800">{error}</p>
@@ -135,6 +231,7 @@ function LoginForm() {
             </button>
           </div>
         </form>
+        )}
       </div>
 
       {/* Session Limit Modal */}
