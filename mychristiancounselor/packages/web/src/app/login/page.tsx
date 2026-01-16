@@ -29,6 +29,8 @@ function LoginForm() {
   const [twoFactorMethod, setTwoFactorMethod] = useState<'email' | 'totp' | null>(null);
   const [verifying2FA, setVerifying2FA] = useState(false);
   const [twoFactorError, setTwoFactorError] = useState<string | null>(null);
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  const [backupCode, setBackupCode] = useState('');
 
   // Clear any stale tokens when landing on login page
   // This ensures a clean login state
@@ -117,6 +119,18 @@ function LoginForm() {
     setTwoFactorUserId(null);
     setTwoFactorMethod(null);
     setTwoFactorError(null);
+    setUseBackupCode(false);
+    setBackupCode('');
+  };
+
+  const handleVerifyBackupCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!backupCode.trim()) {
+      setTwoFactorError('Please enter a backup code');
+      return;
+    }
+
+    await handleVerify2FA(backupCode.trim());
   };
 
   return (
@@ -146,29 +160,104 @@ function LoginForm() {
         {requires2FA ? (
           // 2FA Verification Screen
           <div className="mt-8 space-y-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600">
-                {twoFactorMethod === 'email'
-                  ? 'Enter the 6-digit code sent to your email'
-                  : 'Enter the 6-digit code from your authenticator app'}
-              </p>
-            </div>
+            {!useBackupCode ? (
+              <>
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">
+                    {twoFactorMethod === 'email'
+                      ? 'Enter the 6-digit code sent to your email'
+                      : 'Enter the 6-digit code from your authenticator app'}
+                  </p>
+                </div>
 
-            <TwoFactorCodeInput
-              length={6}
-              onComplete={handleVerify2FA}
-              disabled={verifying2FA}
-              error={twoFactorError || undefined}
-            />
+                <TwoFactorCodeInput
+                  length={6}
+                  onComplete={handleVerify2FA}
+                  disabled={verifying2FA}
+                  error={twoFactorError || undefined}
+                />
 
-            <div className="flex justify-center">
-              <button
-                onClick={handleBackToLogin}
-                className="text-sm text-blue-600 hover:text-blue-700"
-              >
-                Back to login
-              </button>
-            </div>
+                {twoFactorMethod === 'totp' && (
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => {
+                        setUseBackupCode(true);
+                        setTwoFactorError(null);
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      Use backup code instead
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex justify-center">
+                  <button
+                    onClick={handleBackToLogin}
+                    className="text-sm text-gray-600 hover:text-gray-700"
+                  >
+                    Back to login
+                  </button>
+                </div>
+              </>
+            ) : (
+              // Backup Code Input
+              <>
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">
+                    Enter one of your backup codes
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Each backup code can only be used once
+                  </p>
+                </div>
+
+                <form onSubmit={handleVerifyBackupCode} className="space-y-4">
+                  <div>
+                    <input
+                      type="text"
+                      value={backupCode}
+                      onChange={(e) => setBackupCode(e.target.value.toUpperCase())}
+                      placeholder="XXXXXXXX"
+                      maxLength={8}
+                      disabled={verifying2FA}
+                      className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-center font-mono text-lg tracking-wider disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    />
+                    {twoFactorError && (
+                      <p className="mt-2 text-sm text-red-600 text-center">{twoFactorError}</p>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={verifying2FA || !backupCode.trim()}
+                    className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {verifying2FA ? 'Verifying...' : 'Verify Backup Code'}
+                  </button>
+                </form>
+
+                <div className="flex justify-center space-x-4 text-sm">
+                  <button
+                    onClick={() => {
+                      setUseBackupCode(false);
+                      setBackupCode('');
+                      setTwoFactorError(null);
+                    }}
+                    className="text-blue-600 hover:text-blue-700"
+                  >
+                    Use authenticator code
+                  </button>
+                  <span className="text-gray-400">|</span>
+                  <button
+                    onClick={handleBackToLogin}
+                    className="text-gray-600 hover:text-gray-700"
+                  >
+                    Back to login
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           // Normal Login Form
