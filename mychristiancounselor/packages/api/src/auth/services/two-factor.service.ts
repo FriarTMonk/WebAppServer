@@ -76,6 +76,8 @@ export class TwoFactorService {
     await this.emailService.sendEmail({
       to: user.email,
       subject: 'Your MyChristianCounselor Verification Code',
+      emailType: '2fa_verification',
+      userId: userId,
       html: `
         <p>Hi ${user.firstName},</p>
         <p>Your verification code is: <strong style="font-size: 24px;">${code}</strong></p>
