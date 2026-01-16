@@ -3,6 +3,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { IsSalesRepGuard } from './guards/is-sales-rep.guard';
 import { CampaignsService } from './campaigns.service';
 import { CampaignExecutionService } from './campaign-execution.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 import { CampaignFiltersDto } from './dto/campaign-filters.dto';
@@ -15,6 +16,7 @@ export class CampaignsController {
   constructor(
     private campaignsService: CampaignsService,
     private campaignExecutionService: CampaignExecutionService,
+    private prisma: PrismaService,
   ) {}
 
   @Post()
@@ -106,6 +108,29 @@ export class CampaignsController {
     @Param('id') id: string,
   ) {
     return this.campaignsService.cancelCampaign(req.user.id, req.user.isPlatformAdmin || false, id);
+  }
+
+  @Post(':id/execute')
+  async executeCampaignNow(
+    @Req() req: any,
+    @Param('id') id: string,
+  ) {
+    // Verify permissions
+    await this.campaignsService.getCampaign(req.user.id, req.user.isPlatformAdmin || false, id);
+
+    // Update scheduledFor to now so cron picks it up
+    await this.prisma.emailCampaign.update({
+      where: { id },
+      data: {
+        scheduledFor: new Date(),
+        status: 'scheduled', // Ensure it's scheduled
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Campaign queued for immediate execution',
+    };
   }
 
   @Post('check-prospects')
