@@ -158,6 +158,16 @@ async function bootstrap() {
   });
   console.log('✅ NestJS application created');
 
+  // API Versioning - all routes prefixed with /v1/
+  app.setGlobalPrefix('v1', {
+    exclude: [
+      'health',           // /health (no version)
+      'health/ready',     // /health/ready
+      'health/live',      // /health/live
+    ],
+  });
+  console.log('✅ API versioning configured (v1 prefix)');
+
   // Use Winston logger
   console.log('📝 Initializing Winston logger...');
   const logger = app.get(WINSTON_MODULE_NEST_PROVIDER);
@@ -265,7 +275,7 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
+  SwaggerModule.setup('v1/api/docs', app, document, { // Swagger docs at /v1/api/docs
     customSiteTitle: 'MyChristianCounselor API Docs',
     customCss: '.swagger-ui .topbar { display: none }',
     swaggerOptions: {
@@ -295,7 +305,7 @@ async function bootstrap() {
   logger.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.log(`🔒 Security: Helmet headers enabled`);
   logger.log(`🌐 CORS: Enabled for ${corsOrigins.length} origin(s)`);
-  logger.log(`📚 Swagger docs: http://localhost:${port}/api/docs`);
+  logger.log(`📚 Swagger docs: http://localhost:${port}/v1/api/docs`);
   logger.log(`🏥 Health check: http://localhost:${port}/health/ready`);
   logger.log(`⏱️  Uptime: ${Math.floor(process.uptime())}s`);
   logger.log(`💾 Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB / ${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`);
