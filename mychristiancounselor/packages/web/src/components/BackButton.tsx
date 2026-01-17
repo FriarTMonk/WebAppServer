@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { parseTrail, getTrailForBack, getPageLabel } from '@/lib/navigation-utils';
 
 /**
@@ -10,6 +10,7 @@ import { parseTrail, getTrailForBack, getPageLabel } from '@/lib/navigation-util
 function BackButtonContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   // Parse trail from URL
   const trailParam = searchParams.get('trail');
@@ -18,16 +19,26 @@ function BackButtonContent() {
   // Get back navigation info
   const backInfo = getTrailForBack(trail);
 
-  // If no trail, hide back button (we're at /home or no history)
-  if (!backInfo) {
+  // If no trail and we're at /home, hide back button
+  if (!backInfo && pathname === '/home') {
     return null;
   }
 
-  const { path: backPath, trail: newTrail } = backInfo;
-  const label = getPageLabel(backPath);
+  // If no trail but not at /home, provide fallback to /home
+  let backPath: string;
+  let label: string;
+  let backUrl: string;
 
-  // Build URL with updated trail
-  const backUrl = newTrail ? `${backPath}?trail=${newTrail}` : backPath;
+  if (!backInfo) {
+    backPath = '/home';
+    label = 'Home';
+    backUrl = '/home';
+  } else {
+    const { path, trail: newTrail } = backInfo;
+    backPath = path;
+    label = getPageLabel(backPath);
+    backUrl = newTrail ? `${backPath}?trail=${newTrail}` : backPath;
+  }
 
   return (
     <button

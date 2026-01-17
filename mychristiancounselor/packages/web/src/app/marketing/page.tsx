@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 interface MarketingMetrics {
   prospects: {
@@ -27,6 +29,7 @@ interface MarketingMetrics {
 
 export default function MarketingDashboardPage() {
   const router = useRouter();
+
   const [metrics, setMetrics] = useState<MarketingMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +73,7 @@ export default function MarketingDashboardPage() {
         {/* Header */}
         <div className="mb-8">
           <BackButton />
+          <Breadcrumbs />
           <h1 className="text-3xl font-bold text-gray-900">Marketing Dashboard</h1>
           <p className="mt-2 text-sm text-gray-600">
             Manage prospects and email campaigns
@@ -98,9 +102,9 @@ export default function MarketingDashboardPage() {
           <>
             {/* Quick Actions */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div
-                onClick={() => router.push('/marketing/prospects')}
-                className="bg-white rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-md transition-shadow"
+              <Link
+                href="/marketing/prospects"
+                className="bg-white rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-md transition-shadow block"
               >
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-semibold text-gray-900">Prospects</h2>
@@ -126,14 +130,14 @@ export default function MarketingDashboardPage() {
                     <p className="text-2xl font-bold text-gray-600">{metrics.prospects.archived}</p>
                   </div>
                 </div>
-                <button className="mt-4 w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">
+                <span className="mt-4 w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium inline-block text-center">
                   Manage Prospects →
-                </button>
-              </div>
+                </span>
+              </Link>
 
-              <div
-                onClick={() => router.push('/marketing/campaigns')}
-                className="bg-white rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-md transition-shadow"
+              <Link
+                href="/marketing/campaigns"
+                className="bg-white rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-md transition-shadow block"
               >
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-semibold text-gray-900">Campaigns</h2>
@@ -159,10 +163,10 @@ export default function MarketingDashboardPage() {
                     <p className="text-2xl font-bold text-green-600">{metrics.campaigns.sent}</p>
                   </div>
                 </div>
-                <button className="mt-4 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+                <span className="mt-4 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium inline-block text-center">
                   View Campaigns →
-                </button>
-              </div>
+                </span>
+              </Link>
             </div>
 
             {/* Performance Metrics */}

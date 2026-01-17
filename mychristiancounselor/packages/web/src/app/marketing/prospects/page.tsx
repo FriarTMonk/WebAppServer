@@ -2,7 +2,12 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { BackButton } from '@/components/BackButton';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { ProspectForm } from '../../../components/marketing/ProspectForm';
+
+// Force dynamic rendering for this page since BackButton/Breadcrumbs use searchParams
+export const dynamic = 'force-dynamic';
 
 interface ProspectContact {
   id: string;
@@ -180,15 +185,8 @@ export default function ProspectsListPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <button
-            onClick={() => router.push('/marketing')}
-            className="text-blue-600 hover:text-blue-800 mb-4 flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Marketing
-          </button>
+          <BackButton />
+          <Breadcrumbs />
           <h1 className="text-3xl font-bold text-gray-900">Prospects</h1>
           <p className="mt-2 text-sm text-gray-600">
             Manage potential customer organizations and their contacts

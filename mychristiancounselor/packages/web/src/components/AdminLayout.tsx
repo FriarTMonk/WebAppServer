@@ -154,12 +154,20 @@ function AdminLayoutContent({ children }: AdminLayoutProps) {
                 </ul>
               </li>
 
-              {/* Technical Section */}
+              {/* Security Section */}
               <li>
                 <div className="px-4 py-2 text-xs font-semibold text-blue-300 uppercase tracking-wider">
-                  Technical
+                  Security
                 </div>
                 <ul className="mt-2 space-y-1">
+                  <li>
+                    <Link
+                      href={buildLinkWithTrail('/admin/security/2fa', pathname, trail)}
+                      className={`block px-4 py-2 rounded transition-colors ${isActive('/admin/security/2fa')}`}
+                    >
+                      2FA Dashboard
+                    </Link>
+                  </li>
                   <li>
                     <Link
                       href={buildLinkWithTrail('/admin/audit-log', pathname, trail)}

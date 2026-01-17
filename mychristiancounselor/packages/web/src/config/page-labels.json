@@ -39,6 +39,7 @@
   "/org-admin/resources/organizations": "Organization Resources",
   "/org-admin/settings/book-access": "Book Access Settings",
   "/settings/subscription": "Subscription Settings",
+  "/settings/security": "Security Settings",
   "/support/tickets": "Support Tickets",
   "/support/new": "New Support Ticket",
   "/sales/new": "New Sale",
