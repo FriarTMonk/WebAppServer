@@ -1,7 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { WinstonModule } from 'nest-winston';
 import { BullModule } from '@nestjs/bullmq';
@@ -29,6 +29,7 @@ import { ResourcesModule } from '../resources/resources.module';
 import { WorkflowModule } from '../workflow/workflow.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CsrfGuard } from '../common/guards/csrf.guard';
+import { ApiVersionHeaderInterceptor } from '../common/interceptors/api-version-header.interceptor';
 import { configValidationSchema } from '../config/config.validation';
 import { winstonConfig } from '../common/logging/winston.config';
 import { getBullModuleOptions } from '../config/queue.config';
@@ -102,6 +103,10 @@ import { EventsModule } from '../events/events.module';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard, // Rate limiting (prevent abuse)
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ApiVersionHeaderInterceptor, // API version headers (X-API-Version)
     },
   ],
 })
