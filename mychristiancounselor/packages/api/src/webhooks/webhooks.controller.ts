@@ -1,4 +1,5 @@
 import { Controller, Post, Body, HttpCode, Logger } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../auth/decorators/public.decorator';
 import { WebhooksService } from './webhooks.service';
 import { PostmarkInboundDto } from './dto/postmark-inbound.dto';
@@ -12,6 +13,7 @@ export class WebhooksController {
   @Public()
   @Post('postmark/inbound')
   @HttpCode(200)
+  @Throttle({ webhook: { limit: 50, ttl: 60000 } }) // Use webhook rate limit profile
   async handlePostmarkInbound(@Body() emailData: PostmarkInboundDto) {
     this.logger.log(`Received Postmark inbound webhook from ${emailData.FromFull.Email}`);
 

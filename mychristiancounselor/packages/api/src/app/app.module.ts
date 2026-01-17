@@ -47,18 +47,22 @@ import { EventsModule } from '../events/events.module';
     ScheduleModule.forRoot(),
     // BullMQ job queue
     BullModule.forRoot(getBullModuleOptions()),
-    // Rate limiting: Temporarily high limits for development
-    // TODO: Restore to 100/10 for production deployment
+    // Rate limiting with production limits
     ThrottlerModule.forRoot([
       {
         name: 'default',
         ttl: 60000, // 60 seconds
-        limit: 1000, // High limit for dev to prevent throttle during hot-reload
+        limit: 100, // Production limit: 100 requests per minute per IP
       },
       {
-        name: 'strict', // Stricter limit for auth endpoints
-        ttl: 60000,
-        limit: 100, // High limit for dev
+        name: 'strict',
+        ttl: 60000, // 60 seconds
+        limit: 20, // Auth endpoints: 20 requests per minute per IP
+      },
+      {
+        name: 'webhook',
+        ttl: 60000, // 60 seconds
+        limit: 50, // Webhooks: 50 requests per minute per IP
       },
     ]),
     // Winston logging
@@ -95,11 +99,10 @@ import { EventsModule } from '../events/events.module';
       provide: APP_GUARD,
       useClass: JwtAuthGuard, // Authentication (JWT validation)
     },
-    // Temporarily disabled for development - re-enable for production!
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: ThrottlerGuard, // Rate limiting (prevent abuse)
-    // },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard, // Rate limiting (prevent abuse)
+    },
   ],
 })
 export class AppModule implements NestModule {
