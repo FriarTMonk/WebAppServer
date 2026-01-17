@@ -71,6 +71,33 @@ Should NOT see: `Error: getaddrinfo ENOTFOUND redis`
 - No theological scores generated
 - Job queue operations fail silently
 
+## Redis Eviction Policy Change (2026-01-17)
+
+**Status:** FIXED - Changed to noeviction
+
+**Deployment:**
+```bash
+# Deploy updated Redis configuration
+aws lightsail create-container-service-deployment \
+  --service-name api \
+  --cli-input-json file://lightsail-api-deployment.json \
+  --region us-east-2
+```
+
+**Verification:**
+After deployment completes (~5-10 minutes), connect to API container and verify:
+```bash
+# Get container logs
+aws lightsail get-container-log \
+  --service-name api \
+  --container-name redis \
+  --region us-east-2 | grep "maxmemory-policy"
+```
+
+Should show: `maxmemory-policy: noeviction`
+
+**Monitoring:** See `docs/operations/redis-configuration.md` for ongoing monitoring procedures.
+
 ## Authentication & User Types
 
 **CRITICAL: There are NO anonymous users in this system.**
