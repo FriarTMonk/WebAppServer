@@ -98,6 +98,71 @@ Should show: `maxmemory-policy: noeviction`
 
 **Monitoring:** See `docs/operations/redis-configuration.md` for ongoing monitoring procedures.
 
+## API Versioning (2026-01-17)
+
+**Current Version:** v1
+
+All API endpoints (except health checks) are prefixed with `/v1/`. This enables backward compatibility when v2 is eventually needed.
+
+### How It Works
+
+**Backend (NestJS):**
+- Global prefix configured in `packages/api/src/main.ts`
+- Health checks (`/health`, `/health/ready`, `/health/live`) remain unversioned for Lightsail compatibility
+- All other routes automatically get `/v1/` prefix
+- Swagger docs moved to `/v1/api/docs`
+
+**Frontend (Next.js):**
+- API client (`packages/web/src/lib/api.ts`) automatically appends `/v1` to base URL
+- All frontend code continues to work without modification
+
+### Endpoint Examples
+
+Before versioning:
+- `https://api.mychristiancounselor.online/auth/login`
+- `https://api.mychristiancounselor.online/books`
+
+After versioning:
+- `https://api.mychristiancounselor.online/v1/auth/login`
+- `https://api.mychristiancounselor.online/v1/books`
+
+Unversioned (health checks):
+- `https://api.mychristiancounselor.online/health`
+- `https://api.mychristiancounselor.online/health/ready`
+
+### Version Headers
+
+All API responses include `X-API-Version: 1` header for client visibility.
+
+### Testing
+
+**Local development:**
+```bash
+# API should respond at /v1/api
+curl http://localhost:3697/v1/api
+
+# Health checks remain unversioned
+curl http://localhost:3697/health
+```
+
+**Production:**
+```bash
+# Verify versioned endpoint
+curl https://api.mychristiancounselor.online/v1/api
+
+# Verify version header
+curl -I https://api.mychristiancounselor.online/v1/api | grep X-API-Version
+```
+
+### Future v2 Implementation
+
+When breaking changes require v2, see `docs/api-versioning-strategy.md` for the full process. Summary:
+1. Create v2 controllers alongside v1 (don't modify v1 code)
+2. Use `@ApiVersion('2')` decorator on v2 controllers
+3. Deploy with both versions active
+4. Migrate clients gradually
+5. Deprecate v1 with 6-month sunset timeline
+
 ## Authentication & User Types
 
 **CRITICAL: There are NO anonymous users in this system.**
