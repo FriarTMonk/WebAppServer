@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { BackButton } from '@/components/BackButton';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
@@ -15,7 +14,6 @@ interface TwoFactorStatus {
 }
 
 export default function SecuritySettingsPage() {
-  const router = useRouter();
   const [status, setStatus] = useState<TwoFactorStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -180,12 +178,7 @@ export default function SecuritySettingsPage() {
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-2xl mx-auto px-4">
           <BackButton />
-          <Breadcrumbs
-            items={[
-              { label: 'Settings', href: '/settings' },
-              { label: 'Security', href: '/settings/security' },
-            ]}
-          />
+          <Breadcrumbs />
           <div className="mt-8 text-center">
             <p className="text-gray-600">Loading security settings...</p>
           </div>
@@ -198,12 +191,7 @@ export default function SecuritySettingsPage() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
         <BackButton />
-        <Breadcrumbs
-          items={[
-            { label: 'Settings', href: '/settings' },
-            { label: 'Security', href: '/settings/security' },
-          ]}
-        />
+        <Breadcrumbs />
 
         <div className="mt-8">
           <h1 className="text-3xl font-bold text-gray-900">Security Settings</h1>

@@ -96,16 +96,10 @@ export default function Admin2FAPage() {
     <AdminLayout>
       <div className="p-6">
         <div className="mb-6">
-          <BackButton href="/admin" label="Back to Admin Dashboard" />
+          <BackButton />
         </div>
 
-        <Breadcrumbs
-          items={[
-            { label: 'Admin', href: '/admin' },
-            { label: 'Security' },
-            { label: '2FA Dashboard' },
-          ]}
-        />
+        <Breadcrumbs />
 
         <h1 className="text-3xl font-bold mb-6">Two-Factor Authentication Dashboard</h1>
 

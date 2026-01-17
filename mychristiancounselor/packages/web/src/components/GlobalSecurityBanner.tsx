@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SecurityBanner } from './SecurityBanner';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * GlobalSecurityBanner component that displays security encouragement banners
@@ -13,13 +14,19 @@ import { api } from '@/lib/api';
  */
 export function GlobalSecurityBanner() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const [showBanner, setShowBanner] = useState(false);
   const [bannerType, setBannerType] = useState<'deployment' | '3-day' | '9-day'>('deployment');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    checkSecurityBanner();
-  }, []);
+    // Only check banner status for authenticated users
+    if (isAuthenticated) {
+      checkSecurityBanner();
+    } else {
+      setIsLoading(false);
+    }
+  }, [isAuthenticated]);
 
   const checkSecurityBanner = async () => {
     try {
