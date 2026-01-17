@@ -27,7 +27,7 @@ export default function AssignCounselorModal({
 
   async function fetchData() {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const token = localStorage.getItem('accessToken');
 
       // Fetch organization members
@@ -88,7 +88,7 @@ export default function AssignCounselorModal({
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const token = localStorage.getItem('accessToken');
 
       const dto: CreateCounselorAssignmentDto = {

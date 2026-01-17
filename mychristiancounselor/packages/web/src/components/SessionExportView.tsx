@@ -5,7 +5,7 @@ import { Message, SessionNote, User } from '@mychristiancounselor/shared';
 import { getAccessToken } from '../lib/auth';
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
 
 // Simplified structure from export endpoint (not the full Message.scriptureReferences structure)
 interface ScriptureReference {

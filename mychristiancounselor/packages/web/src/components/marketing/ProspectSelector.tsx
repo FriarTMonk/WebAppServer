@@ -47,7 +47,7 @@ export function ProspectSelector({ selectedContactIds, onChange }: ProspectSelec
   const fetchProspects = async () => {
     try {
       setLoading(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/marketing/prospects?includeArchived=false&includeConverted=false`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,

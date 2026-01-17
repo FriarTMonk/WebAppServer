@@ -29,7 +29,7 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
     try {
       setLoading(true);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/marketing/campaigns/${id}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
@@ -131,7 +131,7 @@ export default function EditCampaignPage({ params }: { params: Promise<{ id: str
       }
 
       // Update the campaign
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/marketing/campaigns/${id}`, {
         method: 'PATCH',
         headers: {

@@ -83,7 +83,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/marketing/campaigns/${id}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
@@ -187,7 +187,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/marketing/campaigns/${campaign.id}/send`, {
         method: 'POST',
         headers: {
@@ -217,7 +217,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/marketing/campaigns/${campaign.id}/cancel`, {
         method: 'POST',
         headers: {

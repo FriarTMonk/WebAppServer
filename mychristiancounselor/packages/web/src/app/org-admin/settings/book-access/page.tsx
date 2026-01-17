@@ -56,7 +56,7 @@ export default function BookAccessSettingsPage() {
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
 
       // Get organization info
       const orgResponse = await fetch(`${apiUrl}/org-admin/organization`, {
@@ -104,7 +104,7 @@ export default function BookAccessSettingsPage() {
 
   const fetchCustomBooks = async (bookIds: string[]) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/resources/books/by-ids`, {
         method: 'POST',
         headers: {
@@ -125,7 +125,7 @@ export default function BookAccessSettingsPage() {
 
   const fetchBookCount = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/resources/books/count?matureThreshold=${matureContentThreshold}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
@@ -145,7 +145,7 @@ export default function BookAccessSettingsPage() {
     if (!searchQuery.trim()) return;
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/resources/books/search?q=${encodeURIComponent(searchQuery)}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
@@ -193,7 +193,7 @@ export default function BookAccessSettingsPage() {
       setSaving(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/org-admin/books/settings`, {
         method: 'PUT',
         headers: {

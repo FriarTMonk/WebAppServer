@@ -34,7 +34,7 @@ export default function EvaluationFrameworksPage() {
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/admin/evaluation/frameworks`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
@@ -65,7 +65,7 @@ export default function EvaluationFrameworksPage() {
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/admin/evaluation/frameworks/${frameworkId}/activate`, {
         method: 'PATCH',
         headers: {

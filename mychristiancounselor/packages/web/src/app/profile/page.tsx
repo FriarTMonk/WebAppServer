@@ -9,7 +9,7 @@ import { TourButton } from '../../components/TourButton';
 import { BackButton } from '../../components/BackButton';
 import { Breadcrumbs } from '../../components/Breadcrumbs';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
 
 function ProfilePageContent() {
   const router = useRouter();

@@ -5,7 +5,7 @@ import { useMemberObservations } from '../hooks/useMemberObservations';
 import { useTextToSpeech } from '../hooks/useTextToSpeech';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
 
 interface MemberProfileModalProps {
   memberId: string;

@@ -34,7 +34,7 @@ export default function BulkReEvaluatePage() {
 
   const fetchFrameworks = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/admin/evaluation/frameworks`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
@@ -70,7 +70,7 @@ export default function BulkReEvaluatePage() {
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/admin/evaluation/re-evaluate/estimate`, {
         method: 'POST',
         headers: {
@@ -117,7 +117,7 @@ export default function BulkReEvaluatePage() {
       setTriggeringJob(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/admin/evaluation/re-evaluate`, {
         method: 'POST',
         headers: {

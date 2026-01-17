@@ -57,7 +57,7 @@ export default function OrganizationsListPage() {
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const params = new URLSearchParams();
       if (debouncedSearch) params.append('search', debouncedSearch);
       if (statusFilter) params.append('licenseStatus', statusFilter);
@@ -110,7 +110,7 @@ export default function OrganizationsListPage() {
 
     setActionLoading(orgId);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/admin/organizations/${orgId}/archive`, {
         method: 'POST',
         headers: {
@@ -140,7 +140,7 @@ export default function OrganizationsListPage() {
 
     setActionLoading(orgId);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/admin/organizations/${orgId}/unarchive`, {
         method: 'POST',
         headers: {

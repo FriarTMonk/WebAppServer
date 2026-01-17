@@ -119,7 +119,7 @@ export default function EvaluationQueuePage() {
     try {
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const url = filter !== 'all'
         ? `${apiUrl}/admin/evaluation/queue/jobs?status=${filter}`
         : `${apiUrl}/admin/evaluation/queue/jobs`;
@@ -193,7 +193,7 @@ export default function EvaluationQueuePage() {
 
   const handleRetryJob = async (jobId: string) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/admin/evaluation/queue/jobs/${jobId}/retry`, {
         method: 'POST',
         headers: {
@@ -218,7 +218,7 @@ export default function EvaluationQueuePage() {
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/admin/evaluation/queue/jobs/${jobId}`, {
         method: 'DELETE',
         headers: {
@@ -239,7 +239,7 @@ export default function EvaluationQueuePage() {
 
   const handleToggleQueue = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const endpoint = queuePaused ? 'resume' : 'pause';
       const response = await fetch(`${apiUrl}/admin/evaluation/queue/${endpoint}`, {
         method: 'POST',

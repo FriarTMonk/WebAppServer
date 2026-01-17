@@ -45,7 +45,7 @@ export default function CampaignsListPage() {
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const params = new URLSearchParams();
       if (debouncedSearch) params.append('search', debouncedSearch);
       if (statusFilter) params.append('status', statusFilter);

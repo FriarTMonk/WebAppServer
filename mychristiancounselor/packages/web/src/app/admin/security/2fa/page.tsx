@@ -41,7 +41,7 @@ export default function Admin2FAPage() {
     setLoading(true);
     setError(null);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const token = localStorage.getItem('accessToken');
 
       const enabledParam = filter === 'enabled' ? 'true' : filter === 'disabled' ? 'false' : '';

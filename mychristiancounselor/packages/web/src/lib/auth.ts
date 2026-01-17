@@ -61,7 +61,7 @@ export async function refreshAccessToken(): Promise<boolean> {
   }
 
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const response = await fetch(`${apiUrl}/auth/refresh`, {
       method: 'POST',
       headers: {

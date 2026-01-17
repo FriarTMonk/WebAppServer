@@ -18,7 +18,7 @@ export default function CounselorAssignmentManager() {
   async function fetchAssignments() {
     try {
       setLoading(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const token = localStorage.getItem('accessToken');
 
       if (!token) {
@@ -79,7 +79,7 @@ export default function CounselorAssignmentManager() {
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const token = localStorage.getItem('accessToken');
 
       const response = await fetch(

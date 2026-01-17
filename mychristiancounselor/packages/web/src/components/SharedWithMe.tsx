@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getAccessToken } from '../lib/auth';
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
 
 interface SharedConversation {
   shareId: string;

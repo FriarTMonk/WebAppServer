@@ -48,7 +48,7 @@ export default function OrganizationDetailPage() {
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const token = localStorage.getItem('accessToken');
 
       // Fetch organization members
@@ -117,7 +117,7 @@ export default function OrganizationDetailPage() {
   };
 
   const handleUpdateRole = async (userId: string, newRoleId: string) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const token = localStorage.getItem('accessToken');
 
     const response = await fetch(
@@ -142,7 +142,7 @@ export default function OrganizationDetailPage() {
   };
 
   const handleResetPassword = async (userId: string, newPassword: string) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const token = localStorage.getItem('accessToken');
 
     const response = await fetch(`${apiUrl}/admin/users/${userId}/reset-password`, {
@@ -161,7 +161,7 @@ export default function OrganizationDetailPage() {
   };
 
   const handleMorph = async (userId: string) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const token = localStorage.getItem('accessToken');
 
     const response = await fetch(`${apiUrl}/admin/morph/start/${userId}`, {
@@ -195,7 +195,7 @@ export default function OrganizationDetailPage() {
     userId: string,
     subscriptionData: { subscriptionStatus: string; subscriptionTier?: string | null }
   ) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const token = localStorage.getItem('accessToken');
 
     const response = await fetch(`${apiUrl}/admin/users/${userId}/subscription`, {
@@ -222,7 +222,7 @@ export default function OrganizationDetailPage() {
       licenseExpiresAt?: string | null;
     }
   ) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const token = localStorage.getItem('accessToken');
 
     const response = await fetch(`${apiUrl}/admin/organizations/${orgId}/subscription-limit`, {

@@ -32,7 +32,7 @@ export default function AdminAuditLogPage() {
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const token = localStorage.getItem('accessToken');
 
       // Fetch audit log (all entries across all organizations)

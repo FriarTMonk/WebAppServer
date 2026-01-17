@@ -8,7 +8,7 @@ import { Journal } from '../../../../../components/Journal';
 import { Conversation } from '../../../../../components/Conversation';
 import { BackButton } from '@/components/BackButton';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
 
 interface SessionSummary {
   id: string;

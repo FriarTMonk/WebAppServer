@@ -62,7 +62,7 @@ export default function ProspectsListPage() {
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const params = new URLSearchParams();
       if (debouncedSearch) params.append('search', debouncedSearch);
       params.append('includeArchived', showArchived.toString());
@@ -104,7 +104,7 @@ export default function ProspectsListPage() {
 
     setActionLoading(prospectId);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/marketing/prospects/${prospectId}/archive`, {
         method: 'POST',
         headers: {
@@ -134,7 +134,7 @@ export default function ProspectsListPage() {
 
     setActionLoading(prospectId);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/marketing/prospects/${prospectId}/unarchive`, {
         method: 'POST',
         headers: {

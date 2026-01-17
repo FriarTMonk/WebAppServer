@@ -5,7 +5,7 @@ import { Organization } from '@mychristiancounselor/shared';
 import { getAccessToken } from '../lib/auth';
 import { useAuth } from '../contexts/AuthContext';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
 
 /**
  * OrganizationSwitcher displays the user's organization name.

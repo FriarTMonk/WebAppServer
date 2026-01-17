@@ -139,7 +139,7 @@ export default function AssignAssessmentModal({
           return;
         }
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+        const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
         const token = localStorage.getItem('accessToken');
 
         response = await fetch(`${apiUrl}/counsel/assessments/custom/${selectedCustomId}/assign`, {

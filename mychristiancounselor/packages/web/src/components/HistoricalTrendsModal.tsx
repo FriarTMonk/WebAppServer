@@ -199,7 +199,7 @@ export default function HistoricalTrendsModal({
 
   const handleExportCSV = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const token = localStorage.getItem('accessToken');
 
       const response = await fetch(

@@ -68,7 +68,7 @@ export default function ProspectDetailPage({ params }: { params: { id: string } 
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/marketing/prospects/${params.id}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,

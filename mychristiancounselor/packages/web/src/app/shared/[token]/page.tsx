@@ -6,7 +6,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { getAccessToken } from '../../../lib/auth';
 import { Conversation } from '../../../components/Conversation';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
 
 interface ShareData {
   session: {

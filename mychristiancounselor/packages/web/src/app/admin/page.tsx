@@ -20,7 +20,7 @@ export default function AdminOverviewPage() {
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const response = await fetch(`${apiUrl}/admin/metrics`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,

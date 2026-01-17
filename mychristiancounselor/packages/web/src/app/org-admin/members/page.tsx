@@ -54,7 +54,7 @@ export default function OrgAdminMembersPage() {
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const token = localStorage.getItem('accessToken');
 
       // Fetch organization info
@@ -149,7 +149,7 @@ export default function OrgAdminMembersPage() {
   };
 
   const handleUpdateRole = async (userId: string, newRoleId: string) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const token = localStorage.getItem('accessToken');
 
     const response = await fetch(
@@ -173,7 +173,7 @@ export default function OrgAdminMembersPage() {
   };
 
   const handleResetPassword = async (userId: string, newPassword: string) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const token = localStorage.getItem('accessToken');
 
     const response = await fetch(`${apiUrl}/org-admin/users/${userId}/reset-password`, {
@@ -192,7 +192,7 @@ export default function OrgAdminMembersPage() {
   };
 
   const handleMorph = async (userId: string) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const token = localStorage.getItem('accessToken');
 
     const response = await fetch(`${apiUrl}/org-admin/morph/start/${userId}`, {
@@ -221,7 +221,7 @@ export default function OrgAdminMembersPage() {
   };
 
   const handleRelease = async (userId: string) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const token = localStorage.getItem('accessToken');
 
     const response = await fetch(`${apiUrl}/org-admin/members/${userId}/release`, {
@@ -243,7 +243,7 @@ export default function OrgAdminMembersPage() {
   const handleResendInvitation = async (invitationId: string) => {
     if (!organization) return;
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const token = localStorage.getItem('accessToken');
 
     try {
@@ -277,7 +277,7 @@ export default function OrgAdminMembersPage() {
       return;
     }
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const token = localStorage.getItem('accessToken');
 
     try {

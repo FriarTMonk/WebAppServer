@@ -39,7 +39,7 @@ export default function EvaluationCostsPage() {
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const params = new URLSearchParams();
 
       if (dateRange.start) params.append('startDate', dateRange.start);

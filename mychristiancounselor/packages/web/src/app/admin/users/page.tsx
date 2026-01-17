@@ -56,7 +56,7 @@ export default function UsersListPage() {
       setLoading(true);
       setError(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
       const params = new URLSearchParams();
       if (debouncedSearch) params.append('search', debouncedSearch);
       if (accountTypeFilter) params.append('accountType', accountTypeFilter);
@@ -103,7 +103,7 @@ export default function UsersListPage() {
   };
 
   const handleResetPassword = async (userId: string, newPassword: string) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const response = await fetch(`${apiUrl}/admin/users/${userId}/reset-password`, {
       method: 'POST',
       headers: {
@@ -119,7 +119,7 @@ export default function UsersListPage() {
   };
 
   const handleMorph = async (userId: string) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const response = await fetch(`${apiUrl}/admin/morph/start/${userId}`, {
       method: 'POST',
       headers: {
@@ -145,7 +145,7 @@ export default function UsersListPage() {
   };
 
   const handleUpdateSubscription = async (userId: string, subscriptionData: { subscriptionStatus: string; subscriptionTier?: string | null }) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
     const response = await fetch(`${apiUrl}/admin/users/${userId}/subscription`, {
       method: 'PATCH',
       headers: {
