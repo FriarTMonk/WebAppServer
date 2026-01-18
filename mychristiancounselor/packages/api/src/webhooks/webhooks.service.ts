@@ -3,8 +3,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SupportService } from '../support/support.service';
 import { SalesService } from '../sales/sales.service';
 import { EmailService } from '../email/email.service';
+import { EmailTrackingService } from '../email/email-tracking.service';
 import { OptOutService } from '../marketing/opt-out.service';
 import { PostmarkInboundDto } from './dto/postmark-inbound.dto';
+import { PostmarkTrackingWebhookDto, PostmarkBounceWebhookDto } from './dto/postmark-tracking.dto';
 import { CreateTicketDto } from '../support/dto/create-ticket.dto';
 import { CreateOpportunityDto } from '../sales/dto/create-opportunity.dto';
 import { SalesStage, LeadSource } from '@prisma/client';
@@ -18,6 +20,7 @@ export class WebhooksService {
     private supportService: SupportService,
     private salesService: SalesService,
     private emailService: EmailService,
+    private emailTrackingService: EmailTrackingService,
     private optOutService: OptOutService,
   ) {}
 
@@ -684,5 +687,39 @@ MyChristianCounselor Team`,
     });
 
     this.logger.log(`Sent opt-out confirmation email to ${toEmail}`);
+  }
+
+  /**
+   * Handle Postmark tracking events (delivery, bounce, open, click)
+   */
+  async handleTrackingEvent(trackingData: PostmarkTrackingWebhookDto): Promise<void> {
+    const messageId = trackingData.MessageID;
+
+    this.logger.log(`Processing ${trackingData.RecordType} event for message ${messageId}`);
+
+    switch (trackingData.RecordType) {
+      case 'Delivery':
+        await this.emailTrackingService.markAsDelivered(messageId);
+        break;
+
+      case 'Bounce':
+        const bounceData = trackingData as PostmarkBounceWebhookDto;
+        const bounceReason = `${bounceData.Type}: ${bounceData.Description}`;
+        await this.emailTrackingService.markAsBounced(messageId, bounceReason);
+        break;
+
+      case 'Open':
+        await this.emailTrackingService.markAsOpened(messageId);
+        break;
+
+      case 'Click':
+        await this.emailTrackingService.markAsClicked(messageId);
+        break;
+
+      default:
+        this.logger.warn(`Unknown tracking event type: ${trackingData.RecordType}`);
+    }
+
+    this.logger.log(`Successfully processed ${trackingData.RecordType} event for message ${messageId}`);
   }
 }

@@ -38,52 +38,72 @@ export class EmailTrackingService {
    * Update email status to delivered (from Postmark webhook)
    */
   async markAsDelivered(postmarkId: string): Promise<void> {
+    const deliveredAt = new Date();
+
     await this.prisma.emailLog.updateMany({
       where: { postmarkId },
       data: {
         status: 'delivered',
-        deliveredAt: new Date(),
+        deliveredAt,
       },
     });
+
+    // Sync to EmailCampaignRecipient if linked
+    await this.syncToCampaignRecipient(postmarkId, { deliveredAt });
   }
 
   /**
    * Update email status to bounced (from Postmark webhook)
    */
   async markAsBounced(postmarkId: string, bounceReason: string): Promise<void> {
+    const bouncedAt = new Date();
+
     await this.prisma.emailLog.updateMany({
       where: { postmarkId },
       data: {
         status: 'bounced',
         bounceReason,
-        bouncedAt: new Date(),
+        bouncedAt,
       },
     });
+
+    // Sync to EmailCampaignRecipient if linked
+    await this.syncToCampaignRecipient(postmarkId, { bouncedAt, bounceReason });
   }
 
   /**
    * Mark email as opened (from Postmark webhook)
    */
   async markAsOpened(postmarkId: string): Promise<void> {
+    const openedAt = new Date();
+
     await this.prisma.emailLog.updateMany({
       where: { postmarkId },
       data: {
         status: 'opened', // Only update if not already a more advanced status
-        openedAt: new Date(),
+        openedAt,
       },
     });
+
+    // Sync to EmailCampaignRecipient if linked
+    await this.syncToCampaignRecipient(postmarkId, { openedAt });
   }
 
   /**
    * Mark email as clicked (from Postmark webhook)
    */
   async markAsClicked(postmarkId: string): Promise<void> {
+    const clickedAt = new Date();
+
     await this.prisma.emailLog.updateMany({
       where: { postmarkId },
       data: {
-        clickedAt: new Date(),
+        clickedAt,
       },
     });
+
+    // Sync to EmailCampaignRecipient if linked
+    await this.syncToCampaignRecipient(postmarkId, { clickedAt });
   }
 
   /**
@@ -224,5 +244,44 @@ export class EmailTrackingService {
     `;
 
     return results;
+  }
+
+  /**
+   * Sync tracking data from EmailLog to EmailCampaignRecipient
+   * This ensures campaign analytics show accurate metrics
+   */
+  private async syncToCampaignRecipient(
+    postmarkId: string,
+    data: {
+      deliveredAt?: Date;
+      openedAt?: Date;
+      clickedAt?: Date;
+      bouncedAt?: Date;
+      bounceReason?: string;
+    },
+  ): Promise<void> {
+    // Find the EmailLog by postmarkId
+    const emailLog = await this.prisma.emailLog.findFirst({
+      where: { postmarkId },
+    });
+
+    if (!emailLog) {
+      return; // No EmailLog found, nothing to sync
+    }
+
+    // Find the EmailCampaignRecipient linked to this EmailLog
+    const recipient = await this.prisma.emailCampaignRecipient.findFirst({
+      where: { emailLogId: emailLog.id },
+    });
+
+    if (!recipient) {
+      return; // Not linked to a campaign, nothing to sync
+    }
+
+    // Update the EmailCampaignRecipient with the tracking data
+    await this.prisma.emailCampaignRecipient.update({
+      where: { id: recipient.id },
+      data,
+    });
   }
 }
