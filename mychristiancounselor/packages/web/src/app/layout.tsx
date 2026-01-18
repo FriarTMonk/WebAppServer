@@ -91,7 +91,7 @@ export const metadata = {
     canonical: 'https://www.mychristiancounselor.online',
   },
   verification: {
-    google: 'google-site-verification-code-here', // User will need to add their verification code from Google Search Console
+    google: 'ZnlciTdUv60fgbCIgDjJmbWimD9OzlPaowstJT5endo',
   },
 };
 
