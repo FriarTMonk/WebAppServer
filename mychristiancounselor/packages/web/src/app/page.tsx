@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { PlansMenu } from '../components/PlansMenu';
 import { TestimonialsSection } from '../components/TestimonialsSection';
@@ -81,9 +82,12 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <img
+              <Image
                 src="/logo.jpg"
                 alt="MyChristianCounselor Online"
+                width={180}
+                height={48}
+                priority
                 className="h-12 w-auto"
               />
             </div>
@@ -162,7 +166,7 @@ export default function LandingPage() {
             >
               {/* Close Button */}
               <div className="flex justify-between items-center p-4 border-b">
-                <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+                <div className="text-lg font-semibold text-gray-900">Menu</div>
                 <button
                   onClick={() => setShowMobileMenu(false)}
                   className="p-2 text-gray-500 hover:text-gray-700"
@@ -178,13 +182,13 @@ export default function LandingPage() {
               <div className="p-4 space-y-4">
                 {/* Plans Section */}
                 <div className="border-b pb-4">
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Plans</h3>
+                  <div className="text-sm font-semibold text-gray-500 uppercase mb-2">Plans</div>
                   <PlansMenu />
                 </div>
 
                 {/* Contact Section */}
                 <div className="border-b pb-4">
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Contact Us</h3>
+                  <div className="text-sm font-semibold text-gray-500 uppercase mb-2">Contact Us</div>
                   <a
                     href="mailto:sales@mychristiancounselor.online?subject=Sales%20Inquiry"
                     className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
@@ -226,11 +230,11 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-        <h2 className="text-5xl font-extrabold text-gray-900 mb-6">
+        <h1 className="text-5xl font-extrabold text-gray-900 mb-6">
           Christian Counseling & Biblical Guidance
           <br />
           <span className="text-teal-600">With AI-Powered Counseling Tools</span>
-        </h2>
+        </h1>
         <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
           Get compassionate Christian counseling online with AI-powered biblical guidance tools.
           Scripture-based counseling available 24/7 with complete confidentiality.
@@ -294,9 +298,9 @@ export default function LandingPage() {
 
       {/* How It Works */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h3 className="text-3xl font-bold text-center text-gray-900 mb-12">
+        <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
           How It Works
-        </h3>
+        </h2>
         <div className="space-y-8">
           <div className="flex items-start gap-6">
             <div className="flex-shrink-0 w-12 h-12 bg-teal-600 text-white rounded-full flex items-center justify-center font-bold text-xl">
@@ -339,9 +343,9 @@ export default function LandingPage() {
       {/* Pricing CTA */}
       <section className="bg-teal-600 text-white py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h3 className="text-3xl font-bold mb-4">
+          <h2 className="text-3xl font-bold mb-4">
             Ready to Get Started?
-          </h3>
+          </h2>
           <p className="text-xl mb-8 opacity-90">
             Free trial available. Cancel anytime. No obligations.
           </p>

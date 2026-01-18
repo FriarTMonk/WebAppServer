@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 
 interface Testimonial {
   id: string;
@@ -91,9 +92,11 @@ export function TestimonialsSection() {
               {/* Author Info */}
               <div className="flex items-center gap-3">
                 {testimonial.authorImage ? (
-                  <img
+                  <Image
                     src={testimonial.authorImage}
                     alt={testimonial.authorName}
+                    width={48}
+                    height={48}
                     className="w-12 h-12 rounded-full object-cover"
                   />
                 ) : (
