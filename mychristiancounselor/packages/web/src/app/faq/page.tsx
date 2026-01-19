@@ -49,7 +49,7 @@ export default function FAQPage() {
     async function fetchFaqs() {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-        const response = await fetch(`${apiUrl}/content/faqs`);
+        const response = await fetch(`${apiUrl}/v1/content/faqs`);
 
         if (!response.ok) {
           throw new Error('Failed to fetch FAQs');

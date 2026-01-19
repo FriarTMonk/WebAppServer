@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next';
+import { getAllBlogPosts } from '../lib/blog-posts';
 
 /**
  * Dynamic Sitemap Generator for SEO
@@ -9,6 +10,15 @@ import { MetadataRoute } from 'next';
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://www.mychristiancounselor.online';
   const currentDate = new Date();
+
+  // Get all blog posts
+  const blogPosts = getAllBlogPosts();
+  const blogEntries: MetadataRoute.Sitemap = blogPosts.map((post) => ({
+    url: `${baseUrl}/blog/${post.slug}`,
+    lastModified: post.updatedDate || post.publishedDate,
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  }));
 
   return [
     {
@@ -65,5 +75,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.6,
     },
+    {
+      url: `${baseUrl}/about`,
+      lastModified: currentDate,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/blog`,
+      lastModified: currentDate,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    ...blogEntries,
   ];
 }
