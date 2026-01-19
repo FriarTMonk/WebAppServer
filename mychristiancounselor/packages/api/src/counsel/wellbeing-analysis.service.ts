@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CounselingAiService } from '../ai/counseling-ai.service';
 import { WellbeingHistoryService } from './wellbeing-history.service';
 import { TrajectoryCalculationService } from './trajectory-calculation.service';
+import { EVENT_TYPES, WellbeingStatusChangedEvent } from '../events/event-types';
 
 @Injectable()
 export class WellbeingAnalysisService {
@@ -13,6 +15,7 @@ export class WellbeingAnalysisService {
     private counselingAi: CounselingAiService,
     private wellbeingHistoryService: WellbeingHistoryService,
     private trajectoryService: TrajectoryCalculationService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -74,6 +77,36 @@ export class WellbeingAnalysisService {
         this.logger.log(
           `Recorded status change for ${memberId}: ${existing?.status || 'none'} -> ${updatedStatus.status}`
         );
+
+        // Fetch counselors assigned to this member
+        const memberCounselors = await this.prisma.counselorAssignment.findMany({
+          where: {
+            memberId,
+            status: 'active',
+          },
+          select: { counselorId: true },
+        });
+
+        const counselorIds = memberCounselors.map(c => c.counselorId);
+
+        // Determine if this is a significant change requiring notification
+        const significantStatuses = ['red']; // Critical status
+        const triggerNotification =
+          significantStatuses.includes(updatedStatus.status) ||
+          (significantStatuses.includes(existing?.status || '') && updatedStatus.status === 'yellow');
+
+        // Emit wellbeing status changed event
+        this.eventEmitter.emit(EVENT_TYPES.WELLBEING_STATUS_CHANGED, {
+          memberId,
+          previousStatus: existing?.status || 'green',
+          newStatus: updatedStatus.status,
+          trajectory: updatedStatus.trajectory,
+          timestamp: new Date(),
+          counselorIds,
+          triggerNotification,
+        } as WellbeingStatusChangedEvent);
+
+        this.logger.log(`Emitted wellbeing status changed event: ${existing?.status || 'none'} -> ${updatedStatus.status} (notify: ${triggerNotification})`);
       }
 
       // Calculate trajectory

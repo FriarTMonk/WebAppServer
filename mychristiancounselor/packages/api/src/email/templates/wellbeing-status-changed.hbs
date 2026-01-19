@@ -1,0 +1,32 @@
+<h2>Client Wellbeing Status Update</h2>
+
+<p>Dear {{counselorName}},</p>
+
+<p>A wellbeing status change has been detected for your client <strong>{{clientName}}</strong>.</p>
+
+<div style="background: {{statusColor}}; border-left: 4px solid {{statusBorderColor}}; padding: 16px; margin: 20px 0;">
+  <h3 style="margin-top: 0;">Status Change:</h3>
+  <p><strong>Previous Status:</strong> {{oldStatus}}</p>
+  <p><strong>Current Status:</strong> {{newStatus}}</p>
+  <p><strong>Detected:</strong> {{timestamp}}</p>
+</div>
+
+{{#if isCritical}}
+<div style="background: #fee; border: 2px solid #f00; padding: 16px; margin: 20px 0;">
+  <h3 style="margin-top: 0; color: #c00;">⚠️ Immediate Attention May Be Required</h3>
+  <p>This status indicates your client may be experiencing significant distress.</p>
+</div>
+{{/if}}
+
+<p>Please review the client's recent counseling sessions to assess their current situation and determine if additional support is needed.</p>
+
+<p style="margin-top: 30px;">
+  <a href="{{dashboardUrl}}/counselor/clients/{{memberId}}"
+     style="background: #0891b2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+    View Client Dashboard
+  </a>
+</p>
+
+<p style="margin-top: 30px; color: #666; font-size: 14px;">
+  <strong>In Crisis?</strong> Remind clients to call <strong>988</strong> (Suicide & Crisis Lifeline) or <strong>911</strong> for immediate help.
+</p>

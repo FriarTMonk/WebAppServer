@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ScriptureService } from '../scripture/scripture.service';
 import { Session, Message, SessionNote, CounselorObservation, User, Organization } from '@prisma/client';
 
 /**
@@ -26,20 +27,27 @@ interface SessionExportData {
  */
 @Injectable()
 export class CounselExportService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(CounselExportService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private readonly scriptureService: ScriptureService,
+  ) {}
 
   /**
    * Get comprehensive session data for export (PDF/print)
    *
    * @param sessionId - The ID of the session to export
    * @param userId - The ID of the user requesting the export
+   * @param shareToken - Optional share token for accessing via share link
    * @returns Complete export data including session, messages, filtered notes, and scripture references
    * @throws NotFoundException if session doesn't exist
    * @throws ForbiddenException if user doesn't have access to the session
    */
   async getSessionForExport(
     sessionId: string,
-    userId: string
+    userId: string,
+    shareToken?: string
   ): Promise<SessionExportData> {
     // 1. Fetch session with all messages
     const session = await this.prisma.session.findUnique({
@@ -63,26 +71,48 @@ export class CounselExportService {
       throw new NotFoundException('Session not found');
     }
 
-    // 3. Verify user has access to the session
-    // Phase 1: Only session owner can export. TODO: Add share permission checking in Phase 2
-    if (session.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this session');
+    // 3. Check export permissions (Phase 2: Share permission checking)
+    const permissions = await this.checkExportPermissions(
+      session,
+      userId,
+      shareToken
+    );
+
+    if (!permissions.canExport) {
+      throw new ForbiddenException(permissions.reason || 'You do not have access to this session');
     }
 
-    // 4. Fetch notes for the session (filtered at database level)
-    const notes = await this.prisma.sessionNote.findMany({
-      where: {
-        sessionId,
-        OR: [
-          { isPrivate: false },
-          { authorId: userId }
-        ]
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+    // 4. Fetch notes for the session (filtered based on permissions)
+    const noteWhere: any = { sessionId };
+
+    if (permissions.includeNotes) {
+      // Full access: include all notes or only non-private ones + user's own
+      noteWhere.OR = [
+        { isPrivate: false },
+        { authorId: userId }
+      ];
+    } else {
+      // Restricted access: no notes at all
+      noteWhere.id = 'none'; // This will match no notes
+    }
+
+    const notes = permissions.includeNotes
+      ? await this.prisma.sessionNote.findMany({
+          where: noteWhere,
+          orderBy: { createdAt: 'asc' },
+        })
+      : [];
+
+    // Log access for audit trail
+    this.logger.log(
+      `Session ${sessionId} exported by user ${userId} ` +
+      `(owner: ${session.userId === userId}, ` +
+      `includeNotes: ${permissions.includeNotes}, ` +
+      `shareToken: ${!!shareToken})`
+    );
 
     // 5. Extract scripture references from messages
-    const scriptureReferences = this.extractScriptureReferences(session.messages);
+    const scriptureReferences = await this.extractScriptureReferences(session.messages);
 
     // 6. Return structured export data
     return {
@@ -101,7 +131,7 @@ export class CounselExportService {
    * @returns Array of unique scripture references with text
    * @private
    */
-  private extractScriptureReferences(messages: Message[]): ScriptureReference[] {
+  private async extractScriptureReferences(messages: Message[]): Promise<ScriptureReference[]> {
     const references = new Set<string>();
 
     // Regular expression to match Bible verse patterns
@@ -128,12 +158,128 @@ export class CounselExportService {
       }
     });
 
-    // Convert to array and create placeholder text for each reference
-    // TODO: Integrate with Bible API to fetch actual verse text
-    return Array.from(references).map(reference => ({
-      reference,
-      text: `Full text for ${reference} will be fetched from Bible API`,
-    }));
+    // Fetch actual verse texts from local scripture database
+    const results: ScriptureReference[] = [];
+
+    for (const reference of references) {
+      try {
+        // Parse reference: "John 3:16" -> book="John", chapter=3, verse=16
+        const match = reference.match(/^(.+?)\s+(\d+):(\d+)$/);
+        if (!match) {
+          this.logger.warn(`Invalid scripture reference format: ${reference}`);
+          results.push({ reference, text: 'Invalid reference format' });
+          continue;
+        }
+
+        const [, book, chapterStr, verseStr] = match;
+        const chapter = parseInt(chapterStr, 10);
+        const verse = parseInt(verseStr, 10);
+
+        // Fetch from local database (default to ESV translation)
+        const scripture = await this.scriptureService.getScriptureByReference(
+          book,
+          chapter,
+          verse,
+          'ESV'
+        );
+
+        results.push({
+          reference,
+          text: scripture?.text || 'Verse not found'
+        });
+      } catch (error) {
+        this.logger.error(`Error fetching verse ${reference}:`, error);
+        results.push({ reference, text: 'Error loading verse' });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Check if user has permission to export a session
+   * Implements Phase 2 share permission checking
+   *
+   * @param session - Full session object with owner info
+   * @param requestingUserId - User making the request
+   * @param shareToken - Optional share token for accessing via share link
+   * @returns Permission result with canExport and includeNotes flags
+   * @private
+   */
+  private async checkExportPermissions(
+    session: any,
+    requestingUserId: string,
+    shareToken?: string,
+  ): Promise<{ canExport: boolean; includeNotes: boolean; reason?: string }> {
+    // Owner always has full access
+    if (session.userId === requestingUserId) {
+      return { canExport: true, includeNotes: true };
+    }
+
+    // Check if accessing via share token
+    if (shareToken) {
+      const share = await this.prisma.sessionShare.findFirst({
+        where: {
+          sessionId: session.id,
+          shareToken: shareToken,
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gt: new Date() } }
+          ]
+        },
+      });
+
+      if (!share) {
+        return {
+          canExport: false,
+          includeNotes: false,
+          reason: 'Invalid or expired share token',
+        };
+      }
+
+      // Check if share is restricted to specific email
+      if (share.sharedWith) {
+        const requestingUser = await this.prisma.user.findUnique({
+          where: { id: requestingUserId },
+          select: { email: true },
+        });
+
+        if (!requestingUser || requestingUser.email !== share.sharedWith) {
+          return {
+            canExport: false,
+            includeNotes: false,
+            reason: 'This share link is restricted to a specific email address',
+          };
+        }
+      }
+
+      // Share token valid - respect allowNotesAccess flag
+      return {
+        canExport: true,
+        includeNotes: share.allowNotesAccess,
+      };
+    }
+
+    // Check organization-based access (counselor viewing client's session)
+    const orgAccess = await this.prisma.counselorAssignment.findFirst({
+      where: {
+        memberId: session.userId, // Client
+        counselorId: requestingUserId, // Counselor
+        status: 'active',
+      },
+    });
+
+    if (orgAccess) {
+      // Counselors get full access to assigned clients
+      return { canExport: true, includeNotes: true };
+    }
+
+    // No permission found
+    return {
+      canExport: false,
+      includeNotes: false,
+      reason: 'You do not have permission to export this session',
+    };
   }
 
   /**

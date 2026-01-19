@@ -131,10 +131,11 @@ export class CounselController {
   @Get('export/:sessionId')
   async exportSession(
     @Param('sessionId') sessionId: string,
+    @Query('shareToken') shareToken: string | undefined,
     @Request() req
   ) {
     const userId = req.user.id;
-    return this.counselExportService.getSessionForExport(sessionId, userId);
+    return this.counselExportService.getSessionForExport(sessionId, userId, shareToken);
   }
 
   @UseGuards(JwtAuthGuard)

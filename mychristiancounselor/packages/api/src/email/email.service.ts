@@ -330,6 +330,88 @@ export class EmailService {
   }
 
   /**
+   * Send book evaluation complete notification
+   */
+  async sendBookEvaluationCompleteEmail(
+    userEmail: string,
+    data: {
+      userName: string | undefined;
+      bookTitle: string;
+      bookAuthor: string;
+      bookId: string;
+      theologicalScore: number;
+      overallAlignment: string;
+    },
+  ): Promise<void> {
+    const subject = `Book Evaluation Complete: ${data.bookTitle}`;
+    const template = 'book-evaluation-complete';
+
+    const dashboardUrl = this.configService.get<string>('FRONTEND_URL', 'https://www.mychristiancounselor.online');
+
+    await this.sendEmail({
+      to: userEmail,
+      subject,
+      template,
+      data: {
+        recipientName: data.userName,
+        ...data,
+        dashboardUrl,
+      },
+    });
+
+    this.logger.log(`Sent book evaluation complete email to ${userEmail} for book ${data.bookId}`);
+  }
+
+  /**
+   * Send wellbeing status change notification to counselor
+   */
+  async sendWellbeingStatusChangedEmail(
+    counselorEmail: string,
+    data: {
+      counselorName: string | undefined;
+      clientName: string;
+      memberId: string;
+      oldStatus: string;
+      newStatus: string;
+      timestamp: Date;
+    },
+  ): Promise<void> {
+    const subject = `Client Wellbeing Update: ${data.clientName}`;
+    const template = 'wellbeing-status-changed';
+
+    const dashboardUrl = this.configService.get<string>('FRONTEND_URL', 'https://www.mychristiancounselor.online');
+
+    // Determine status colors and criticality
+    const criticalStatuses = ['red'];
+    const isCritical = criticalStatuses.includes(data.newStatus);
+
+    const statusColors: Record<string, { bg: string; border: string }> = {
+      red: { bg: '#fee', border: '#f00' },
+      yellow: { bg: '#fef3c7', border: '#f59e0b' },
+      green: { bg: '#d1fae5', border: '#10b981' },
+    };
+
+    const colors = statusColors[data.newStatus] || { bg: '#f3f4f6', border: '#9ca3af' };
+
+    await this.sendEmail({
+      to: counselorEmail,
+      subject,
+      template,
+      data: {
+        recipientName: data.counselorName,
+        ...data,
+        dashboardUrl,
+        isCritical,
+        statusColor: colors.bg,
+        statusBorderColor: colors.border,
+        timestamp: data.timestamp.toLocaleString(),
+      },
+    });
+
+    this.logger.log(`Sent wellbeing status notification to ${counselorEmail} for member ${data.memberId}`);
+  }
+
+  /**
    * Send billing notification
    */
   async sendBillingEmail(

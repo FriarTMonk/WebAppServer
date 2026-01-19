@@ -1,10 +1,12 @@
 import { Processor, WorkerHost, InjectQueue } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EvaluationOrchestratorService } from '../services/evaluation-orchestrator.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { queueConfig } from '../../config/queue.config';
 import { resourcesConfig } from '../../config/resources.config';
+import { EVENT_TYPES, BookEvaluationCompletedEvent } from '../../events/event-types';
 
 interface BookEvaluationJobData {
   bookId: string;
@@ -20,6 +22,7 @@ export class BookEvaluationProcessor extends WorkerHost {
   constructor(
     private readonly evaluationOrchestrator: EvaluationOrchestratorService,
     private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
     @InjectQueue(queueConfig.pdfMigrationQueue.name)
     private readonly pdfMigrationQueue: Queue,
   ) {
@@ -42,6 +45,44 @@ export class BookEvaluationProcessor extends WorkerHost {
       await this.evaluationOrchestrator.evaluateBook(bookId);
 
       this.logger.log(`Evaluation completed for book ${bookId}`);
+
+      // Fetch book details for notification event
+      const bookDetails = await this.prisma.book.findUnique({
+        where: { id: bookId },
+        select: {
+          id: true,
+          title: true,
+          author: true,
+          createdBy: true,
+          biblicalAlignmentScore: true,
+          visibilityTier: true,
+        },
+      });
+
+      if (bookDetails && bookDetails.biblicalAlignmentScore !== null) {
+        // Determine overall alignment based on score
+        let overallAlignment: 'aligned' | 'mixed' | 'not_aligned';
+        if (bookDetails.biblicalAlignmentScore >= 80) {
+          overallAlignment = 'aligned';
+        } else if (bookDetails.biblicalAlignmentScore >= 70) {
+          overallAlignment = 'mixed';
+        } else {
+          overallAlignment = 'not_aligned';
+        }
+
+        // Emit evaluation completed event
+        this.eventEmitter.emit(EVENT_TYPES.BOOK_EVALUATION_COMPLETED, {
+          bookId: bookDetails.id,
+          title: bookDetails.title,
+          author: bookDetails.author || 'Unknown',
+          createdBy: bookDetails.createdBy,
+          theologicalScore: bookDetails.biblicalAlignmentScore,
+          overallAlignment,
+          timestamp: new Date(),
+        } as BookEvaluationCompletedEvent);
+
+        this.logger.log(`Emitted evaluation completed event for book ${bookId}`);
+      }
 
       // Conditional archival: Queue migration to Glacier if score < 70
       const book = await this.prisma.book.findUnique({

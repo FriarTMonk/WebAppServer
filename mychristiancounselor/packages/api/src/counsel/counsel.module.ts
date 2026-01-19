@@ -7,6 +7,7 @@ import { ObservationService } from './observation.service';
 import { WellbeingAnalysisService } from './wellbeing-analysis.service';
 import { WellbeingAnalysisScheduler } from './wellbeing-analysis.scheduler';
 import { WellbeingHistoryService } from './wellbeing-history.service';
+import { WellbeingNotificationService } from './wellbeing-notification.service';
 import { SessionSummaryService } from './session-summary.service';
 import { TrajectoryCalculationService } from './trajectory-calculation.service';
 import { ScriptureEnrichmentService } from './scripture-enrichment.service';
@@ -61,6 +62,7 @@ import { EmailModule } from '../email/email.module';
     WellbeingAnalysisService,
     WellbeingAnalysisScheduler,
     WellbeingHistoryService,
+    WellbeingNotificationService,
     SessionSummaryService,
     TrajectoryCalculationService,
     ScriptureEnrichmentService,

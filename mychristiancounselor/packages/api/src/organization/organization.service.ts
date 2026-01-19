@@ -643,7 +643,31 @@ export class OrganizationService {
       },
     });
 
-    // TODO: Send invitation email (Task for later)
+    // Fetch role information for email
+    const role = await this.prisma.organizationRole.findUnique({
+      where: { id: newInvitation.roleId },
+    });
+
+    if (!role) {
+      throw new NotFoundException('Role not found');
+    }
+
+    // Send invitation email
+    const inviterName = newInvitation.invitedBy
+      ? `${newInvitation.invitedBy.firstName || ''} ${newInvitation.invitedBy.lastName || ''}`.trim() || newInvitation.invitedBy.email
+      : 'Someone';
+
+    await this.emailService.sendOrgInvitationEmail(
+      newInvitation.email,
+      {
+        recipientName: undefined, // We don't know their name yet
+        inviterName,
+        organizationName: newInvitation.organization.name,
+        roleName: role.name,
+        inviteToken: newInvitation.token,
+        expiresAt: newInvitation.expiresAt,
+      },
+    );
 
     return newInvitation as any;
   }

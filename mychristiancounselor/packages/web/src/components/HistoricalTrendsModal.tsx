@@ -6,6 +6,16 @@ import {
   MemberWellbeingHistoryItem,
   AssessmentHistoryItem,
 } from '@/lib/api';
+import {
+  LineChart as RechartsLineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
 interface HistoricalTrendsModalProps {
   memberName: string;
@@ -345,9 +355,80 @@ export default function HistoricalTrendsModal({
                   </div>
                 )}
 
-                {/* TODO: Add chart visualization with charting library */}
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
-                  <strong>Note:</strong> Chart visualization will be added with a charting library (Recharts, Chart.js, etc.) in a future update.
+                {/* Wellbeing Status Over Time Chart */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="text-md font-semibold text-gray-900 mb-4">Status Trend</h4>
+
+                  {(() => {
+                    // Transform wellbeing history into chart data
+                    const statusMap: Record<string, number> = {
+                      high_concern: 1,
+                      at_risk: 2,
+                      stable: 3,
+                      thriving: 4,
+                    };
+
+                    const chartData = wellbeingHistory.map(entry => ({
+                      date: new Date(entry.recordedAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      }),
+                      status: entry.status,
+                      value: statusMap[entry.status] || 0,
+                      statusLabel: getStatusLabel(entry.status),
+                    }));
+
+                    return (
+                      <ResponsiveContainer width="100%" height={250}>
+                        <RechartsLineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="date"
+                            tick={{ fontSize: 12 }}
+                          />
+                          <YAxis
+                            domain={[0, 5]}
+                            ticks={[1, 2, 3, 4]}
+                            tickFormatter={(value) => {
+                              const labels: Record<number, string> = {
+                                1: 'High Concern',
+                                2: 'At Risk',
+                                3: 'Stable',
+                                4: 'Thriving',
+                              };
+                              return labels[value] || '';
+                            }}
+                            tick={{ fontSize: 10 }}
+                            width={100}
+                          />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-white p-3 border border-gray-200 rounded shadow-lg">
+                                    <p className="text-sm font-medium">{data.date}</p>
+                                    <p className="text-sm text-gray-600">
+                                      Status: <span className="font-semibold">{data.statusLabel}</span>
+                                    </p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="value"
+                            stroke="#0891b2"
+                            strokeWidth={2}
+                            dot={{ fill: '#0891b2', r: 4 }}
+                            activeDot={{ r: 6 }}
+                          />
+                        </RechartsLineChart>
+                      </ResponsiveContainer>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -459,9 +540,109 @@ export default function HistoricalTrendsModal({
                   </div>
                 )}
 
-                {/* TODO: Add chart visualization with charting library */}
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
-                  <strong>Note:</strong> Line charts with severity zones will be added with a charting library in a future update.
+                {/* Assessment Scores Chart */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="text-md font-semibold text-gray-900 mb-4">Assessment Scores Over Time</h4>
+
+                  {(() => {
+                    // Combine PHQ-9 and GAD-7 scores for the chart
+                    const chartData: Array<{ date: string; phq9?: number; gad7?: number; dateStr: string }> = [];
+
+                    // Create a map of dates to scores
+                    const dateMap = new Map<string, { phq9?: number; gad7?: number }>();
+
+                    phq9Assessments.forEach(assessment => {
+                      const fullDate = assessment.completedAt;
+                      if (!dateMap.has(fullDate)) {
+                        dateMap.set(fullDate, {});
+                      }
+                      const entry = dateMap.get(fullDate)!;
+                      entry.phq9 = assessment.score;
+                    });
+
+                    gad7Assessments.forEach(assessment => {
+                      const fullDate = assessment.completedAt;
+                      if (!dateMap.has(fullDate)) {
+                        dateMap.set(fullDate, {});
+                      }
+                      const entry = dateMap.get(fullDate)!;
+                      entry.gad7 = assessment.score;
+                    });
+
+                    // Convert to array and sort by date
+                    const sortedDates = Array.from(dateMap.entries())
+                      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
+
+                    sortedDates.forEach(([fullDate, scores]) => {
+                      const date = new Date(fullDate).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      });
+                      chartData.push({
+                        date,
+                        dateStr: fullDate,
+                        phq9: scores.phq9,
+                        gad7: scores.gad7,
+                      });
+                    });
+
+                    return chartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <RechartsLineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="date"
+                            tick={{ fontSize: 12 }}
+                          />
+                          <YAxis
+                            domain={[0, 27]}
+                            tick={{ fontSize: 12 }}
+                            label={{ value: 'Score', angle: -90, position: 'insideLeft' }}
+                          />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-white p-3 border border-gray-200 rounded shadow-lg">
+                                    <p className="text-sm font-medium mb-2">{data.date}</p>
+                                    {data.phq9 !== undefined && (
+                                      <p className="text-sm text-blue-600">PHQ-9: {data.phq9}</p>
+                                    )}
+                                    {data.gad7 !== undefined && (
+                                      <p className="text-sm text-orange-600">GAD-7: {data.gad7}</p>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Legend />
+                          <Line
+                            type="monotone"
+                            dataKey="phq9"
+                            stroke="#3b82f6"
+                            strokeWidth={2}
+                            name="PHQ-9 (Depression)"
+                            connectNulls={false}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="gad7"
+                            stroke="#ea580c"
+                            strokeWidth={2}
+                            name="GAD-7 (Anxiety)"
+                            connectNulls={false}
+                          />
+                        </RechartsLineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="text-center text-gray-500 py-4">
+                        No assessment data available for charting
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 

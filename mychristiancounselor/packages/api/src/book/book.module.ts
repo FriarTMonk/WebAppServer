@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { HttpModule } from '@nestjs/axios';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AiModule } from '../ai/ai.module';
+import { EmailModule } from '../email/email.module';
 import { BookController } from './book.controller';
 import { BookOrchestratorService } from './book-orchestrator.service';
 import { DuplicateDetectorService } from './services/duplicate-detector.service';
@@ -17,12 +18,14 @@ import { S3StorageProvider } from './providers/storage/s3-storage.provider';
 import { StorageOrchestratorService } from './services/storage-orchestrator.service';
 import { BookEvaluationProcessor } from './processors/book-evaluation.processor';
 import { PdfMigrationProcessor } from './processors/pdf-migration.processor';
+import { BookEvaluationNotificationService } from './book-evaluation-notification.service';
 import { queueConfig } from '../config/queue.config';
 
 @Module({
   imports: [
     PrismaModule,
     AiModule,
+    EmailModule,
     HttpModule,
     BullModule.registerQueue({
       name: queueConfig.evaluationQueue.name,
@@ -46,6 +49,7 @@ import { queueConfig } from '../config/queue.config';
     StorageOrchestratorService,
     BookEvaluationProcessor,
     PdfMigrationProcessor,
+    BookEvaluationNotificationService,
   ],
   exports: [
     BookOrchestratorService,
