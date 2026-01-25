@@ -4,17 +4,7 @@ import KeyTakeaway from './KeyTakeaway';
 import ApplicationStep from './ApplicationStep';
 import CallToAction from './CallToAction';
 import Warning from './Warning';
-
-// Placeholder components (will be built in Phase 2)
-
-const PrayerPrompt = ({ title = 'Prayer Prompt:', children }: any) => (
-  <div className="my-8 p-8 bg-purple-50 border-2 border-purple-300 rounded-lg text-center">
-    <div className="text-sm font-bold uppercase tracking-wide text-purple-800 mb-4">
-      {title}
-    </div>
-    <p className="font-serif italic text-purple-900">{children}</p>
-  </div>
-);
+import PrayerPrompt from './PrayerPrompt';
 
 // Export component map for MDXRemote
 export const mdxComponents: MDXComponents = {
