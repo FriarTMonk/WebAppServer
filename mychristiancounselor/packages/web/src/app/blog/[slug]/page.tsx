@@ -3,7 +3,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getBlogPost, getAllBlogPosts } from '../../../lib/blog';
-import { mdxComponents } from '../../../components/blog/mdx-components';
 
 type Props = {
   params: Promise<{ slug: string }>;
