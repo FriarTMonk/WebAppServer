@@ -1,20 +1,9 @@
 import type { MDXComponents } from 'mdx/types';
 import Scripture from './Scripture';
 import KeyTakeaway from './KeyTakeaway';
+import ApplicationStep from './ApplicationStep';
 
 // Placeholder components (will be built in Phase 2)
-
-const ApplicationStep = ({ number, title, children }: any) => (
-  <div className="my-6 flex gap-4">
-    <div className="flex-shrink-0 w-12 h-12 bg-teal-600 text-white rounded-full flex items-center justify-center text-xl font-bold">
-      {number}
-    </div>
-    <div className="flex-1">
-      <h4 className="font-bold text-gray-900 mb-2">{title}</h4>
-      <p className="text-gray-700">{children}</p>
-    </div>
-  </div>
-);
 
 const CallToAction = ({
   title,
