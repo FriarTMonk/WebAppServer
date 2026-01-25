@@ -1,7 +1,7 @@
-import { getAllBlogPosts } from '../../../lib/blog-posts';
+import { getAllBlogPosts } from '../../../lib/blog';
 
 export async function GET() {
-  const posts = getAllBlogPosts();
+  const posts = await getAllBlogPosts();
   const baseUrl = 'https://www.mychristiancounselor.online';
 
   const rss = `<?xml version="1.0" encoding="UTF-8"?>

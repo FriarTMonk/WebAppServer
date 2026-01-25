@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { getBlogPost, getAllBlogPosts } from '../../../lib/blog-posts';
+import { getBlogPost, getAllBlogPosts } from '../../../lib/blog';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -10,7 +10,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await getBlogPost(slug);
 
   if (!post) {
     return {
@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export async function generateStaticParams() {
-  const posts = getAllBlogPosts();
+  const posts = await getAllBlogPosts();
   return posts.map((post) => ({
     slug: post.slug,
   }));
@@ -52,14 +52,15 @@ export async function generateStaticParams() {
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await getBlogPost(slug);
 
   if (!post) {
     notFound();
   }
 
   // Get related posts (same category, exclude current)
-  const relatedPosts = getAllBlogPosts()
+  const allPosts = await getAllBlogPosts();
+  const relatedPosts = allPosts
     .filter((p) => p.category === post.category && p.slug !== post.slug)
     .slice(0, 2);
 
@@ -192,93 +193,10 @@ export default async function BlogPostPage({ params }: Props) {
         />
 
         {/* Article Content */}
-        <div className="prose prose-lg max-w-none">
-          <div className="text-gray-800 leading-relaxed">
-            {post.content.split('\n\n').map((paragraph, index) => {
-              // Handle headings
-              if (paragraph.startsWith('# ')) {
-                return (
-                  <h1 key={index} className="text-4xl font-bold text-gray-900 mt-8 mb-4">
-                    {paragraph.slice(2)}
-                  </h1>
-                );
-              }
-              if (paragraph.startsWith('## ')) {
-                return (
-                  <h2 key={index} className="text-3xl font-bold text-gray-900 mt-8 mb-4">
-                    {paragraph.slice(3)}
-                  </h2>
-                );
-              }
-              if (paragraph.startsWith('### ')) {
-                return (
-                  <h3 key={index} className="text-2xl font-bold text-gray-900 mt-6 mb-3">
-                    {paragraph.slice(4)}
-                  </h3>
-                );
-              }
-
-              // Handle blockquotes
-              if (paragraph.startsWith('> ')) {
-                return (
-                  <blockquote
-                    key={index}
-                    className="border-l-4 border-teal-600 pl-6 py-2 my-6 bg-teal-50 italic text-gray-700"
-                  >
-                    {paragraph.slice(2)}
-                  </blockquote>
-                );
-              }
-
-              // Handle bold text
-              if (paragraph.startsWith('**') && paragraph.endsWith('**')) {
-                return (
-                  <p key={index} className="font-bold text-gray-900 my-4">
-                    {paragraph.slice(2, -2)}
-                  </p>
-                );
-              }
-
-              // Handle list items
-              if (paragraph.startsWith('- ') || paragraph.startsWith('* ')) {
-                const items = paragraph.split('\n').filter(line => line.startsWith('- ') || line.startsWith('* '));
-                return (
-                  <ul key={index} className="list-disc pl-6 my-4 space-y-2">
-                    {items.map((item, i) => (
-                      <li key={i}>{item.slice(2)}</li>
-                    ))}
-                  </ul>
-                );
-              }
-
-              // Handle checkmarks
-              if (paragraph.startsWith('✅') || paragraph.startsWith('❌')) {
-                return (
-                  <p key={index} className="my-4 flex items-start">
-                    <span className="mr-2">{paragraph.charAt(0)}</span>
-                    <span>{paragraph.slice(2)}</span>
-                  </p>
-                );
-              }
-
-              // Handle horizontal rule
-              if (paragraph === '---') {
-                return <hr key={index} className="my-8 border-gray-300" />;
-              }
-
-              // Regular paragraph
-              if (paragraph.trim()) {
-                return (
-                  <p key={index} className="my-4 text-gray-800 leading-relaxed">
-                    {paragraph}
-                  </p>
-                );
-              }
-
-              return null;
-            })}
-          </div>
-        </div>
+        <div
+          className="prose prose-lg max-w-none prose-headings:font-bold prose-h1:text-4xl prose-h2:text-3xl prose-h3:text-2xl prose-p:text-gray-800 prose-p:leading-relaxed prose-blockquote:border-l-4 prose-blockquote:border-teal-600 prose-blockquote:pl-6 prose-blockquote:py-2 prose-blockquote:bg-teal-50 prose-blockquote:italic prose-ul:list-disc prose-ul:pl-6 prose-li:my-2"
+          dangerouslySetInnerHTML={{ __html: post.contentHtml }}
+        />
 
         {/* Tags */}
         <div className="mt-12 pt-8 border-t border-gray-200">

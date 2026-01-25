@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getAllBlogPosts, getAllCategories } from '../../lib/blog-posts';
+import { getAllBlogPosts, getAllCategories } from '../../lib/blog';
 
 export const metadata: Metadata = {
   title: 'Christian Counseling Blog - Biblical Guidance & Mental Health',
@@ -23,9 +23,9 @@ export const metadata: Metadata = {
   },
 };
 
-export default function BlogPage() {
-  const posts = getAllBlogPosts();
-  const categories = getAllCategories();
+export default async function BlogPage() {
+  const posts = await getAllBlogPosts();
+  const categories = await getAllCategories();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white">

@@ -5,8 +5,8 @@ import CookieConsent from '../components/CookieConsent';
 export const viewport = 'width=device-width, initial-scale=1, maximum-scale=1';
 
 export const metadata = {
-  title: 'Christian Counseling Online - Biblical Guidance & AI Counseling Tools 24/7',
-  description: 'Get Christian counseling online with AI-powered biblical guidance tools. Scripture-based counseling, faith-based therapy, and spiritual support available 24/7. Free trial available.',
+  title: 'Christian Counseling Online - Biblical Guidance 24/7',
+  description: 'Get Christian counseling with AI-powered biblical guidance. Scripture-based counseling and faith-based therapy available 24/7. Free trial.',
   keywords: [
     // Primary Keywords
     'Christian counseling',

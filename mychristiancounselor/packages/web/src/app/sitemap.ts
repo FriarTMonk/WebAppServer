@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { getAllBlogPosts } from '../lib/blog-posts';
+import { getAllBlogPosts } from '../lib/blog';
 
 /**
  * Dynamic Sitemap Generator for SEO
@@ -7,12 +7,12 @@ import { getAllBlogPosts } from '../lib/blog-posts';
  * Generates sitemap.xml at build time for search engine crawlers.
  * Lists all public pages with priority and update frequency.
  */
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.mychristiancounselor.online';
   const currentDate = new Date();
 
   // Get all blog posts
-  const blogPosts = getAllBlogPosts();
+  const blogPosts = await getAllBlogPosts();
   const blogEntries: MetadataRoute.Sitemap = blogPosts.map((post) => ({
     url: `${baseUrl}/blog/${post.slug}`,
     lastModified: post.updatedDate || post.publishedDate,
