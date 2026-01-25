@@ -1,14 +1,8 @@
 import type { MDXComponents } from 'mdx/types';
 import Scripture from './Scripture';
+import KeyTakeaway from './KeyTakeaway';
 
 // Placeholder components (will be built in Phase 2)
-
-const KeyTakeaway = ({ title = 'Key Takeaways', children }: any) => (
-  <div className="my-8 p-8 bg-teal-50 border-l-4 border-teal-500 rounded-lg">
-    <h3 className="text-lg font-bold text-teal-900 mb-4">{title}</h3>
-    <div className="text-gray-800">{children}</div>
-  </div>
-);
 
 const ApplicationStep = ({ number, title, children }: any) => (
   <div className="my-6 flex gap-4">
