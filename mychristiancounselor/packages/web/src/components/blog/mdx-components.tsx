@@ -1,16 +1,7 @@
 import type { MDXComponents } from 'mdx/types';
+import Scripture from './Scripture';
 
 // Placeholder components (will be built in Phase 2)
-const Scripture = ({ verse, version = 'NIV', children }: any) => (
-  <div className="my-8 p-8 bg-gradient-to-r from-amber-50 to-amber-100 border-l-4 border-amber-500 rounded-lg shadow-md">
-    <div className="text-sm font-bold uppercase tracking-wide text-amber-800 mb-2">
-      {verse} ({version})
-    </div>
-    <blockquote className="font-serif text-xl italic text-gray-800">
-      {children}
-    </blockquote>
-  </div>
-);
 
 const KeyTakeaway = ({ title = 'Key Takeaways', children }: any) => (
   <div className="my-8 p-8 bg-teal-50 border-l-4 border-teal-500 rounded-lg">
