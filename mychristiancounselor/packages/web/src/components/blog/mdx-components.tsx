@@ -2,26 +2,9 @@ import type { MDXComponents } from 'mdx/types';
 import Scripture from './Scripture';
 import KeyTakeaway from './KeyTakeaway';
 import ApplicationStep from './ApplicationStep';
+import CallToAction from './CallToAction';
 
 // Placeholder components (will be built in Phase 2)
-
-const CallToAction = ({
-  title,
-  description,
-  buttonText = 'Get Started',
-  buttonLink = '/register'
-}: any) => (
-  <div className="my-12 bg-gradient-to-r from-teal-600 to-teal-800 rounded-xl shadow-xl p-12 text-center text-white">
-    <h3 className="text-2xl font-bold mb-4">{title}</h3>
-    <p className="text-lg text-teal-50 mb-6">{description}</p>
-    <a
-      href={buttonLink}
-      className="inline-block bg-white text-teal-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors shadow-lg"
-    >
-      {buttonText}
-    </a>
-  </div>
-);
 
 const Warning = ({ severity = 'crisis', children }: any) => {
   const styles = severity === 'crisis'
