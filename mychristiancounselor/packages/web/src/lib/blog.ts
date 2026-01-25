@@ -4,13 +4,14 @@ import matter from 'gray-matter';
 import { compileMDX } from 'next-mdx-remote/rsc';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
+import type { ReactElement } from 'react';
 
 export interface BlogPost {
   slug: string;
   title: string;
   excerpt: string;
   content: string;
-  mdxContent: React.ReactElement;
+  mdxContent: ReactElement;
   author: string;
   publishedDate: string;
   updatedDate?: string;
