@@ -5,6 +5,7 @@ import ApplicationStep from './ApplicationStep';
 import CallToAction from './CallToAction';
 import Warning from './Warning';
 import PrayerPrompt from './PrayerPrompt';
+import CopyLinkButton from './CopyLinkButton';
 
 // Export component map for MDXRemote
 export const mdxComponents: MDXComponents = {
@@ -15,17 +16,25 @@ export const mdxComponents: MDXComponents = {
   Warning,
   PrayerPrompt,
   // Enhanced standard HTML elements
-  h2: (props: any) => (
+  h2: ({ id, children, ...props }: any) => (
     <h2
-      className="text-3xl font-bold text-gray-900 mt-12 mb-6 scroll-mt-24"
+      id={id}
+      className="group text-3xl font-bold text-gray-900 mt-12 mb-6 scroll-mt-24 flex items-center"
       {...props}
-    />
+    >
+      {children}
+      <CopyLinkButton headingId={id} />
+    </h2>
   ),
-  h3: (props: any) => (
+  h3: ({ id, children, ...props }: any) => (
     <h3
-      className="text-2xl font-bold text-gray-900 mt-8 mb-4 scroll-mt-24"
+      id={id}
+      className="group text-2xl font-bold text-gray-900 mt-8 mb-4 scroll-mt-24 flex items-center"
       {...props}
-    />
+    >
+      {children}
+      <CopyLinkButton headingId={id} />
+    </h3>
   ),
   blockquote: (props: any) => (
     <blockquote
