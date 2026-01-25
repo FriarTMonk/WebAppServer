@@ -1,15 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
-import { remark } from 'remark';
-import html from 'remark-html';
+import { compileMDX } from 'next-mdx-remote/rsc';
+import rehypeSlug from 'rehype-slug';
+import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 
 export interface BlogPost {
   slug: string;
   title: string;
   excerpt: string;
   content: string;
-  contentHtml: string;
+  mdxContent: React.ReactElement;
   author: string;
   publishedDate: string;
   updatedDate?: string;
@@ -57,18 +58,26 @@ export async function getBlogPost(slug: string): Promise<BlogPost | undefined> {
   const fileContents = fs.readFileSync(filePath, 'utf8');
   const { data, content } = matter(fileContents);
 
-  // Convert markdown to HTML
-  const processedContent = await remark()
-    .use(html)
-    .process(content);
-  const contentHtml = processedContent.toString();
+  // Compile MDX with rehype plugins
+  const { content: mdxContent } = await compileMDX({
+    source: content,
+    options: {
+      parseFrontmatter: false, // We already parsed with gray-matter
+      mdxOptions: {
+        rehypePlugins: [
+          rehypeSlug,
+          [rehypeAutolinkHeadings, { behavior: 'wrap' }],
+        ],
+      },
+    },
+  });
 
   return {
     slug,
     title: data.title,
     excerpt: data.excerpt,
     content: content,  // Raw markdown
-    contentHtml,       // Rendered HTML
+    mdxContent,        // Compiled MDX (React element)
     author: data.author || 'MyChristianCounselor Online Team',
     publishedDate: data.publishedDate,
     updatedDate: data.updatedDate,
