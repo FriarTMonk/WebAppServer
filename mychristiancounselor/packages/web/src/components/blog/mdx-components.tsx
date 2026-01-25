@@ -3,23 +3,9 @@ import Scripture from './Scripture';
 import KeyTakeaway from './KeyTakeaway';
 import ApplicationStep from './ApplicationStep';
 import CallToAction from './CallToAction';
+import Warning from './Warning';
 
 // Placeholder components (will be built in Phase 2)
-
-const Warning = ({ severity = 'crisis', children }: any) => {
-  const styles = severity === 'crisis'
-    ? 'bg-red-50 border-red-400 text-red-900'
-    : 'bg-orange-50 border-orange-400 text-orange-900';
-
-  return (
-    <div className={`my-8 p-6 border-l-4 rounded-lg ${styles}`} role="alert">
-      <div className="font-bold mb-2">
-        {severity === 'crisis' ? '⚠️ Crisis Support:' : 'Important:'}
-      </div>
-      <div>{children}</div>
-    </div>
-  );
-};
 
 const PrayerPrompt = ({ title = 'Prayer Prompt:', children }: any) => (
   <div className="my-8 p-8 bg-purple-50 border-2 border-purple-300 rounded-lg text-center">
