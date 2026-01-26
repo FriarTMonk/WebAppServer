@@ -19,6 +19,7 @@ export interface BlogPost {
   category: string;
   tags: string[];
   image?: string;
+  imageAlt?: string;
   readTime: string;
 }
 
@@ -87,6 +88,7 @@ export async function getBlogPost(slug: string): Promise<BlogPost | undefined> {
     category: data.category,
     tags: data.tags || [],
     image: data.image,
+    imageAlt: data.imageAlt,
     readTime: data.readTime,
   };
 }
