@@ -55,7 +55,7 @@ export default function TableOfContents() {
   if (headings.length === 0) return null;
 
   return (
-    <nav className="hidden xl:block sticky top-24 w-[300px] ml-8">
+    <nav className="hidden xl:block sticky top-24 w-[300px] ml-8" aria-label="Table of Contents">
       <div className="bg-white rounded-lg shadow-lg p-6 max-h-[80vh] overflow-y-auto">
         <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-4 pb-2 border-b">
           Contents
@@ -69,7 +69,7 @@ export default function TableOfContents() {
               <a
                 href={`#${heading.id}`}
                 onClick={(e) => handleClick(e, heading.id)}
-                className={`block py-1 text-sm transition-colors ${
+                className={`block py-1 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded ${
                   activeId === heading.id
                     ? 'text-teal-600 font-bold border-l-3 border-teal-600 pl-3 -ml-3'
                     : 'text-gray-600 hover:text-teal-600 hover:underline'

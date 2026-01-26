@@ -29,7 +29,7 @@ export default function CopyLinkButton({ headingId }: CopyLinkButtonProps) {
   return (
     <button
       onClick={handleCopy}
-      className="inline-flex items-center ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+      className="inline-flex items-center ml-2 opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded transition-opacity"
       aria-label="Copy link to section"
       title={copied ? 'Copied!' : 'Copy link'}
     >

@@ -12,13 +12,16 @@ export default function KeyTakeaway({
   children
 }: KeyTakeawayProps) {
   const [isOpen, setIsOpen] = useState(true);
+  const contentId = `keytakeaway-${Math.random().toString(36).substr(2, 9)}`;
 
   return (
     <div className="my-8 md:my-12 bg-teal-50 border-l-4 border-teal-500 rounded-lg overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-6 py-4 md:py-3 flex items-center justify-between hover:bg-teal-100 transition-colors min-h-[44px]"
+        className="w-full px-6 py-4 md:py-3 flex items-center justify-between hover:bg-teal-100 focus:outline-none focus:ring-4 focus:ring-teal-300 focus:ring-inset transition-colors min-h-[44px]"
         aria-expanded={isOpen}
+        aria-controls={contentId}
+        aria-label={`Toggle ${title}`}
       >
         <div className="flex items-center gap-3">
           <svg
@@ -41,6 +44,7 @@ export default function KeyTakeaway({
         </svg>
       </button>
       <div
+        id={contentId}
         className={`transition-all duration-300 ease-in-out ${
           isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
         }`}

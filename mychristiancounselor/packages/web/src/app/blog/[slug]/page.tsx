@@ -86,31 +86,31 @@ export default async function BlogPostPage({ params }: Props) {
             <div className="hidden md:flex items-center gap-4">
               <Link
                 href="/blog"
-                className="text-gray-700 hover:text-teal-700 font-medium transition-colors"
+                className="text-gray-700 hover:text-teal-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded"
               >
                 Blog
               </Link>
               <Link
                 href="/about"
-                className="text-gray-700 hover:text-teal-700 font-medium transition-colors"
+                className="text-gray-700 hover:text-teal-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded"
               >
                 About
               </Link>
               <Link
                 href="/faq"
-                className="text-gray-700 hover:text-teal-700 font-medium transition-colors"
+                className="text-gray-700 hover:text-teal-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded"
               >
                 FAQ
               </Link>
               <Link
                 href="/login"
-                className="text-gray-700 hover:text-teal-700 font-medium transition-colors"
+                className="text-gray-700 hover:text-teal-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded"
               >
                 Sign In
               </Link>
               <Link
                 href="/register"
-                className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700 font-medium transition-colors"
+                className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700 font-medium transition-colors focus:outline-none focus:ring-4 focus:ring-teal-300 focus:ring-offset-2"
               >
                 Get Started
               </Link>
@@ -119,13 +119,13 @@ export default async function BlogPostPage({ params }: Props) {
             <div className="flex md:hidden items-center gap-2">
               <Link
                 href="/blog"
-                className="text-gray-700 hover:text-teal-700 font-medium text-base transition-colors"
+                className="text-gray-700 hover:text-teal-700 font-medium text-base transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded"
               >
                 Blog
               </Link>
               <Link
                 href="/register"
-                className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 font-medium text-base transition-colors min-h-[44px] flex items-center"
+                className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 font-medium text-base transition-colors min-h-[44px] flex items-center focus:outline-none focus:ring-4 focus:ring-teal-300 focus:ring-offset-2"
               >
                 Start
               </Link>
@@ -136,16 +136,16 @@ export default async function BlogPostPage({ params }: Props) {
 
       {/* Breadcrumbs */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <nav className="flex text-sm text-gray-600 overflow-x-auto">
-          <Link href="/" className="hover:text-teal-600 whitespace-nowrap">
+        <nav className="flex text-sm text-gray-600 overflow-x-auto" aria-label="Breadcrumb">
+          <Link href="/" className="hover:text-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded whitespace-nowrap">
             Home
           </Link>
-          <span className="mx-2">/</span>
-          <Link href="/blog" className="hover:text-teal-600 whitespace-nowrap">
+          <span className="mx-2" aria-hidden="true">/</span>
+          <Link href="/blog" className="hover:text-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded whitespace-nowrap">
             Blog
           </Link>
-          <span className="mx-2">/</span>
-          <span className="text-gray-900 truncate">{post.title}</span>
+          <span className="mx-2" aria-hidden="true">/</span>
+          <span className="text-gray-900 truncate" aria-current="page">{post.title}</span>
         </nav>
       </div>
 
@@ -242,7 +242,7 @@ export default async function BlogPostPage({ params }: Props) {
 
           {/* Tags */}
           <div className="mt-12 pt-8 border-t border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">TAGS:</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3" id="article-tags">TAGS:</h3>
             <div className="flex flex-wrap gap-2">
               {post.tags.map((tag) => (
                 <span
@@ -257,13 +257,13 @@ export default async function BlogPostPage({ params }: Props) {
 
           {/* Share Section */}
           <div className="mt-8 py-8 border-y border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">SHARE THIS ARTICLE:</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-4" id="share-article">SHARE THIS ARTICLE:</h3>
             <div className="flex gap-4">
               <a
                 href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(`https://www.mychristiancounselor.online/blog/${post.slug}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-600 hover:text-blue-500 transition-colors py-2 min-h-[44px] flex items-center"
+                className="text-gray-600 hover:text-blue-500 transition-colors py-2 min-h-[44px] flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
               >
                 <span className="sr-only">Share on Twitter</span>
                 Twitter
@@ -272,7 +272,7 @@ export default async function BlogPostPage({ params }: Props) {
                 href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://www.mychristiancounselor.online/blog/${post.slug}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-600 hover:text-blue-700 transition-colors py-2 min-h-[44px] flex items-center"
+                className="text-gray-600 hover:text-blue-700 transition-colors py-2 min-h-[44px] flex items-center focus:outline-none focus:ring-2 focus:ring-blue-700 focus:ring-offset-2 rounded"
               >
                 <span className="sr-only">Share on Facebook</span>
                 Facebook
@@ -290,7 +290,7 @@ export default async function BlogPostPage({ params }: Props) {
             </p>
             <Link
               href="/register"
-              className="inline-block bg-white text-teal-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors shadow-lg"
+              className="inline-block bg-white text-teal-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-white focus:ring-offset-4 focus:ring-offset-teal-700 transition-colors shadow-lg"
             >
               Start Free Session
             </Link>
@@ -300,8 +300,8 @@ export default async function BlogPostPage({ params }: Props) {
 
       {/* Related Posts */}
       {relatedPosts.length > 0 && (
-        <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8">Related Articles</h2>
+        <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12" aria-labelledby="related-articles">
+          <h2 id="related-articles" className="text-3xl font-bold text-gray-900 mb-8">Related Articles</h2>
           <div className="grid md:grid-cols-2 gap-8">
             {relatedPosts.map((relatedPost) => (
               <article
@@ -312,8 +312,8 @@ export default async function BlogPostPage({ params }: Props) {
                   <span className="inline-block px-3 py-1 bg-teal-100 text-teal-800 text-xs font-semibold rounded-full mb-3">
                     {relatedPost.category}
                   </span>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3 hover:text-teal-600 transition-colors">
-                    <Link href={`/blog/${relatedPost.slug}`}>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">
+                    <Link href={`/blog/${relatedPost.slug}`} className="hover:text-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded transition-colors">
                       {relatedPost.title}
                     </Link>
                   </h3>
@@ -322,7 +322,7 @@ export default async function BlogPostPage({ params }: Props) {
                   </p>
                   <Link
                     href={`/blog/${relatedPost.slug}`}
-                    className="inline-flex items-center text-teal-600 font-semibold hover:text-teal-700 transition-colors"
+                    className="inline-flex items-center text-teal-600 font-semibold hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded transition-colors"
                   >
                     Read More
                     <svg
@@ -369,22 +369,22 @@ export default async function BlogPostPage({ params }: Props) {
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-              <Link href="/about" className="text-base hover:text-white transition-colors">
+              <Link href="/about" className="text-base hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 focus:ring-offset-gray-900 rounded transition-colors">
                 About
               </Link>
-              <Link href="/blog" className="text-base hover:text-white transition-colors">
+              <Link href="/blog" className="text-base hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 focus:ring-offset-gray-900 rounded transition-colors">
                 Blog
               </Link>
-              <Link href="/faq" className="text-base hover:text-white transition-colors">
+              <Link href="/faq" className="text-base hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 focus:ring-offset-gray-900 rounded transition-colors">
                 FAQ
               </Link>
-              <Link href="/legal/privacy" className="text-base hover:text-white transition-colors">
+              <Link href="/legal/privacy" className="text-base hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 focus:ring-offset-gray-900 rounded transition-colors">
                 Privacy
               </Link>
-              <Link href="/legal/terms" className="text-base hover:text-white transition-colors">
+              <Link href="/legal/terms" className="text-base hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 focus:ring-offset-gray-900 rounded transition-colors">
                 Terms
               </Link>
-              <Link href="/support/new" className="text-base hover:text-white transition-colors">
+              <Link href="/support/new" className="text-base hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 focus:ring-offset-gray-900 rounded transition-colors">
                 Support
               </Link>
             </div>

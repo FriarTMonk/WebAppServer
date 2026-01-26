@@ -27,7 +27,7 @@ export default function CallToAction({
       </p>
       <Link
         href={buttonLink}
-        className="inline-block bg-white text-teal-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 hover:-translate-y-0.5 transition-all shadow-lg"
+        className="inline-block bg-white text-teal-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-white focus:ring-offset-4 focus:ring-offset-teal-700 transition-all shadow-lg"
       >
         {buttonText}
       </Link>
