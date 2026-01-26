@@ -79,10 +79,11 @@ export default async function BlogPostPage({ params }: Props) {
                 width={180}
                 height={48}
                 priority
-                className="h-12 w-auto"
+                className="h-10 w-auto sm:h-12"
               />
             </Link>
-            <div className="flex items-center gap-4">
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center gap-4">
               <Link
                 href="/blog"
                 className="text-gray-700 hover:text-teal-700 font-medium transition-colors"
@@ -114,22 +115,37 @@ export default async function BlogPostPage({ params }: Props) {
                 Get Started
               </Link>
             </div>
+            {/* Mobile Navigation - Simplified */}
+            <div className="flex md:hidden items-center gap-2">
+              <Link
+                href="/blog"
+                className="text-gray-700 hover:text-teal-700 font-medium text-sm transition-colors"
+              >
+                Blog
+              </Link>
+              <Link
+                href="/register"
+                className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 font-medium text-sm transition-colors min-h-[44px] flex items-center"
+              >
+                Start
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
 
       {/* Breadcrumbs */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <nav className="flex text-sm text-gray-600">
-          <Link href="/" className="hover:text-teal-600">
+        <nav className="flex text-sm text-gray-600 overflow-x-auto">
+          <Link href="/" className="hover:text-teal-600 whitespace-nowrap">
             Home
           </Link>
           <span className="mx-2">/</span>
-          <Link href="/blog" className="hover:text-teal-600">
+          <Link href="/blog" className="hover:text-teal-600 whitespace-nowrap">
             Blog
           </Link>
           <span className="mx-2">/</span>
-          <span className="text-gray-900">{post.title}</span>
+          <span className="text-gray-900 truncate">{post.title}</span>
         </nav>
       </div>
 
@@ -247,7 +263,7 @@ export default async function BlogPostPage({ params }: Props) {
                 href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(`https://www.mychristiancounselor.online/blog/${post.slug}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-600 hover:text-blue-500 transition-colors"
+                className="text-gray-600 hover:text-blue-500 transition-colors py-2 min-h-[44px] flex items-center"
               >
                 <span className="sr-only">Share on Twitter</span>
                 Twitter
@@ -256,7 +272,7 @@ export default async function BlogPostPage({ params }: Props) {
                 href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://www.mychristiancounselor.online/blog/${post.slug}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-600 hover:text-blue-700 transition-colors"
+                className="text-gray-600 hover:text-blue-700 transition-colors py-2 min-h-[44px] flex items-center"
               >
                 <span className="sr-only">Share on Facebook</span>
                 Facebook
@@ -352,7 +368,7 @@ export default async function BlogPostPage({ params }: Props) {
                 © 2025 MyChristianCounselor. All rights reserved.
               </p>
             </div>
-            <div className="flex gap-6">
+            <div className="flex flex-wrap justify-center gap-4 md:gap-6">
               <Link href="/about" className="text-sm hover:text-white transition-colors">
                 About
               </Link>
@@ -363,10 +379,10 @@ export default async function BlogPostPage({ params }: Props) {
                 FAQ
               </Link>
               <Link href="/legal/privacy" className="text-sm hover:text-white transition-colors">
-                Privacy Policy
+                Privacy
               </Link>
               <Link href="/legal/terms" className="text-sm hover:text-white transition-colors">
-                Terms of Service
+                Terms
               </Link>
               <Link href="/support/new" className="text-sm hover:text-white transition-colors">
                 Support

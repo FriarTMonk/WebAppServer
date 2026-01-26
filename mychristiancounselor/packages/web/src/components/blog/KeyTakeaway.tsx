@@ -17,7 +17,7 @@ export default function KeyTakeaway({
     <div className="my-8 md:my-12 bg-teal-50 border-l-4 border-teal-500 rounded-lg overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-6 py-4 flex items-center justify-between hover:bg-teal-100 transition-colors"
+        className="w-full px-6 py-4 md:py-3 flex items-center justify-between hover:bg-teal-100 transition-colors min-h-[44px]"
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-3">
