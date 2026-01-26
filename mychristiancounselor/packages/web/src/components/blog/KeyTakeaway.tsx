@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useId } from 'react';
 
 interface KeyTakeawayProps {
   title?: string;
@@ -11,8 +11,9 @@ export default function KeyTakeaway({
   title = 'Key Takeaways',
   children
 }: KeyTakeawayProps) {
+  const id = useId();
+  const contentId = `keytakeaway-${id}`;
   const [isOpen, setIsOpen] = useState(true);
-  const contentId = `keytakeaway-${Math.random().toString(36).substr(2, 9)}`;
 
   return (
     <div className="my-8 md:my-12 bg-teal-50 border-l-4 border-teal-500 rounded-lg overflow-hidden">
