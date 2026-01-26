@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getBlogPost, getAllBlogPosts } from '../../../lib/blog';
 import BlogLayout from '../../../components/blog/BlogLayout';
+import { getCategoryTheme } from '../../../lib/category-theme';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -135,17 +136,41 @@ export default async function BlogPostPage({ params }: Props) {
       {/* Article Header */}
       <BlogLayout category={post.category}>
         <article>
-          {/* Category Badge */}
-          <div className="mb-4">
-            <span className="inline-block px-4 py-2 bg-teal-100 text-teal-800 text-sm font-semibold rounded-full">
-              {post.category}
-            </span>
-          </div>
+          {/* Hero Image or Gradient Header */}
+          {post.image ? (
+            <div className="relative w-full h-64 md:h-96 -mx-4 sm:-mx-6 lg:-mx-8 mb-8">
+              <Image
+                src={post.image}
+                alt={post.imageAlt || post.title}
+                fill
+                className="object-cover"
+                priority
+              />
+              <div className={`absolute inset-0 bg-gradient-to-t ${getCategoryTheme(post.category).gradient} opacity-60`} />
+              <div className="absolute inset-0 flex flex-col justify-end p-8">
+                <span className={`inline-block px-4 py-2 ${getCategoryTheme(post.category).badgeBg} ${getCategoryTheme(post.category).badgeText} text-sm font-semibold rounded-full mb-4 w-fit`}>
+                  {post.category}
+                </span>
+                <h1 className="text-3xl md:text-5xl font-extrabold text-white mb-4">
+                  {post.title}
+                </h1>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className={`w-full h-24 bg-gradient-to-r ${getCategoryTheme(post.category).gradient} -mx-4 sm:-mx-6 lg:-mx-8 mb-8`} />
 
-          {/* Title */}
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-6">
-            {post.title}
-          </h1>
+              <div className="mb-4">
+                <span className={`inline-block px-4 py-2 ${getCategoryTheme(post.category).badgeBg} ${getCategoryTheme(post.category).badgeText} text-sm font-semibold rounded-full`}>
+                  {post.category}
+                </span>
+              </div>
+
+              <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-6">
+                {post.title}
+              </h1>
+            </>
+          )}
 
           {/* Meta Info */}
           <div className="flex items-center justify-between text-gray-600 mb-8 pb-8 border-b border-gray-200">
