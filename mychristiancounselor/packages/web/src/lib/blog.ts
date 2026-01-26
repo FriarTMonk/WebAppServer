@@ -5,6 +5,7 @@ import { compileMDX } from 'next-mdx-remote/rsc';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import type { ReactElement } from 'react';
+import { mdxComponents } from '@/components/blog/mdx-components';
 
 export interface BlogPost {
   slug: string;
@@ -59,9 +60,10 @@ export async function getBlogPost(slug: string): Promise<BlogPost | undefined> {
   const fileContents = fs.readFileSync(filePath, 'utf8');
   const { data, content } = matter(fileContents);
 
-  // Compile MDX with rehype plugins
+  // Compile MDX with rehype plugins and custom components
   const { content: mdxContent } = await compileMDX({
     source: content,
+    components: mdxComponents,
     options: {
       parseFrontmatter: false, // We already parsed with gray-matter
       mdxOptions: {
