@@ -119,13 +119,13 @@ export default async function BlogPostPage({ params }: Props) {
             <div className="flex md:hidden items-center gap-2">
               <Link
                 href="/blog"
-                className="text-gray-700 hover:text-teal-700 font-medium text-sm transition-colors"
+                className="text-gray-700 hover:text-teal-700 font-medium text-base transition-colors"
               >
                 Blog
               </Link>
               <Link
                 href="/register"
-                className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 font-medium text-sm transition-colors min-h-[44px] flex items-center"
+                className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 font-medium text-base transition-colors min-h-[44px] flex items-center"
               >
                 Start
               </Link>
@@ -369,22 +369,22 @@ export default async function BlogPostPage({ params }: Props) {
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-              <Link href="/about" className="text-sm hover:text-white transition-colors">
+              <Link href="/about" className="text-base hover:text-white transition-colors">
                 About
               </Link>
-              <Link href="/blog" className="text-sm hover:text-white transition-colors">
+              <Link href="/blog" className="text-base hover:text-white transition-colors">
                 Blog
               </Link>
-              <Link href="/faq" className="text-sm hover:text-white transition-colors">
+              <Link href="/faq" className="text-base hover:text-white transition-colors">
                 FAQ
               </Link>
-              <Link href="/legal/privacy" className="text-sm hover:text-white transition-colors">
+              <Link href="/legal/privacy" className="text-base hover:text-white transition-colors">
                 Privacy
               </Link>
-              <Link href="/legal/terms" className="text-sm hover:text-white transition-colors">
+              <Link href="/legal/terms" className="text-base hover:text-white transition-colors">
                 Terms
               </Link>
-              <Link href="/support/new" className="text-sm hover:text-white transition-colors">
+              <Link href="/support/new" className="text-base hover:text-white transition-colors">
                 Support
               </Link>
             </div>
