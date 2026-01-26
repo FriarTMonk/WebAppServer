@@ -43,15 +43,21 @@ export const mdxComponents: MDXComponents = {
     />
   ),
   p: (props: any) => (
-    <p className="text-gray-800 leading-relaxed my-6" {...props} />
+    <p className="text-base md:text-lg text-gray-800 leading-relaxed my-6" {...props} />
   ),
   ul: (props: any) => (
-    <ul className="list-disc pl-6 my-6 space-y-2 text-gray-800" {...props} />
+    <ul className="list-disc pl-6 my-6 space-y-3 text-base md:text-lg text-gray-800" {...props} />
   ),
   ol: (props: any) => (
-    <ol className="list-decimal pl-6 my-6 space-y-2 text-gray-800" {...props} />
+    <ol className="list-decimal pl-6 my-6 space-y-3 text-base md:text-lg text-gray-800" {...props} />
   ),
   li: (props: any) => (
-    <li className="my-2" {...props} />
+    <li className="my-2 leading-relaxed" {...props} />
+  ),
+  strong: (props: any) => (
+    <strong className="font-bold text-gray-900" {...props} />
+  ),
+  em: (props: any) => (
+    <em className="italic" {...props} />
   ),
 };
