@@ -336,35 +336,49 @@ export class AuthService {
   async verifyEmail(token: string): Promise<void> {
     this.logger.log(`[VERIFY_EMAIL] Starting verification for token: ${token.substring(0, 10)}...`);
 
-    const user = await this.prisma.user.findUnique({
-      where: { verificationToken: token },
-    });
+    // Use a transaction to ensure atomicity - either all updates succeed or all fail
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        // Find user with this token
+        const user = await tx.user.findUnique({
+          where: { verificationToken: token },
+        });
 
-    if (!user) {
-      this.logger.warn(`[VERIFY_EMAIL] No user found with token: ${token.substring(0, 10)}...`);
-      throw new BadRequestException('Invalid or expired verification token');
+        if (!user) {
+          this.logger.warn(`[VERIFY_EMAIL] No user found with token: ${token.substring(0, 10)}...`);
+          throw new BadRequestException('Invalid or expired verification token');
+        }
+
+        this.logger.log(`[VERIFY_EMAIL] Found user: ${user.id} (${user.email}), emailVerified: ${user.emailVerified}`);
+
+        // Check if token has expired
+        if (user.verificationTokenExpiry && user.verificationTokenExpiry < new Date()) {
+          this.logger.warn(`[VERIFY_EMAIL] Token expired for user ${user.id}, expiry: ${user.verificationTokenExpiry}`);
+          throw new BadRequestException('Verification token has expired. Please request a new verification email.');
+        }
+
+        // Update user to mark email as verified - within transaction
+        this.logger.log(`[VERIFY_EMAIL] Attempting to update user ${user.id} to set emailVerified=true`);
+        const updatedUser = await tx.user.update({
+          where: { id: user.id },
+          data: {
+            emailVerified: true,
+            verificationToken: null, // Clear token after use
+            verificationTokenExpiry: null, // Clear expiry after use
+          },
+        });
+
+        this.logger.log(`[VERIFY_EMAIL] Transaction successful - user ${user.id} emailVerified is now: ${updatedUser.emailVerified}`);
+
+        return updatedUser;
+      });
+
+      this.logger.log(`[VERIFY_EMAIL] Verification completed successfully for user ${result.id}`);
+    } catch (error) {
+      // Log the error and re-throw
+      this.logger.error(`[VERIFY_EMAIL] Verification failed: ${error.message}`, error.stack);
+      throw error;
     }
-
-    this.logger.log(`[VERIFY_EMAIL] Found user: ${user.id} (${user.email}), emailVerified: ${user.emailVerified}`);
-
-    // Check if token has expired
-    if (user.verificationTokenExpiry && user.verificationTokenExpiry < new Date()) {
-      this.logger.warn(`[VERIFY_EMAIL] Token expired for user ${user.id}, expiry: ${user.verificationTokenExpiry}`);
-      throw new BadRequestException('Verification token has expired. Please request a new verification email.');
-    }
-
-    // Update user to mark email as verified
-    this.logger.log(`[VERIFY_EMAIL] Attempting to update user ${user.id} to set emailVerified=true`);
-    const updatedUser = await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        emailVerified: true,
-        verificationToken: null, // Clear token after use
-        verificationTokenExpiry: null, // Clear expiry after use
-      },
-    });
-
-    this.logger.log(`[VERIFY_EMAIL] Successfully updated user ${user.id}, emailVerified is now: ${updatedUser.emailVerified}`);
   }
 
   /**
