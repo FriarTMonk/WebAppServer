@@ -15,7 +15,7 @@ export class AdminService {
   private readonly logger = new Logger(AdminService.name);
   private readonly ACTIVE_USER_DAYS_THRESHOLD = 7;
   private metricsCache: { data: PlatformMetrics; timestamp: number } | null = null;
-  private readonly METRICS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  private readonly METRICS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
   constructor(
     private prisma: PrismaService,
@@ -128,19 +128,13 @@ export class AdminService {
         Date.now() - this.ACTIVE_USER_DAYS_THRESHOLD * 24 * 60 * 60 * 1000
       );
 
-      // Optimized active users query - query RefreshToken directly for better performance
-      const recentTokens = await this.prisma.refreshToken.findMany({
-        where: {
-          createdAt: {
-            gte: activeUserThresholdDate,
-          },
-        },
-        select: {
-          userId: true,
-        },
-        distinct: ['userId'],
-      });
-      const activeUsersCount = recentTokens.length;
+      // Optimized active users query - use COUNT(DISTINCT) for better performance
+      const activeUsersResult = await this.prisma.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(DISTINCT "userId") as count
+        FROM "RefreshToken"
+        WHERE "createdAt" >= ${activeUserThresholdDate}
+      `;
+      const activeUsersCount = Number(activeUsersResult[0].count);
 
       const [
         totalUsers,
