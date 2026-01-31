@@ -73,9 +73,10 @@ interface SimilarityMatch {
   };
 }
 
-export default function TicketDetailPage({ params }: { params: { id: string } }) {
+export default function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  const [ticketId, setTicketId] = useState<string | null>(null);
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -114,6 +115,15 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
   const [historicalMatches, setHistoricalMatches] = useState<SimilarityMatch[]>([]);
   const [loadingSimilarity, setLoadingSimilarity] = useState(false);
 
+  // In Next.js 15+, params is a Promise - extract the ID
+  useEffect(() => {
+    const extractId = async () => {
+      const { id } = await params;
+      setTicketId(id);
+    };
+    extractId();
+  }, [params]);
+
   // Update reply content when speech transcript changes
   useEffect(() => {
     if (transcript) {
@@ -139,15 +149,17 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
   };
 
   useEffect(() => {
+    if (!ticketId) return; // Wait for ticket ID to be extracted
+
     if (!isAuthenticated) {
-      router.push(`/login?redirect=/support/tickets/${params.id}`);
+      router.push(`/login?redirect=/support/tickets/${ticketId}`);
       return;
     }
     loadTicket();
     checkAdminStatus();
     fetchSimilarTickets('active');
     fetchSimilarTickets('historical');
-  }, [isAuthenticated, params.id]);
+  }, [isAuthenticated, ticketId]);
 
   const checkAdminStatus = async () => {
     try {
@@ -166,7 +178,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
       setLoading(true);
       setError('');
 
-      const response = await apiGet(`/support/tickets/${params.id}`);
+      const response = await apiGet(`/support/tickets/${ticketId}`);
 
       if (response.ok) {
         const data = await response.json();
@@ -302,7 +314,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     try {
       setLoadingSimilarity(true);
       const response = await apiGet(
-        `/support/tickets/${params.id}/similar?type=${type}`
+        `/support/tickets/${ticketId}/similar?type=${type}`
       );
 
       if (response.ok) {
@@ -325,7 +337,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     relationship: string
   ) => {
     try {
-      const response = await apiPost(`/support/tickets/${params.id}/link`, {
+      const response = await apiPost(`/support/tickets/${ticketId}/link`, {
         targetTicketId: similarTicketId,
         relationship,
       });

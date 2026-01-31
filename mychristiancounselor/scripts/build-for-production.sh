@@ -89,6 +89,8 @@ echo -e "${YELLOW}Cleaning build artifacts...${NC}"
 rm -rf packages/shared/dist
 rm -rf packages/api/dist
 rm -rf packages/web/.next
+echo -e "${YELLOW}Clearing NX cache (required to force rebuild)...${NC}"
+npx nx reset
 echo -e "${GREEN}✅ Clean complete${NC}"
 echo ""
 
@@ -132,8 +134,12 @@ echo ""
 echo -e "${YELLOW}Building web package in production mode...${NC}"
 echo -e "${YELLOW}Using .env.production configuration${NC}"
 
-# Build with production environment
-NODE_ENV=production npx nx build web --skip-nx-cache
+# Build with production environment variables explicitly set
+# CRITICAL: Next.js bakes NEXT_PUBLIC_* vars into the bundle at BUILD time
+NEXT_PUBLIC_API_URL=https://api.mychristiancounselor.online \
+NEXT_PUBLIC_SENTRY_DSN=https://450be74fd3d263728ebd3656fd772438@o4510468923326464.ingest.us.sentry.io/4510468927062016 \
+NODE_ENV=production \
+npx nx build web --skip-nx-cache
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}ERROR: Web build failed${NC}"

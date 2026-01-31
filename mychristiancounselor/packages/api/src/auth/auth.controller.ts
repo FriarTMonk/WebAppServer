@@ -88,6 +88,10 @@ export class AuthController {
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   async verifyEmail(@Body() dto: VerifyEmailDto): Promise<{ message: string }> {
+    // Log incoming verification request for debugging
+    console.log('[VERIFY_EMAIL_CONTROLLER] Received request with DTO:', JSON.stringify(dto));
+    console.log('[VERIFY_EMAIL_CONTROLLER] Token type:', typeof dto.token);
+    console.log('[VERIFY_EMAIL_CONTROLLER] Token length:', dto.token?.length);
     await this.authService.verifyEmail(dto.token);
     return { message: 'Email verified successfully' };
   }

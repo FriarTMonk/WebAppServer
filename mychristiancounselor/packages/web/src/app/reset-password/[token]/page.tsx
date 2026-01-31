@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiPost } from '../../../lib/api';
 
-export default function ResetPasswordPage({ params }: { params: { token: string } }) {
+export default function ResetPasswordPage({ params }: { params: Promise<{ token: string }> }) {
   const router = useRouter();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -32,10 +32,12 @@ export default function ResetPasswordPage({ params }: { params: { token: string 
     setLoading(true);
 
     try {
+      // In Next.js 15+, params is a Promise and must be awaited
+      const { token } = await params;
       await apiPost(
         '/auth/reset-password',
         {
-          token: params.token,
+          token,
           newPassword,
         },
         { skipAuth: true }

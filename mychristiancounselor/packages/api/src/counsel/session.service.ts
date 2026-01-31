@@ -12,36 +12,15 @@ import { randomUUID } from 'crypto';
 export class SessionService {
   private readonly logger = new Logger(SessionService.name);
 
-  // In-memory cache for temporary sessions (free users)
-  // Key: sessionId, Value: { session: Session, expiresAt: number }
-  private readonly tempSessionCache = new Map<string, { session: Session; expiresAt: number }>();
-  private readonly CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+  // DEPRECATED: Temp session cache no longer needed
+  // All authenticated users now have sessions in the database
+  // Messages are subscription-gated (in-memory for non-subscribed, persisted for subscribed)
 
   constructor(
     private prisma: PrismaService,
     private translationService: TranslationService,
   ) {
-    // Clean up expired cache entries every 10 minutes
-    setInterval(() => this.cleanupExpiredSessions(), 10 * 60 * 1000);
-  }
-
-  /**
-   * Remove expired temporary sessions from cache
-   */
-  private cleanupExpiredSessions(): void {
-    const now = Date.now();
-    let removedCount = 0;
-
-    for (const [sessionId, cached] of this.tempSessionCache.entries()) {
-      if (now > cached.expiresAt) {
-        this.tempSessionCache.delete(sessionId);
-        removedCount++;
-      }
-    }
-
-    if (removedCount > 0) {
-      this.logger.debug(`Cleaned up ${removedCount} expired temporary sessions`);
-    }
+    // No cleanup needed - all sessions are in database
   }
 
   /**
@@ -79,32 +58,19 @@ export class SessionService {
     themes: string[],
     preferredTranslation: BibleTranslation
   ): Promise<Session> {
-    // Try to get existing session
+    // Try to get existing session from database
+    // All authenticated users have sessions in DB (no temp cache needed)
     let session: Session | null = null;
     if (sessionId) {
       session = await this.getSession(sessionId);
-
-      // If not in database, check temporary session cache (for free users)
-      if (!session && this.tempSessionCache.has(sessionId)) {
-        const cached = this.tempSessionCache.get(sessionId)!;
-
-        // Check if cache entry is still valid
-        if (Date.now() <= cached.expiresAt) {
-          session = cached.session;
-          this.logger.debug(`Retrieved temporary session ${sessionId} from cache with ${session.messages.length} messages`);
-        } else {
-          // Remove expired entry
-          this.tempSessionCache.delete(sessionId);
-          this.logger.debug(`Removed expired temporary session ${sessionId} from cache`);
-        }
-      }
     }
 
     // Validate translation preference
     const validTranslation = await this.translationService.validateTranslation(preferredTranslation);
 
-    // Create new session for subscribed users
-    if (!session && canSaveSession && userId) {
+    // Create new session for ALL authenticated users (no anonymous users allowed)
+    // Session metadata is always saved, but messages are subscription-gated
+    if (!session && userId) {
       const title = message.substring(0, 50) + (message.length > 50 ? '...' : '');
 
       session = await this.prisma.session.create({
@@ -119,7 +85,7 @@ export class SessionService {
         include: { messages: true },
       });
 
-      this.logger.debug(`Created new session ${session.id} for user ${userId}`);
+      this.logger.debug(`Created new session ${session.id} for user ${userId} (messages will ${canSaveSession ? 'be saved' : 'NOT be saved - subscription required'})`);
     }
 
     // Update translation preference if changed (compare with validated translation)
@@ -133,35 +99,20 @@ export class SessionService {
       this.logger.debug(`Updated session ${session.id} translation to ${validTranslation}`);
     }
 
-    // Create temporary session for free users
-    if (!session) {
-      session = {
-        id: sessionId || randomUUID(),
-        userId: userId || null,
-        title: '',
-        topics: JSON.stringify(themes),
-        status: 'active' as const,
-        preferredTranslation: validTranslation,
-        messages: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      // Store in cache with 1-hour expiration
-      this.tempSessionCache.set(session.id, {
-        session,
-        expiresAt: Date.now() + this.CACHE_TTL_MS,
-      });
-
-      this.logger.debug(`Created temporary session ${session.id} for ${userId ? 'user ' + userId : 'anonymous user'} and stored in cache`);
+    // CRITICAL: No anonymous users allowed - all users must be authenticated
+    // If we reach here without a session and userId, something is wrong
+    if (!session && !userId) {
+      throw new Error('Cannot create session: user must be authenticated. Anonymous users are not supported.');
     }
 
     return session;
   }
 
   /**
-   * Store a user message in the session (subscription-gated)
-   * For temporary sessions, add to in-memory messages array
+   * Store a user message in the session
+   * - All authenticated users have sessions in DB
+   * - Messages are only persisted to DB for subscribed users (canSaveSession=true)
+   * - Non-subscribed users: messages exist in-memory for current conversation only
    */
   async createUserMessage(
     sessionId: string,
@@ -169,51 +120,47 @@ export class SessionService {
     canSaveSession: boolean,
     session?: Session
   ): Promise<void> {
-    if (!canSaveSession) {
-      // For temporary sessions, add message to in-memory array for history/counting
-      if (session) {
-        const tempMessage = {
+    // Messages are subscription-gated: only save to database if user has subscription
+    if (canSaveSession) {
+      await this.prisma.message.create({
+        data: {
           id: randomUUID(),
           sessionId,
-          role: 'user' as const,
+          role: 'user',
           content,
           scriptureReferences: [],
           timestamp: new Date(),
-          isClarifyingQuestion: false,
-        };
-        session.messages.push(tempMessage);
+        },
+      });
 
-        // Update cache to persist message across requests
-        if (this.tempSessionCache.has(sessionId)) {
-          this.tempSessionCache.set(sessionId, {
-            session,
-            expiresAt: Date.now() + this.CACHE_TTL_MS, // Reset expiration
-          });
-        }
-
-        this.logger.debug(`Added user message to temporary session ${sessionId} (${session.messages.length} total messages)`);
-      }
+      this.logger.debug(`Created user message in database for session ${sessionId}`);
       return;
     }
 
-    await this.prisma.message.create({
-      data: {
+    // Non-subscribed users: keep message in-memory for current conversation only
+    // Session exists in DB but messages are NOT persisted
+    if (session) {
+      const tempMessage = {
         id: randomUUID(),
         sessionId,
-        role: 'user',
+        role: 'user' as const,
         content,
         scriptureReferences: [],
         timestamp: new Date(),
-      },
-    });
+        isClarifyingQuestion: false,
+      };
+      session.messages.push(tempMessage);
 
-    this.logger.debug(`Created user message in session ${sessionId}`);
+      this.logger.debug(`Added user message to in-memory for session ${sessionId} (${session.messages.length} messages in current conversation - not persisted, subscription required)`);
+    }
   }
 
   /**
-   * Store an assistant message in the session (subscription-gated)
+   * Store an assistant message in the session
    * Returns the persisted message or a temporary message object
-   * For temporary sessions, add to in-memory messages array
+   * - All authenticated users have sessions in DB
+   * - Messages are only persisted to DB for subscribed users (canSaveSession=true)
+   * - Non-subscribed users: messages exist in-memory for current conversation only
    */
   async createAssistantMessage(
     sessionId: string,
@@ -225,55 +172,48 @@ export class SessionService {
     crisisResources?: any[],
     session?: Session
   ) {
-    if (!canSaveSession) {
-      // Create temporary message object for free users
-      const tempMessage = {
-        id: randomUUID(),
-        sessionId,
-        role: 'assistant' as const,
-        content,
-        scriptureReferences,
-        griefResources,
-        crisisResources,
-        isClarifyingQuestion,
-        timestamp: new Date(),
-      };
+    // Messages are subscription-gated: only save to database if user has subscription
+    if (canSaveSession) {
+      const assistantMessage = await this.prisma.message.create({
+        data: {
+          id: randomUUID(),
+          sessionId,
+          role: 'assistant',
+          content,
+          scriptureReferences,
+          griefResources: griefResources ? JSON.parse(JSON.stringify(griefResources)) : undefined,
+          crisisResources: crisisResources ? JSON.parse(JSON.stringify(crisisResources)) : undefined,
+          isClarifyingQuestion,
+          timestamp: new Date(),
+        },
+      });
 
-      // Add to in-memory array for history/counting
-      if (session) {
-        session.messages.push(tempMessage);
-
-        // Update cache to persist message across requests
-        if (this.tempSessionCache.has(sessionId)) {
-          this.tempSessionCache.set(sessionId, {
-            session,
-            expiresAt: Date.now() + this.CACHE_TTL_MS, // Reset expiration
-          });
-        }
-
-        this.logger.debug(`Added assistant message to temporary session ${sessionId} (${session.messages.length} total messages, isClarifyingQuestion: ${isClarifyingQuestion})`);
-      }
-
-      return tempMessage;
+      this.logger.debug(`Created assistant message in database for session ${sessionId}`);
+      return assistantMessage;
     }
 
-    // Persist message for subscribed users
-    const assistantMessage = await this.prisma.message.create({
-      data: {
-        id: randomUUID(),
-        sessionId,
-        role: 'assistant',
-        content,
-        scriptureReferences,
-        griefResources: griefResources ? JSON.parse(JSON.stringify(griefResources)) : undefined,
-        crisisResources: crisisResources ? JSON.parse(JSON.stringify(crisisResources)) : undefined,
-        isClarifyingQuestion,
-        timestamp: new Date(),
-      },
-    });
+    // Non-subscribed users: create in-memory message for current conversation only
+    // Session exists in DB but messages are NOT persisted
+    const tempMessage = {
+      id: randomUUID(),
+      sessionId,
+      role: 'assistant' as const,
+      content,
+      scriptureReferences,
+      griefResources,
+      crisisResources,
+      isClarifyingQuestion,
+      timestamp: new Date(),
+    };
 
-    this.logger.debug(`Created assistant message in session ${sessionId}`);
-    return assistantMessage;
+    // Add to in-memory array for current conversation
+    if (session) {
+      session.messages.push(tempMessage);
+
+      this.logger.debug(`Added assistant message to in-memory for session ${sessionId} (${session.messages.length} messages in current conversation - not persisted, subscription required)`);
+    }
+
+    return tempMessage;
   }
 
   /**

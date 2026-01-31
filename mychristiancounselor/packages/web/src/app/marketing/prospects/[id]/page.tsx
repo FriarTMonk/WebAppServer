@@ -56,20 +56,21 @@ interface Prospect {
   };
 }
 
-export default function ProspectDetailPage({ params }: { params: { id: string } }) {
+export default function ProspectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const [prospectId, setProspectId] = useState<string | null>(null);
   const [prospect, setProspect] = useState<Prospect | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const fetchProspect = async () => {
+  const fetchProspect = async (prospectId: string) => {
     try {
       setLoading(true);
       setError(null);
 
       const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3697') + '/v1';
-      const response = await fetch(`${apiUrl}/marketing/prospects/${params.id}`, {
+      const response = await fetch(`${apiUrl}/marketing/prospects/${prospectId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
@@ -97,8 +98,14 @@ export default function ProspectDetailPage({ params }: { params: { id: string } 
   };
 
   useEffect(() => {
-    fetchProspect();
-  }, [params.id]);
+    // In Next.js 15+, params is a Promise and must be awaited
+    const loadProspect = async () => {
+      const { id } = await params;
+      setProspectId(id);
+      fetchProspect(id);
+    };
+    loadProspect();
+  }, [params]);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
@@ -403,7 +410,7 @@ export default function ProspectDetailPage({ params }: { params: { id: string } 
           onClose={() => setShowEditModal(false)}
           onSuccess={() => {
             setShowEditModal(false);
-            fetchProspect();
+            if (prospectId) fetchProspect(prospectId);
           }}
           editingProspect={prospect}
         />

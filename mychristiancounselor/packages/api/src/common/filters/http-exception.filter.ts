@@ -68,7 +68,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
         exception instanceof Error ? exception.stack : undefined
       );
     } else if (status >= 400) {
-      this.logger.warn(logMessage);
+      // Include detailed error message for debugging
+      const detailedMessage = typeof message === 'string' ? message : JSON.stringify(message);
+      this.logger.warn(`${logMessage}: ${detailedMessage}`);
     }
 
     response.status(status).json(errorResponse);

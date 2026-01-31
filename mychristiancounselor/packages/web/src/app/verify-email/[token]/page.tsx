@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiPost } from '../../../lib/api';
 
-export default function VerifyEmailPage({ params }: { params: { token: string } }) {
+export default function VerifyEmailPage({ params }: { params: Promise<{ token: string }> }) {
   const router = useRouter();
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [error, setError] = useState('');
@@ -14,7 +14,9 @@ export default function VerifyEmailPage({ params }: { params: { token: string } 
     // Auto-verify on page load (Unix principle: do one thing automatically)
     const verifyEmail = async () => {
       try {
-        await apiPost('/auth/verify-email', { token: params.token }, { skipAuth: true });
+        // In Next.js 15+, params is a Promise and must be awaited
+        const { token } = await params;
+        await apiPost('/auth/verify-email', { token }, { skipAuth: true });
 
         setStatus('success');
 
@@ -32,7 +34,7 @@ export default function VerifyEmailPage({ params }: { params: { token: string } 
     };
 
     verifyEmail();
-  }, [params.token, router]);
+  }, [params, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

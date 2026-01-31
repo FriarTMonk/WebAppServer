@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { MessageBubble } from './MessageBubble';
 import { CrisisModal } from './CrisisModal';
@@ -20,6 +20,7 @@ import { ThinkingIndicator } from './ThinkingIndicator';
 import { SessionCounter } from './SessionCounter';
 import { SessionLimitModal } from './SessionLimitModal';
 import { TrialExpirationBanner } from './TrialExpirationBanner';
+import { InactivityWarningModal } from './InactivityWarningModal';
 import MemberTasksCard from './MemberTasksCard';
 import MemberAssessmentsCard from './MemberAssessmentsCard';
 import MyTasksModal from './MyTasksModal';
@@ -69,9 +70,15 @@ export function ConversationView() {
   const [showAssessmentsModal, setShowAssessmentsModal] = useState(false);
   const [taskRefreshTrigger, setTaskRefreshTrigger] = useState(0);
   const [assessmentRefreshTrigger, setAssessmentRefreshTrigger] = useState(0);
+  const [showInactivityWarning, setShowInactivityWarning] = useState(false);
+  const [inactivitySecondsRemaining, setInactivitySecondsRemaining] = useState(60);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastActivityRef = useRef<number>(Date.now());
 
   // Speech recognition
   const {
@@ -147,6 +154,63 @@ export function ConversationView() {
     loadUserPreferences();
   }, [isAuthenticated]);
 
+  // Reset inactivity timers (called when user sends a message)
+  const resetInactivityTimers = useCallback(() => {
+    const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+    const WARNING_TIME_MS = 14 * 60 * 1000; // 14 minutes (show warning 1 minute before timeout)
+
+    // Clear existing timers
+    if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
+    if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+
+    // Reset warning state
+    setShowInactivityWarning(false);
+    setInactivitySecondsRemaining(60);
+
+    // Update last activity timestamp
+    lastActivityRef.current = Date.now();
+
+    // Set warning timer (14 minutes)
+    warningTimeoutRef.current = setTimeout(() => {
+      setShowInactivityWarning(true);
+      setInactivitySecondsRemaining(60);
+
+      // Start countdown
+      let secondsLeft = 60;
+      countdownIntervalRef.current = setInterval(() => {
+        secondsLeft -= 1;
+        setInactivitySecondsRemaining(secondsLeft);
+
+        if (secondsLeft <= 0 && countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+        }
+      }, 1000);
+    }, WARNING_TIME_MS);
+
+    // Set redirect timer (15 minutes)
+    redirectTimeoutRef.current = setTimeout(() => {
+      // Clear conversation and redirect to landing page
+      setMessages([]);
+      setSessionId(null);
+      setCurrentSessionQuestionCount(0);
+      router.push('/');
+    }, INACTIVITY_TIMEOUT_MS);
+  }, [router]);
+
+  // Inactivity timeout: 15 minutes with 1 minute warning
+  useEffect(() => {
+    // Initialize timers on mount
+    resetInactivityTimers();
+
+    // Cleanup on unmount
+    return () => {
+      if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
+      if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
+  }, [resetInactivityTimers]);
+
   // Fetch subscription status on mount
   useEffect(() => {
     const fetchSubscriptionStatus = async () => {
@@ -171,8 +235,15 @@ export function ConversationView() {
     fetchSubscriptionStatus();
   }, [isAuthenticated]);
 
+  const handleStayActive = () => {
+    resetInactivityTimers();
+  };
+
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading) return;
+
+    // Reset inactivity timers on user message
+    resetInactivityTimers();
 
     const userMessage: ExtendedMessage = {
       id: Date.now().toString(),
@@ -683,6 +754,12 @@ export function ConversationView() {
           setSessionLimitModal({ isOpen: false, limitStatus: null });
           router.push('/settings/subscription');
         }}
+      />
+
+      <InactivityWarningModal
+        isOpen={showInactivityWarning}
+        secondsRemaining={inactivitySecondsRemaining}
+        onStayActive={handleStayActive}
       />
 
       {/* Mobile Notes Overlay - Only for subscribed users */}
