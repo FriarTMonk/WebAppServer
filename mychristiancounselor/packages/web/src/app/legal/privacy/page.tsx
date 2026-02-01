@@ -1,19 +1,17 @@
-import Link from 'next/link';
+import { PublicPageLayout } from '@/components/PublicPageLayout';
 
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto bg-white shadow-sm rounded-lg p-8">
-        <div className="mb-8">
-          <Link
-            href="/"
-            className="text-teal-600 hover:text-teal-700 text-sm font-medium"
-          >
-            ← Back to Home
-          </Link>
-        </div>
-
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
+    <PublicPageLayout
+      breadcrumbs={[
+        { label: 'Legal', href: '/legal/privacy' },
+        { label: 'Privacy Policy' }
+      ]}
+      className="bg-gray-50"
+    >
+      <div className="py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto bg-white shadow-sm rounded-lg p-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
         <p className="text-sm text-gray-600 mb-8">Last Updated: December 1, 2025</p>
 
         <div className="prose prose-teal max-w-none space-y-6">
@@ -179,13 +177,14 @@ export default function PrivacyPolicy() {
           </section>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-gray-200">
-          <p className="text-sm text-gray-600">
-            By using MyChristianCounselor, you acknowledge that you have read and understood
-            this Privacy Policy.
-          </p>
+          <div className="mt-12 pt-6 border-t border-gray-200">
+            <p className="text-sm text-gray-600">
+              By using MyChristianCounselor, you acknowledge that you have read and understood
+              this Privacy Policy.
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </PublicPageLayout>
   );
 }

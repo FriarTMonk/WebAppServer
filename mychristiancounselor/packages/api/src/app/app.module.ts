@@ -27,6 +27,7 @@ import { ContentModule } from '../content/content.module';
 import { BookModule } from '../book/book.module';
 import { ResourcesModule } from '../resources/resources.module';
 import { WorkflowModule } from '../workflow/workflow.module';
+import { ParablesModule } from '../parables/parables.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CsrfGuard } from '../common/guards/csrf.guard';
 import { ApiVersionHeaderInterceptor } from '../common/interceptors/api-version-header.interceptor';
@@ -90,6 +91,7 @@ import { EventsModule } from '../events/events.module';
     BookModule,
     ResourcesModule,
     WorkflowModule,
+    ParablesModule,
   ],
   providers: [
     {

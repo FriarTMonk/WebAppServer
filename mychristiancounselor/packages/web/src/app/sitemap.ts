@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next';
 import { getAllBlogPosts } from '../lib/blog';
+import { getAllParables } from '../lib/parable';
 
 /**
  * Dynamic Sitemap Generator for SEO
@@ -18,6 +19,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: post.updatedDate || post.publishedDate,
     changeFrequency: 'monthly',
     priority: 0.7,
+  }));
+
+  // Get all parables
+  const parables = await getAllParables();
+  const parableEntries: MetadataRoute.Sitemap = parables.map((parable) => ({
+    url: `${baseUrl}/parables/${parable.slug}`,
+    lastModified: parable.publishedDate,
+    changeFrequency: 'monthly',
+    priority: 0.8,
   }));
 
   return [
@@ -87,6 +97,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.9,
     },
+    {
+      url: `${baseUrl}/parables`,
+      lastModified: currentDate,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/testimonials`,
+      lastModified: currentDate,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
     ...blogEntries,
+    ...parableEntries,
   ];
 }

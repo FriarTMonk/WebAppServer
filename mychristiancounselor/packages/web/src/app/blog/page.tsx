@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import Image from 'next/image';
 import { getAllBlogPosts, getAllCategories } from '../../lib/blog';
+import { PublicPageLayout } from '@/components/PublicPageLayout';
 
 export const metadata: Metadata = {
   title: 'Christian Counseling Blog - Biblical Guidance & Mental Health',
@@ -28,51 +28,7 @@ export default async function BlogPage() {
   const categories = await getAllCategories();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center">
-              <Image
-                src="/logo.jpg"
-                alt="MyChristianCounselor"
-                width={180}
-                height={48}
-                priority
-                className="h-12 w-auto"
-              />
-            </Link>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/about"
-                className="text-gray-700 hover:text-teal-700 font-medium transition-colors"
-              >
-                About
-              </Link>
-              <Link
-                href="/faq"
-                className="text-gray-700 hover:text-teal-700 font-medium transition-colors"
-              >
-                FAQ
-              </Link>
-              <Link
-                href="/login"
-                className="text-gray-700 hover:text-teal-700 font-medium transition-colors"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/register"
-                className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700 font-medium transition-colors"
-              >
-                Get Started
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
+    <PublicPageLayout breadcrumbs={[{ label: 'Blog' }]}>
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
         <h1 className="text-5xl font-extrabold text-gray-900 mb-6">
@@ -214,12 +170,15 @@ export default async function BlogPage() {
                 © 2025 MyChristianCounselor. All rights reserved.
               </p>
             </div>
-            <div className="flex gap-6">
+            <div className="flex flex-wrap gap-6 justify-center md:justify-end">
               <Link href="/about" className="text-sm hover:text-white transition-colors">
                 About
               </Link>
               <Link href="/blog" className="text-sm hover:text-white transition-colors">
                 Blog
+              </Link>
+              <Link href="/testimonials" className="text-sm hover:text-white transition-colors">
+                Testimonials
               </Link>
               <Link href="/faq" className="text-sm hover:text-white transition-colors">
                 FAQ
@@ -233,10 +192,13 @@ export default async function BlogPage() {
               <Link href="/support/new" className="text-sm hover:text-white transition-colors">
                 Support
               </Link>
+              <Link href="/sales/new" className="text-sm hover:text-white transition-colors">
+                Sales Inquiry
+              </Link>
             </div>
           </div>
         </div>
       </footer>
-    </div>
+    </PublicPageLayout>
   );
 }

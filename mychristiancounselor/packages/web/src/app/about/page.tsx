@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import Image from 'next/image';
+import { PublicPageLayout } from '@/components/PublicPageLayout';
 
 export const metadata: Metadata = {
   title: 'About Us - Christian Counseling with AI-Powered Biblical Guidance',
@@ -24,51 +24,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center">
-              <Image
-                src="/logo.jpg"
-                alt="MyChristianCounselor"
-                width={180}
-                height={48}
-                priority
-                className="h-12 w-auto"
-              />
-            </Link>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/blog"
-                className="text-gray-700 hover:text-teal-700 font-medium transition-colors"
-              >
-                Blog
-              </Link>
-              <Link
-                href="/faq"
-                className="text-gray-700 hover:text-teal-700 font-medium transition-colors"
-              >
-                FAQ
-              </Link>
-              <Link
-                href="/login"
-                className="text-gray-700 hover:text-teal-700 font-medium transition-colors"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/register"
-                className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700 font-medium transition-colors"
-              >
-                Get Started
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
+    <PublicPageLayout breadcrumbs={[{ label: 'About' }]}>
       {/* Hero Section */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
         <h1 className="text-5xl font-extrabold text-gray-900 mb-6">
@@ -91,6 +47,25 @@ export default function AboutPage() {
           </p>
           <p className="text-lg text-gray-700">
             We're committed to maintaining the highest standards of Christian ethics, confidentiality, and theological accuracy in every interaction.
+          </p>
+        </div>
+      </section>
+
+      {/* Our Founder */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="bg-white rounded-lg shadow-lg p-8 md:p-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Founder: Larry Tuck</h2>
+          <p className="text-lg text-gray-700 mb-4">
+            Larry Tuck is a visionary technology leader with over 15 years of experience as a CTO and senior executive in AI integration, information security, and enterprise systems. Having held certifications like CISM (Certified Information Security Manager) and CCSFP, he has led high-performing teams in healthcare and tech, driving operational excellence, secure integrations, and responsible AI adoption. His LinkedIn articles explore AI as a teammate rather than a replacement, the ethical challenges of emerging tech, and timeless principles in leadership—reflecting a deep commitment to using technology for good.
+          </p>
+          <p className="text-lg text-gray-700 mb-4">
+            In 2022, shortly after returning to his home state of Alaska, Larry experienced profound personal loss when one of his nephews took his own life. Amid the grief and heartbreak that followed, a seed was planted: the vision for an always-available tool that could offer solid biblical truth, moral clarity, and the hope of salvation to the lost and brokenhearted.
+          </p>
+          <p className="text-lg text-gray-700 mb-4">
+            That tragedy inspired MyChristianCounselor Online—a platform that combines Larry's expertise in secure, ethical AI with compassionate, scripture-centered guidance. His hope is simple yet urgent: that this tool might help even one person choose life over a permanent solution to a temporary problem, sparing another family the unimaginable pain of losing a young loved one.
+          </p>
+          <p className="text-lg text-gray-700">
+            Today, from Palmer, Alaska, Larry continues to build and refine the platform, blending cutting-edge technology with unwavering faith to make biblical support accessible 24/7—confidential, judgment-free, and rooted in God's unchanging truth.
           </p>
         </div>
       </section>
@@ -280,6 +255,6 @@ export default function AboutPage() {
           </div>
         </div>
       </footer>
-    </div>
+    </PublicPageLayout>
   );
 }

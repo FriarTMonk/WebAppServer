@@ -101,8 +101,11 @@ model User {
   ticketAttachmentsUploaded TicketAttachment[]       @relation("TicketAttachmentsUploaded")
   ticketLinksCreated        TicketLink[]             @relation("TicketLinksCreated")
   ticketMessagesAuthored    TicketMessage[]          @relation("TicketMessagesAuthored")
-  readingLists              UserReadingList[]        @relation("ReadingLists")
-  wellnessEntries           WellnessEntry[]
+  readingLists                UserReadingList[]        @relation("ReadingLists")
+  wellnessEntries             WellnessEntry[]
+  userParableLists            UserParableList[]        @relation("UserParableLists")
+  parableAssignmentsReceived  ParableAssignment[]      @relation("ParableAssignmentsReceived")
+  parableAssignmentsGiven     ParableAssignment[]      @relation("ParableAssignmentsGiven")
 
   @@index([email])
   @@index([verificationToken])
@@ -167,6 +170,7 @@ model Organization {
   prospectsConverted      Prospect[]               @relation("ProspectConversions")
   salesOpportunities      SalesOpportunity[]
   supportTickets          SupportTicket[]
+  parableAssignments      ParableAssignment[]
 
   @@index([licenseStatus])
   @@index([licenseExpiresAt])
@@ -1473,4 +1477,72 @@ enum WorkflowRuleLevel {
   platform
   organization
   counselor
+}
+
+model Parable {
+  id                  String              @id @default(uuid())
+  slug                String              @unique
+  title               String
+  publishedDate       DateTime
+  isFeatured          Boolean             @default(false)
+  category            String
+  sortOrder           Int                 @default(0)
+  isActive            Boolean             @default(true)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  userParableLists    UserParableList[]
+  parableAssignments  ParableAssignment[]
+
+  @@index([publishedDate])
+  @@index([isFeatured])
+  @@index([slug])
+}
+
+model UserParableList {
+  id                String    @id @default(uuid())
+  userId            String
+  parableId         String
+  reflectionNotes   String?
+  isCompleted       Boolean   @default(false)
+  completedAt       DateTime?
+  addedAt           DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user              User      @relation("UserParableLists", fields: [userId], references: [id], onDelete: Cascade)
+  parable           Parable   @relation(fields: [parableId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, parableId])
+  @@index([userId])
+}
+
+model ParableAssignment {
+  id                  String              @id @default(uuid())
+  parableId           String
+  memberId            String
+  counselorId         String
+  organizationId      String
+  assignedAt          DateTime            @default(now())
+  dueDate             DateTime?
+  completedAt         DateTime?
+  status              ParableTaskStatus   @default(assigned)
+  counselorNotes      String?
+  memberReflection    String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  parable             Parable             @relation(fields: [parableId], references: [id], onDelete: Cascade)
+  member              User                @relation("ParableAssignmentsReceived", fields: [memberId], references: [id], onDelete: Cascade)
+  counselor           User                @relation("ParableAssignmentsGiven", fields: [counselorId], references: [id], onDelete: Cascade)
+  organization        Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([status])
+}
+
+enum ParableTaskStatus {
+  assigned
+  in_progress
+  completed
+  expired
 }

@@ -134,8 +134,14 @@ export default async function BlogPostPage({ params }: Props) {
         </div>
       </nav>
 
-      {/* Breadcrumbs */}
+      {/* Back Button & Breadcrumbs */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        <Link
+          href="/blog"
+          className="inline-flex items-center text-teal-600 hover:text-teal-700 mb-4 font-medium"
+        >
+          ← Back to Blog
+        </Link>
         <nav className="flex text-sm text-gray-600 overflow-x-auto" aria-label="Breadcrumb">
           <Link href="/" className="hover:text-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded whitespace-nowrap">
             Home
