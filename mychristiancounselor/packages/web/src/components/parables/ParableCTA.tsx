@@ -22,7 +22,11 @@ export function ParableCTA() {
 
   // Check if parable is already saved
   useEffect(() => {
-    if (isAuthenticated && user?.subscriptionStatus === 'active') {
+    const canSave =
+      user?.subscriptionStatus === 'active' ||
+      (user?.organizationMemberships && user.organizationMemberships.length > 0);
+
+    if (isAuthenticated && canSave) {
       isParableSaved(parableSlug)
         .then(saved => {
           setIsSaved(saved);
@@ -78,8 +82,9 @@ export function ParableCTA() {
   }
 
   // Check if user can save parables (subscribed or organization member)
-  // TODO: Add organization membership check when available
-  const canSaveParables = user?.subscriptionStatus === 'active';
+  const canSaveParables =
+    user?.subscriptionStatus === 'active' ||
+    (user?.organizationMemberships && user.organizationMemberships.length > 0);
 
   return (
     <div className="my-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">

@@ -115,6 +115,16 @@ export interface User {
   subscriptionStatus?: string;
   createdAt: Date;
   updatedAt: Date;
+  organizationMemberships?: Array<{
+    organization: {
+      id: string;
+      name: string;
+    };
+    role: {
+      id: string;
+      name: string;
+    };
+  }>;
 }
 
 export interface RegisterDto {
