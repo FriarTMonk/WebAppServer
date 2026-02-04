@@ -114,6 +114,10 @@ export function AuthProvider({ children }: { children: React.ReactNode}) {
           clearTokens();
           setUser(null);
           setMorphSession(null);
+          // Redirect to home page when session is invalid
+          if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+            window.location.href = '/';
+          }
         })
         .finally(() => setIsInitialized(true));
     } else {
@@ -189,6 +193,10 @@ export function AuthProvider({ children }: { children: React.ReactNode}) {
         clearTokens();
         setUser(null);
         setMorphSession(null);
+        // Redirect to home page when session is invalid
+        if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+          window.location.href = '/';
+        }
         return;
       }
 
@@ -203,6 +211,10 @@ export function AuthProvider({ children }: { children: React.ReactNode}) {
       clearTokens();
       setUser(null);
       setMorphSession(null);
+      // Redirect to home page when session is invalid
+      if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+        window.location.href = '/';
+      }
     }
   };
 

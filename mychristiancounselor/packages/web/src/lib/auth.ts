@@ -50,6 +50,7 @@ export function clearTokens(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('morphReturnUrl'); // Clear morph session data
   }
 }
 
