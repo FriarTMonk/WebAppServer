@@ -319,6 +319,24 @@ export class AuthService {
   async getUserById(userId: string): Promise<User> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
+      include: {
+        organizationMemberships: {
+          select: {
+            organization: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            role: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!user) {

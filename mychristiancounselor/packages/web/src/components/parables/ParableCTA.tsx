@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useParableContext } from '@/contexts/ParableContext';
 import { saveParable, unsaveParable, isParableSaved } from '@/lib/parables-api';
@@ -20,13 +20,16 @@ export function ParableCTA() {
 
   const { parableId, parableSlug } = parableContext;
 
+  // Check if user can save parables (subscribed or organization member)
+  // Use useMemo to recalculate when user changes (including when organizationMemberships loads)
+  const canSaveParables = useMemo(() => {
+    return user?.subscriptionStatus === 'active' ||
+      (user?.organizationMemberships && user.organizationMemberships.length > 0);
+  }, [user]);
+
   // Check if parable is already saved
   useEffect(() => {
-    const canSave =
-      user?.subscriptionStatus === 'active' ||
-      (user?.organizationMemberships && user.organizationMemberships.length > 0);
-
-    if (isAuthenticated && canSave) {
+    if (isAuthenticated && canSaveParables) {
       isParableSaved(parableSlug)
         .then(saved => {
           setIsSaved(saved);
@@ -38,7 +41,7 @@ export function ParableCTA() {
     } else {
       setIsCheckingStatus(false);
     }
-  }, [isAuthenticated, user, parableSlug]);
+  }, [isAuthenticated, canSaveParables, parableSlug]);
 
   const handleSaveToggle = async () => {
     if (!canSaveParables || isLoading) return;
@@ -80,11 +83,6 @@ export function ParableCTA() {
       </div>
     );
   }
-
-  // Check if user can save parables (subscribed or organization member)
-  const canSaveParables =
-    user?.subscriptionStatus === 'active' ||
-    (user?.organizationMemberships && user.organizationMemberships.length > 0);
 
   return (
     <div className="my-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">

@@ -18,11 +18,14 @@ export default function TableOfContents() {
     if (!article) return;
 
     const elements = article.querySelectorAll('h2, h3');
-    const headingData: Heading[] = Array.from(elements).map((elem) => ({
-      id: elem.id,
-      text: elem.textContent || '',
-      level: parseInt(elem.tagName.substring(1)),
-    }));
+    const headingData: Heading[] = Array.from(elements)
+      .map((elem) => ({
+        id: elem.id,
+        text: elem.textContent || '',
+        level: parseInt(elem.tagName.substring(1)),
+      }))
+      // Filter out headings with empty or invalid IDs
+      .filter((heading) => heading.id && heading.id.trim() !== '');
 
     setHeadings(headingData);
 

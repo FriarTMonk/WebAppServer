@@ -46,6 +46,17 @@ export class ParablesController {
   }
 
   /**
+   * GET /parables/my-list
+   * Get user's saved parables
+   * NOTE: Must come BEFORE :slug route to avoid matching "my-list" as a slug
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('my-list')
+  async getUserParables(@Req() req: any) {
+    return this.parablesService.getUserParables(req.user.id);
+  }
+
+  /**
    * GET /parables/category/:category
    * Get parables by category
    */
@@ -78,7 +89,7 @@ export class ParablesController {
     @Body() dto: SaveParableDto,
     @Req() req: any,
   ) {
-    return this.parablesService.saveParable(req.user.userId, parableId, dto);
+    return this.parablesService.saveParable(req.user.id, parableId, dto);
   }
 
   /**
@@ -88,17 +99,7 @@ export class ParablesController {
   @UseGuards(JwtAuthGuard)
   @Delete(':id/unsave')
   async unsaveParable(@Param('id') parableId: string, @Req() req: any) {
-    return this.parablesService.unsaveParable(req.user.userId, parableId);
-  }
-
-  /**
-   * GET /parables/my-list
-   * Get user's saved parables
-   */
-  @UseGuards(JwtAuthGuard)
-  @Get('my-list')
-  async getUserParables(@Req() req: any) {
-    return this.parablesService.getUserParables(req.user.userId);
+    return this.parablesService.unsaveParable(req.user.id, parableId);
   }
 
   /**
@@ -112,7 +113,7 @@ export class ParablesController {
     @Body() dto: UpdateReflectionDto,
     @Req() req: any,
   ) {
-    return this.parablesService.updateReflection(req.user.userId, parableId, dto);
+    return this.parablesService.updateReflection(req.user.id, parableId, dto);
   }
 
   /**
@@ -131,7 +132,7 @@ export class ParablesController {
     const organizationId = req.user.organizationId || '';
 
     return this.parablesService.assignParable(
-      req.user.userId,
+      req.user.id,
       parableId,
       organizationId,
       dto,
@@ -161,7 +162,7 @@ export class ParablesController {
     @Req() req: any,
   ) {
     return this.parablesService.submitReflection(
-      req.user.userId,
+      req.user.id,
       assignmentId,
       dto,
     );

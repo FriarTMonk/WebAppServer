@@ -10,12 +10,13 @@ import { ReadingListCard } from '@/components/reading-list/ReadingListCard';
 import { BackButton } from '@/components/BackButton';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 
-type ReadingListTab = 'want_to_read' | 'currently_reading' | 'finished';
+type BookReadingStatus = 'want_to_read' | 'currently_reading' | 'finished';
+type ReadingListTab = BookReadingStatus | 'parables';
 
 interface ReadingListItem {
   id: string;
   bookId: string;
-  status: ReadingListTab;
+  status: BookReadingStatus;
   progress: number | null;
   notes: string | null;
   rating: number | null;
@@ -34,6 +35,22 @@ interface ReadingListItem {
   };
 }
 
+interface SavedParable {
+  id: string;
+  parableId: string;
+  reflectionNotes: string | null;
+  isCompleted: boolean;
+  completedAt: string | null;
+  addedAt: string;
+  parable: {
+    id: string;
+    slug: string;
+    title: string;
+    category: string;
+    publishedDate: string;
+  };
+}
+
 function ReadingListPageContent() {
   const router = useRouter();
   const { user } = useAuth();
@@ -41,6 +58,7 @@ function ReadingListPageContent() {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [accessChecked, setAccessChecked] = useState(false);
   const [readingListItems, setReadingListItems] = useState<ReadingListItem[]>([]);
+  const [savedParables, setSavedParables] = useState<SavedParable[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Check access: platform admin OR active subscription OR organization membership
@@ -120,15 +138,41 @@ function ReadingListPageContent() {
     }
   }, [user, hasAccess, accessChecked]);
 
+  // Fetch saved parables from API
+  useEffect(() => {
+    const fetchSavedParables = async () => {
+      if (!user || !hasAccess) return;
+
+      try {
+        const response = await apiGet('/parables/my-list');
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch saved parables');
+        }
+
+        const data = await response.json();
+        setSavedParables(data || []);
+      } catch (error) {
+        console.error('Error fetching saved parables:', error);
+        // Don't show error toast, just log it (parables are optional)
+      }
+    };
+
+    if (accessChecked && hasAccess) {
+      fetchSavedParables();
+    }
+  }, [user, hasAccess, accessChecked]);
+
   // Calculate tab counts from actual data
   const tabCounts = {
     want_to_read: readingListItems.filter(item => item.status === 'want_to_read').length,
     currently_reading: readingListItems.filter(item => item.status === 'currently_reading').length,
     finished: readingListItems.filter(item => item.status === 'finished').length,
+    parables: savedParables.length,
   };
 
   // Filter items by active tab
-  const filteredItems = readingListItems.filter(item => item.status === activeTab);
+  const filteredItems = activeTab === 'parables' ? [] : readingListItems.filter(item => item.status === activeTab);
 
   const handleUpdateItem = async (itemId: string, updates: any) => {
     try {
@@ -176,8 +220,10 @@ function ReadingListPageContent() {
         return "Start reading a book from your 'Want to Read' list.";
       case 'finished':
         return 'Completed books will appear here with your reading history.';
+      case 'parables':
+        return 'No saved parables yet. Visit the Parables page to save parables for reflection.';
       default:
-        return 'No books in this category.';
+        return 'No items in this category.';
     }
   };
 
@@ -189,6 +235,8 @@ function ReadingListPageContent() {
         return '📖';
       case 'finished':
         return '✓';
+      case 'parables':
+        return '📜';
       default:
         return '📚';
     }
@@ -220,7 +268,7 @@ function ReadingListPageContent() {
           <BackButton />
           <h1 className="text-3xl font-bold text-gray-900">My Reading List</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Track books you want to read, are currently reading, and have finished
+            Track books you want to read, are currently reading, and have finished, plus saved parables for reflection
           </p>
         </div>
       </div>
@@ -261,10 +309,10 @@ function ReadingListPageContent() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-2 mb-6 border-b border-gray-200">
+        <div className="flex gap-2 mb-6 border-b border-gray-200 overflow-x-auto">
           <button
             onClick={() => setActiveTab('want_to_read')}
-            className={`px-4 py-3 font-medium text-sm transition-colors border-b-2 ${
+            className={`px-4 py-3 font-medium text-sm transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'want_to_read'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
@@ -274,7 +322,7 @@ function ReadingListPageContent() {
           </button>
           <button
             onClick={() => setActiveTab('currently_reading')}
-            className={`px-4 py-3 font-medium text-sm transition-colors border-b-2 ${
+            className={`px-4 py-3 font-medium text-sm transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'currently_reading'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
@@ -284,13 +332,23 @@ function ReadingListPageContent() {
           </button>
           <button
             onClick={() => setActiveTab('finished')}
-            className={`px-4 py-3 font-medium text-sm transition-colors border-b-2 ${
+            className={`px-4 py-3 font-medium text-sm transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'finished'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
           >
             Finished ({tabCounts.finished})
+          </button>
+          <button
+            onClick={() => setActiveTab('parables')}
+            className={`px-4 py-3 font-medium text-sm transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'parables'
+                ? 'border-amber-600 text-amber-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            📜 Saved Parables ({tabCounts.parables})
           </button>
         </div>
 
@@ -307,6 +365,79 @@ function ReadingListPageContent() {
               <div className="h-24 bg-gray-200 rounded" />
             </div>
           </div>
+        ) : activeTab === 'parables' ? (
+          savedParables.length === 0 ? (
+            <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
+              <div className="text-5xl mb-4">📜</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No Saved Parables Yet
+              </h3>
+              <p className="text-gray-600 mb-6">
+                {getEmptyStateMessage()}
+              </p>
+              <button
+                onClick={() => router.push('/parables')}
+                className="px-6 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors"
+              >
+                Browse Parables
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {savedParables.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm text-amber-600 font-medium">
+                      {item.parable.category}
+                    </span>
+                    {item.isCompleted && (
+                      <span className="text-green-600 text-sm">✓ Completed</span>
+                    )}
+                  </div>
+
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">
+                    {item.parable.title}
+                  </h3>
+
+                  {item.reflectionNotes && (
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                      {item.reflectionNotes}
+                    </p>
+                  )}
+
+                  <div className="text-xs text-gray-500 mb-4">
+                    Saved {new Date(item.addedAt).toLocaleDateString()}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => router.push(`/parables/${item.parable.slug}`)}
+                      className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors text-sm"
+                    >
+                      Read Parable
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await apiDelete(`/parables/${item.parable.id}/unsave`);
+                          setSavedParables(prev => prev.filter(p => p.id !== item.id));
+                          showToast('Parable removed from reading list', 'success');
+                        } catch (error) {
+                          showToast('Failed to remove parable', 'error');
+                        }
+                      }}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-sm"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         ) : filteredItems.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
             <div className="text-5xl mb-4">{getEmptyStateIcon()}</div>
