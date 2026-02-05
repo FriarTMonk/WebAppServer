@@ -135,3 +135,17 @@ export async function getAllTags(): Promise<string[]> {
   const tags = new Set(parables.flatMap(parable => parable.tags));
   return Array.from(tags).sort();
 }
+
+// Get random parables (for landing page teasers)
+export async function getRandomParables(count: number = 3): Promise<Parable[]> {
+  const parables = await getAllParables();
+
+  // Shuffle array using Fisher-Yates algorithm
+  const shuffled = [...parables];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  return shuffled.slice(0, count);
+}

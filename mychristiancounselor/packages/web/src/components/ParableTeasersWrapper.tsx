@@ -1,16 +1,19 @@
-import { getAllParables } from '@/lib/parable';
+import { getRandomParables } from '@/lib/parable';
 import { ParableTeasersSection } from './ParableTeasersSection';
 
-export async function ParableTeasersWrapper() {
-  const allParables = await getAllParables();
+// Cache for 1 hour (3600 seconds)
+export const revalidate = 3600;
 
-  // Get the 3 most recent parables
-  const recentParables = allParables.slice(0, 3).map(parable => ({
+export async function ParableTeasersWrapper() {
+  // Get 3 random parables (re-randomized every hour)
+  const randomParables = await getRandomParables(3);
+
+  const parableTeasers = randomParables.map(parable => ({
     slug: parable.slug,
     title: parable.title,
     category: parable.category,
     excerpt: parable.excerpt,
   }));
 
-  return <ParableTeasersSection parables={recentParables} />;
+  return <ParableTeasersSection parables={parableTeasers} />;
 }
