@@ -250,9 +250,9 @@ You don't have to figure it all out. You just have to trust the One who already 
 
 ### Call to Action
 
-**Need support in navigating uncertainty and anxiety?** Our Christian counselors are here to help you apply biblical principles to your specific situation. [Start a conversation today](/home).
+**While we encourage connecting with a human counselor or pastor, our AI counselor is available 24/7 to provide scripture-based guidance when you need it.** [Start a conversation today](/home).
 
-**Struggling with anxiety or fear?** You don't have to face it alone. Our 24/7 biblical guidance can help you find peace in the midst of life's storms.
+**Struggling with anxiety or fear?** You don't have to face it alone.
 
 ### Optional Warning Box
 
