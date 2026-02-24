@@ -706,6 +706,28 @@ MyChristianCounselor Team`,
         const bounceData = trackingData as PostmarkBounceWebhookDto;
         const bounceReason = `${bounceData.Type}: ${bounceData.Description}`;
         await this.emailTrackingService.markAsBounced(messageId, bounceReason);
+
+        // Auto-opt-out bounced emails that are in the marketing list
+        // Check if this email belongs to a prospect contact
+        const prospectContact = await this.prisma.prospectContact.findFirst({
+          where: { email: bounceData.Recipient.toLowerCase() },
+        });
+
+        if (prospectContact) {
+          this.logger.log(
+            `Bounce detected for marketing contact ${bounceData.Recipient} (${bounceData.Type}) - auto-opting out`
+          );
+          try {
+            await this.optOutService.processOptOut(bounceData.Recipient);
+            this.logger.log(`Successfully opted out marketing contact ${bounceData.Recipient} after bounce`);
+          } catch (error) {
+            this.logger.error(`Failed to opt-out ${bounceData.Recipient}: ${error.message}`);
+          }
+        } else {
+          this.logger.log(
+            `Bounce detected for non-marketing email ${bounceData.Recipient} (${bounceData.Type}) - not opting out`
+          );
+        }
         break;
 
       case 'Open':
