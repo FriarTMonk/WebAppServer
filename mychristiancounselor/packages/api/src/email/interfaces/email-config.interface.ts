@@ -26,6 +26,7 @@ export interface SendEmailOptions {
   fromEmail?: string; // Optional custom sender email
   fromName?: string; // Optional custom sender name
   priority?: number; // Email priority: 1=urgent, 3=normal, 5=low
+  messageStream?: string; // Postmark message stream (default: 'outbound', use 'broadcast' for marketing)
 }
 
 /**

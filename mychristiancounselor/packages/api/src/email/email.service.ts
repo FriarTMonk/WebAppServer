@@ -82,7 +82,7 @@ export class EmailService {
       HtmlBody: options.html,
       TextBody: options.text,
       Tag: options.tag || options.emailType,
-      MessageStream: 'outbound',
+      MessageStream: options.messageStream || 'outbound',
     };
 
     // Add priority header if specified
@@ -458,17 +458,18 @@ export class EmailService {
   ): Promise<SendEmailResult> {
     const template = this.emailTemplates.renderMarketingCampaignEmail(data);
 
-    const salesEmail = this.configService.get('POSTMARK_SALES_EMAIL', 'sales@mychristiancounselor.online');
+    const marketingEmail = this.configService.get('POSTMARK_MARKETING_EMAIL', 'marketing@mychristiancounselor.online');
 
     return this.sendEmail({
       to: email,
-      fromEmail: salesEmail,
-      fromName: 'MyChristianCounselor Sales',
+      fromEmail: marketingEmail,
+      fromName: 'MyChristianCounselor',
       subject: template.subject,
       html: template.html,
       text: template.text,
       emailType: 'marketing_campaign',
       tag: 'marketing-campaign',
+      messageStream: 'broadcast',
       metadata: {
         campaignId: data.campaignId,
         prospectId: data.prospectId,

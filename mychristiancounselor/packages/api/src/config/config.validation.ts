@@ -19,6 +19,7 @@ export const configValidationSchema = Joi.object({
   POSTMARK_FROM_EMAIL: Joi.string().email().default('noreply@mychristiancounselor.com'),
   POSTMARK_FROM_NAME: Joi.string().default('MyChristianCounselor'),
   POSTMARK_MOCK_MODE: Joi.string().valid('true', 'false').default('true'),
+  POSTMARK_MARKETING_EMAIL: Joi.string().email().default('marketing@mychristiancounselor.online'),
   SUPPORT_EMAIL: Joi.string().email().default('support@mychristiancounselor.com'),
 
   // AI Services - AWS Bedrock (HIPAA-compliant)
