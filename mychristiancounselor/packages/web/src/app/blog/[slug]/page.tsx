@@ -20,10 +20,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
+  const postUrl = `https://www.mychristiancounselor.online/blog/${post.slug}`;
+  const ogImage = post.image
+    ? `https://www.mychristiancounselor.online${post.image}`
+    : 'https://www.mychristiancounselor.online/logo.jpg';
+
   return {
     title: `${post.title} | MyChristianCounselor Blog`,
     description: post.excerpt,
-    keywords: post.tags.join(', '),
+    keywords: [post.category, ...post.tags].join(', '),
     authors: [{ name: post.author }],
     openGraph: {
       title: post.title,
@@ -32,15 +37,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       publishedTime: post.publishedDate,
       modifiedTime: post.updatedDate || post.publishedDate,
       authors: [post.author],
-      url: `https://www.mychristiancounselor.online/blog/${post.slug}`,
+      url: postUrl,
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: post.title,
       description: post.excerpt,
+      images: [ogImage],
     },
     alternates: {
-      canonical: `https://www.mychristiancounselor.online/blog/${post.slug}`,
+      canonical: postUrl,
     },
   };
 }
@@ -218,15 +232,27 @@ export default async function BlogPostPage({ params }: Props) {
               __html: JSON.stringify({
                 '@context': 'https://schema.org',
                 '@type': 'BlogPosting',
+                mainEntityOfPage: {
+                  '@type': 'WebPage',
+                  '@id': `https://www.mychristiancounselor.online/blog/${post.slug}`,
+                },
                 headline: post.title,
                 description: post.excerpt,
+                image: {
+                  '@type': 'ImageObject',
+                  url: post.image
+                    ? `https://www.mychristiancounselor.online${post.image}`
+                    : 'https://www.mychristiancounselor.online/logo.jpg',
+                  width: 1200,
+                  height: 630,
+                },
                 author: {
                   '@type': 'Organization',
                   name: post.author,
                 },
                 datePublished: post.publishedDate,
                 dateModified: post.updatedDate || post.publishedDate,
-                keywords: post.tags.join(', '),
+                keywords: [post.category, ...post.tags].join(', '),
                 articleSection: post.category,
                 url: `https://www.mychristiancounselor.online/blog/${post.slug}`,
                 publisher: {
